@@ -265,44 +265,62 @@ elif menu == "3. Quản Lý Định Mức Điểm":
 
 elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.header("🗑️ Thùng Rác & Khôi Phục Bản Ghi Sản Lượng Đã Xóa")
-    st.markdown("Tại đây lưu trữ các dòng sản lượng đã bị xóa từ trang Nhập Sản Lượng. Bạn có thể khôi phục hoặc **xóa vĩnh viễn** để giải phóng bộ nhớ.")
+    st.markdown("Chọn trực tiếp dòng trong bảng thùng rác bên dưới, sau đó chọn hành động **Khôi phục** hoặc **Xóa vĩnh viễn**.")
     
     if not st.session_state.deleted_input_df.empty:
-        st.dataframe(st.session_state.deleted_input_df, use_container_width=True)
+        # Create a display dataframe with a selection column
+        trash_display = st.session_state.deleted_input_df.copy()
+        trash_display.insert(0, "Chọn", False)
+        
+        edited_trash = st.data_editor(
+            trash_display,
+            hide_index=True,
+            use_container_width=True,
+            key="trash_editor"
+        )
         
         col_act1, col_act2 = st.columns(2)
         
         with col_act1:
-            st.markdown("#### 📥 Khôi Phục Bản Ghi")
-            restore_stt = st.number_input("Nhập STT dòng trong thùng rác muốn khôi phục:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="restore_trash_stt")
-            if st.button("📥 Khôi Phục Bản Ghi Này"):
-                if restore_stt > 0:
-                    row_to_restore = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] == restore_stt]
-                    if not row_to_restore.empty:
-                        st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != restore_stt].reset_index(drop=True)
-                        if not st.session_state.deleted_input_df.empty:
-                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                        
-                        row_to_restore = row_to_restore.copy()
-                        row_to_restore["STT"] = len(st.session_state.input_df) + 1
-                        st.session_state.input_df = pd.concat([st.session_state.input_df, row_to_restore], ignore_index=True)
-                        st.success("Đã khôi phục dòng sản lượng thành công về danh sách chính!")
-                        st.rerun()
-                    else:
-                        st.error("Không tìm thấy số STT này trong thùng rác!")
-
-        with col_act2:
-            st.markdown("#### ❌ Xóa Vĩnh Viễn Bản Ghi")
-            perm_del_stt = st.number_input("Nhập STT dòng trong thùng rác muốn xóa vĩnh viễn:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="perm_del_stt")
-            if st.button("🔥 Xóa Vĩnh Viễn Dòng Này"):
-                if perm_del_stt > 0:
-                    st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != perm_del_stt].reset_index(drop=True)
+            if st.button("📥 Khôi Phục Các Dòng Đã Chọn"):
+                selected_rows = edited_trash[edited_trash["Chọn"] == True]
+                if not selected_rows.empty:
+                    # Remove 'Chọn' column before restoring
+                    selected_rows = selected_rows.drop(columns=["Chọn"])
+                    stt_to_remove = selected_rows["STT"].tolist()
+                    
+                    # Remove from deleted_input_df
+                    st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
                     if not st.session_state.deleted_input_df.empty:
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                    st.success(f"Đã xóa vĩnh viễn dòng số {perm_del_stt} khỏi thùng rác!")
+                    
+                    # Add to input_df with new STT
+                    selected_rows = selected_rows.copy()
+                    for idx, row in selected_rows.iterrows():
+                        new_row = row.copy()
+                        new_row["STT"] = len(st.session_state.input_df) + 1
+                        st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
+                    
+                    st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
                     st.rerun()
                 else:
-                    st.error("Không tìm thấy số STT này trong thùng rác!")
+                    st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
+
+        with col_act2:
+            if st.button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn"):
+                selected_rows = edited_trash[edited_trash["Chọn"] == True]
+                if not selected_rows.empty:
+                    selected_rows = selected_rows.drop(columns=["Chọn"])
+                    stt_to_remove = selected_rows["STT"].tolist()
+                    
+                    st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                    if not st.session_state.deleted_input_df.empty:
+                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                    
+                    st.success("Đã xóa vĩnh viễn các dòng đã chọn khỏi thùng rác!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
 
         st.markdown("---")
         if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác"):
