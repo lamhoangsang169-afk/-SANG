@@ -66,6 +66,12 @@ if "bg_image_base64" not in st.session_state:
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = "1. Nhập Sản Lượng"
 
+# Ensure STT is always sequential in DataFrames
+if not st.session_state.input_df.empty:
+    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+if not st.session_state.rules_df.empty:
+    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+
 # Build background style dynamically
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
@@ -167,12 +173,14 @@ if menu == "1. Nhập Sản Lượng":
                 "Ghi Chú": ghi_chu
             }
             st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
+            st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
             st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
 
     st.markdown("---")
     st.subheader("🔍 Bộ Lọc Dữ Liệu & Tùy Chọn Cột Hiển Thị")
     
     if not st.session_state.input_df.empty:
+        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1:
             all_dates = ["Tất cả"] + sorted(st.session_state.input_df["Ngày"].unique().tolist())
@@ -195,6 +203,9 @@ if menu == "1. Nhập Sản Lượng":
         if filter_task != "Tất cả":
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
+        if not filtered_df.empty:
+            filtered_df["STT"] = range(1, len(filtered_df) + 1)
+            
         if selected_cols:
             st.dataframe(filtered_df[selected_cols], use_container_width=True)
         else:
@@ -208,6 +219,8 @@ if menu == "1. Nhập Sản Lượng":
                     st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, row_to_delete], ignore_index=True)
                     st.session_state.input_df = st.session_state.input_df[st.session_state.input_df["STT"] != del_idx].reset_index(drop=True)
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    if not st.session_state.deleted_input_df.empty:
+                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     st.success(f"Đã chuyển dòng số {del_idx} vào thùng rác!")
                     st.rerun()
                 else:
@@ -268,6 +281,9 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
     st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm, xóa hạng mục, hoặc khôi phục các mục định mức đã xóa.")
     
+    if not st.session_state.rules_df.empty:
+        st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+        
     current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
     deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
     
@@ -291,16 +307,19 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         with col_r2:
             if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
                 st.session_state.rules_df = pd.DataFrame(master_rules)
+                st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
                 st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
                 st.rerun()
     else:
         if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
             st.session_state.rules_df = pd.DataFrame(master_rules)
+            st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
             st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
             st.rerun()
 
     st.markdown("---")
     st.markdown("#### 📋 Danh Sách Định Mức Hiện Tại (Có thể chỉnh sửa hoặc xóa trực tiếp)")
+    
     edited_rules = st.data_editor(
         st.session_state.rules_df, 
         num_rows="dynamic", 
@@ -309,7 +328,9 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     )
     
     if not edited_rules.equals(st.session_state.rules_df):
+        edited_rules["STT"] = range(1, len(edited_rules) + 1)
         st.session_state.rules_df = edited_rules
+        pages_to_rerun = True
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
         st.rerun()
 
@@ -318,6 +339,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.markdown("Chọn trực tiếp dòng trong bảng thùng rác bên dưới, sau đó chọn hành động **Khôi phục** hoặc **Xóa vĩnh viễn**.")
     
     if not st.session_state.deleted_input_df.empty:
+        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
         trash_display = st.session_state.deleted_input_df.copy()
         trash_display.insert(0, "Chọn", False)
         
@@ -339,7 +361,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     
                     st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
                     if not st.session_state.deleted_input_df.empty:
-                    	st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
                     selected_rows = selected_rows.copy()
                     for idx, row in selected_rows.iterrows():
@@ -347,6 +369,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                         new_row["STT"] = len(st.session_state.input_df) + 1
                         st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     
+                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
                     st.rerun()
                 else:
