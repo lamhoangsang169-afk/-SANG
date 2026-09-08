@@ -108,6 +108,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
+# Cấu hình CSS Responsive tối ưu hiển thị trên cả Điện thoại và Máy tính
 st.markdown(f"""
 <style>
     .stApp {{
@@ -125,10 +126,26 @@ st.markdown(f"""
     h1 {{
         color: {st.session_state.primary_color} !important;
     }}
-    /* Làm đậm chữ trong các bảng để dễ nhìn */
+    /* Tối ưu làm đậm chữ trong bảng */
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] * {{
         font-weight: 600 !important;
         color: #111111 !important;
+    }}
+    
+    /* Responsive cho Điện thoại (Mobile) */
+    @media (max-width: 768px) {{
+        h1 {{
+            font-size: 1.6rem !important;
+        }}
+        h2 {{
+            font-size: 1.3rem !important;
+        }}
+        h3 {{
+            font-size: 1.1rem !important;
+        }}
+        .stApp {{
+            padding: 5px !important;
+        }}
     }}
 </style>
 """, unsafe_allow_html=True)
