@@ -63,6 +63,8 @@ if "text_color" not in st.session_state:
     st.session_state.text_color = "#31333F"
 if "bg_image_base64" not in st.session_state:
     st.session_state.bg_image_base64 = None
+if "current_menu" not in st.session_state:
+    st.session_state.current_menu = "1. Nhập Sản Lượng"
 
 # Build background style dynamically
 bg_style = f"background-color: {st.session_state.bg_color};"
@@ -88,15 +90,32 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
+st.sidebar.markdown("### 📂 Chọn Chức Năng")
+
+# Expander for items 1 to 4 so it can expand/collapse
+with st.sidebar.expander("📌 Các Mục Quản Lý (1 - 4)", expanded=True):
+    if st.button("1. Nhập Sản Lượng", use_container_width=True):
+        st.session_state.current_menu = "1. Nhập Sản Lượng"
+        st.rerun()
+    if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
+        st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
+        st.rerun()
+    if st.button("3. Quản Lý Định Mức Điểm", use_container_width=True):
+        st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
+        st.rerun()
+    if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
+        st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
+        st.rerun()
+
 st.sidebar.markdown("---")
 
-menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
-    "1. Nhập Sản Lượng", 
-    "2. Báo Cáo & Biểu Đồ Tổng Hợp", 
-    "3. Quản Lý Định Mức Điểm", 
-    "4. Thùng Rác / Khôi Phục Sản Lượng",
-    "5. Cài Đặt Giao Diện"
-])
+# Separated section for Settings / Cài đặt giao diện
+st.sidebar.markdown("### ⚙️ Hệ Thống")
+if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+    st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+    st.rerun()
+
+menu = st.session_state.current_menu
 
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
