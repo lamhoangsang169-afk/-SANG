@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS giao diện tinh gọn, ẩn label file uploader rườm rà để tập trung vào icon máy ảnh
+# CSS tinh chỉnh phủ nút upload trong suốt đè lên icon máy ảnh
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,12 +135,12 @@ st.markdown(f"""
         color: #111111 !important;
     }}
     
-    /* Thiết kế khung Avatar chuẩn Zalo */
+    /* Thiết kế khung Avatar Zalo */
     .avatar-container {{
         position: relative;
         width: 95px;
         height: 95px;
-        margin: 0 auto 5px auto;
+        margin: 0 auto 10px auto;
     }}
     .avatar-container img {{
         width: 95px;
@@ -164,11 +164,25 @@ st.markdown(f"""
         justify-content: center;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         font-size: 14px;
+        cursor: pointer;
+        z-index: 2;
     }}
 
-    /* Ẩn nhãn thừa của file_uploader để giao diện gọn như nút máy ảnh thực thụ */
-    [data-testid="stFileUploader"] label {{
-        display: none !important;
+    /* Đặt file uploader phủ kín vị trí icon máy ảnh và làm trong suốt hoàn toàn */
+    .upload-overlay-wrapper {{
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        width: 32px;
+        height: 32px;
+        z-index: 10;
+        opacity: 0;
+        cursor: pointer;
+    }}
+    .upload-overlay-wrapper div, .upload-overlay-wrapper input {{
+        cursor: pointer !important;
+        width: 32px !important;
+        height: 32px !important;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -190,7 +204,7 @@ st.markdown(f"""
             font-size: 1.2rem !important;
         }}
         h3 {{
-            font-size: 1rem !important;
+            font-size: 1.1rem !important;
         }}
         .stApp {{
             padding: 5px !important;
@@ -199,7 +213,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN TỐI ƯU -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN TÍCH HỢP TRỰC TIẾP -----------------
 with st.sidebar:
     st.markdown("### 👤 Ảnh Đại Diện")
     
@@ -217,22 +231,27 @@ with st.sidebar:
     if not avatar_img_tag:
         avatar_img_tag = f'<div style="width:95px;height:95px;border-radius:50%;background:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:32px;">👤</div>'
 
+    # Hiển thị avatar và icon máy ảnh
     st.markdown(f"""
     <div class="avatar-container">
         {avatar_img_tag}
-        <div class="camera-badge">📷</div>
+        <div class="camera-badge" title="Nhấp vào để đổi ảnh">📷</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Đưa nút chọn file và xóa ảnh ngay bên dưới khung hình đại diện
-    avatar_file = st.file_uploader("Đổi ảnh đại diện", type=["png", "jpg", "jpeg"], key="avatar_uploader")
+    # Đặt file_uploader vô hình chồng khít lên vị trí icon máy ảnh để bấm trực tiếp vào icon là chọn ảnh
+    st.markdown('<div class="upload-overlay-wrapper">', unsafe_allow_html=True)
+    avatar_file = st.file_uploader("Đổi ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_overlay", label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
+
     if avatar_file is not None:
         avatar_bytes = avatar_file.getvalue()
         st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
         save_data()
         st.success("Đã cập nhật ảnh đại diện thành công!")
         st.rerun()
-        
+
+    # Nút xóa ảnh đại diện gọn gàng bên dưới
     if st.session_state.avatar_base64:
         if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
             st.session_state.avatar_base64 = None
@@ -629,7 +648,7 @@ elif menu == "5. Cài Đặt Giao Diện":
             if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
                 st.session_state.bg_image_base64 = None
                 save_data()
-                st.success("Đã xóa hình nền về mặc định!")
+                st.success("Đã xóa ảnh hình nền về mặc định!")
                 st.rerun()
 
     st.markdown("---")
