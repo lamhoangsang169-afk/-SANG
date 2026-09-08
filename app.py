@@ -51,6 +51,10 @@ if "input_df" not in st.session_state:
         }
     ])
 
+# Trash bin for deleted production records
+if "deleted_input_df" not in st.session_state:
+    st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 
@@ -151,13 +155,43 @@ if menu == "1. Nhập Sản Lượng":
         else:
             st.dataframe(filtered_df, use_container_width=True)
         
+        # Delete row functionality with trash bin logging
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
             if del_idx > 0:
-                st.session_state.input_df = st.session_state.input_df[st.session_state.input_df["STT"] != del_idx].reset_index(drop=True)
-                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                st.success(f"Đã xóa dòng số {del_idx}!")
-                st.rerun()
+                row_to_delete = st.session_state.input_df[st.session_state.input_df["STT"] == del_idx]
+                if not row_to_delete.empty:
+                    # Move to deleted trash bin
+                    st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, row_to_delete], ignore_index=True)
+                    # Remove from active input_df
+                    st.session_state.input_df = st.session_state.input_df[st.session_state.input_df["STT"] != del_idx].reset_index(drop=True)
+                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    st.success(f"Đã chuyển dòng số {del_idx} vào thùng rác!")
+                    st.rerun()
+                else:
+                    st.error("Không tìm thấy số STT này!")
+
+        # Restore deleted production records feature
+        if not st.session_state.deleted_input_df.empty:
+            st.markdown("---")
+            st.markdown("#### ♻️ Khôi Phục Dòng Sản Lượng Đã Xóa")
+            st.dataframe(st.session_state.deleted_input_df, use_container_width=True)
+            
+            restore_stt = st.number_input("Nhập STT dòng đã xóa muốn khôi phục lại:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="restore_input_stt")
+            if st.button("📥 Khôi Phục Bản Ghi Này"):
+                if restore_stt > 0:
+                    row_to_restore = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] == restore_stt]
+                    if not row_to_restore.empty:
+                        # Remove from deleted_input_df
+                        st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != restore_stt].reset_index(drop=True)
+                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1) if not st.session_state.deleted_input_df.empty else []
+                        
+                        # Add back to input_df
+                        row_to_restore = row_to_restore.copy()
+                        row_to_restore["STT"] = len(st.session_state.input_df) + 1
+                        st.session_state.input_df = pd.concat([st.session_state.input_df, row_to_restore], ignore_index=True)
+                        st.success("Đã khôi phục dòng sản lượng thành công!")
+                        st.rerun()
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
@@ -220,7 +254,7 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
     
     if deleted_items_list:
-        st.markdown("#### ♻️ Khôi Phục Từng Mục Đã Xóa")
+        st.markdown("#### ♻️ Khôi Phục Từng Mục Định Mức Đã Xóa")
         deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
         selected_to_restore = st.multiselect("Chọn các hạng mục muốn khôi phục lại:", deleted_names)
         
