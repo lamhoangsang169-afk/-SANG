@@ -53,6 +53,7 @@ def save_data():
         "sidebar_bg": st.session_state.sidebar_bg,
         "text_color": st.session_state.text_color,
         "bg_image_base64": st.session_state.bg_image_base64,
+        "avatar_base64": st.session_state.avatar_base64,
         "current_menu": st.session_state.current_menu
     }
     with open(STORAGE_FILE, "w", encoding="utf-8") as f:
@@ -91,6 +92,8 @@ if "text_color" not in st.session_state:
     st.session_state.text_color = saved_data.get("text_color", "#31333F")
 if "bg_image_base64" not in st.session_state:
     st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
+if "avatar_base64" not in st.session_state:
+    st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
@@ -108,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh giao diện chuyên nghiệp, gọn gàng và tương thích mobile
+# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và tối ưu responsive
 st.markdown(f"""
 <style>
     .stApp {{
@@ -160,33 +163,63 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-st.sidebar.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
+with st.sidebar:
+    st.markdown("### 👤 Ảnh Đại Diện")
+    if st.session_state.avatar_base64:
+        try:
+            pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
+            pure_b64 += "=" * (-len(pure_b64) % 4)
+            avatar_bytes = base64.b64decode(pure_b64)
+            st.image(avatar_bytes, use_column_width=True)
+        except Exception:
+            st.info("Chưa có ảnh đại diện hợp lệ.")
+    else:
+        st.info("Chưa có ảnh đại diện. Hãy tải ảnh lên bên dưới.")
 
-with st.sidebar.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
-    if st.button("1. Nhập Sản Lượng", use_container_width=True):
-        st.session_state.current_menu = "1. Nhập Sản Lượng"
-        save_data()
-        st.rerun()
-    if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
-        st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
-        save_data()
-        st.rerun()
-    if st.button("3. Quản Lý Định Mức", use_container_width=True):
-        st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
-        save_data()
-        st.rerun()
-    if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
-        st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
-        save_data()
-        st.rerun()
+    with st.expander("⚙️ Đổi Ảnh Đại Diện"):
+        avatar_file = st.file_uploader("Chọn ảnh mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="avatar_uploader")
+        if avatar_file is not None:
+            avatar_bytes = avatar_file.getvalue()
+            st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
+            save_data()
+            st.success("Đã cập nhật ảnh đại diện mới thành công!")
+            st.rerun()
+        if st.session_state.avatar_base64:
+            if st.button("🗑️ Xóa Ảnh Đại Diện"):
+                st.session_state.avatar_base64 = None
+                save_data()
+                st.success("Đã xóa ảnh đại diện!")
+                st.rerun()
 
-st.sidebar.markdown("---")
+    st.markdown("---")
+    st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
-with st.sidebar.expander("⚙️ Cấu Hình", expanded=True):
-    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-        st.session_state.current_menu = "5. Cài Đặt Giao Diện"
-        save_data()
-        st.rerun()
+    with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
+        if st.button("1. Nhập Sản Lượng", use_container_width=True):
+            st.session_state.current_menu = "1. Nhập Sản Lượng"
+            save_data()
+            st.rerun()
+        if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
+            st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
+            save_data()
+            st.rerun()
+        if st.button("3. Quản Lý Định Mức", use_container_width=True):
+            st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
+            save_data()
+            st.rerun()
+        if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
+            st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
+            save_data()
+            st.rerun()
+
+    st.markdown("---")
+
+    with st.expander("⚙️ Cấu Hình", expanded=True):
+        if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+            st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+            save_data()
+            st.rerun()
 
 menu = st.session_state.current_menu
 
