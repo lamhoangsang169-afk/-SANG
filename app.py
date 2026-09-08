@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS ẩn toàn bộ text dung lượng và thu gọn khung popover tối đa
+# CSS xử lý triệt để ẩn dòng chữ dung lượng và thu gọn popover tối đa
 st.markdown(f"""
 <style>
     .stApp {{
@@ -151,14 +151,16 @@ st.markdown(f"""
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }}
 
-    /* Ẩn hoàn toàn các dòng text hướng dẫn dung lượng (200MB...) bên trong popover */
+    /* Ẩn hoàn toàn dòng text thông tin dung lượng và các phần tử phụ của uploader bên trong popover */
     [data-testid="stPopover"] [data-testid="stFileUploader"] small,
-    [data-testid="stPopover"] [data-testid="stFileUploader"] section div {{
+    [data-testid="stPopover"] [data-testid="stFileUploader"] section div:nth-child(2),
+    [data-testid="stPopover"] [data-testid="stFileUploader"] span {{
         display: none !important;
     }}
     [data-testid="stPopover"] [data-testid="stFileUploader"] section {{
-        padding: 5px !important;
-        min-height: unset !important;
+        padding: 0px !important;
+        border: none !important;
+        background: transparent !important;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -213,7 +215,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Nút Popover cực kỳ gọn gàng với 2 mục: Tải ảnh và Xóa ảnh
+    # Nút Popover cực kỳ tối giản: chỉ gồm đúng 2 mục tải ảnh và xóa ảnh
     col_pop1, col_pop2, col_pop3 = st.columns([1, 2, 1])
     with col_pop2:
         with st.popover("📷 Đổi ảnh"):
