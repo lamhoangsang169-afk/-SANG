@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS định vị cố định phần trên cùng của sidebar
+# CSS định vị cố định khu vực avatar ở đỉnh thanh bên
 st.markdown(f"""
 <style>
     .stApp {{
@@ -121,17 +121,24 @@ st.markdown(f"""
     [data-testid="stSidebar"] {{
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
-        overflow: auto !important;
+        overflow: hidden !important;
     }}
     
-    /* Cố định khối đầu tiên chứa avatar ở trên thanh ngang */
+    /* Vùng chứa cuộn nội dung bên trong sidebar đặt ở dưới avatar */
+    [data-testid="stSidebar"] > div:nth-child(1) > div:nth-child(2) {{
+        overflow-y: auto !important;
+        height: 100vh !important;
+        padding-bottom: 100px;
+    }}
+
+    /* Cố định khối đầu tiên chứa avatar ở trên cùng tuyệt đối */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:first-child {{
-        position: sticky;
-        top: 0px;
-        background-color: {st.session_state.sidebar_bg};
-        z-index: 999;
-        padding-top: 10px;
-        padding-bottom: 5px;
+        position: sticky !important;
+        top: 0px !important;
+        background-color: {st.session_state.sidebar_bg} !important;
+        z-index: 9999 !important;
+        padding-top: 15px !important;
+        padding-bottom: 10px !important;
     }}
 
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
@@ -212,7 +219,7 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) -----------------
 with st.sidebar:
-    # 1. Cụm hình đại diện đặt ở trên cùng (trên thanh gạch ngang)
+    # 1. Cụm hình đại diện cố định ở trên cùng
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -266,10 +273,10 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 2. Thanh gạch ngang ngăn cách phía dưới avatar
+    # 2. Thanh gạch ngang ngăn cách
     st.markdown("---")
 
-    # 3. Các chức năng hệ thống tiếp theo bên dưới
+    # 3. Các chức năng hệ thống bên dưới thanh gạch ngang
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
     with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
