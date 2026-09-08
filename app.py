@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import datetime
@@ -111,7 +112,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và căn chỉnh thanh popover
+# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và thu gọn chữ phụ trong uploader
 st.markdown(f"""
 <style>
     .stApp {{
@@ -149,6 +150,11 @@ st.markdown(f"""
         object-fit: cover;
         border: 3px solid {st.session_state.primary_color};
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }}
+
+    /* Ẩn bớt dòng chữ dung lượng phụ (200MB per file...) bên trong popover để cực kỳ gọn gàng */
+    [data-testid="stPopover"] small {{
+        display: none !important;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -203,25 +209,24 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Nút Popover tích hợp icon máy ảnh để thay đổi hoặc xóa ảnh đại diện ngay tại chỗ
+    # Nút Popover rút gọn, vừa vặn
     col_pop1, col_pop2, col_pop3 = st.columns([1, 2, 1])
     with col_pop2:
-        with st.popover("📷 Cài đặt ảnh"):
-            st.markdown("##### ⚙️ Quản Lý Ảnh Đại Diện")
-            avatar_file = st.file_uploader("Tải ảnh mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover")
+        with st.popover("📷 Đổi ảnh"):
+            avatar_file = st.file_uploader("Chọn ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
             if avatar_file is not None:
                 avatar_bytes = avatar_file.getvalue()
                 st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
                 save_data()
-                st.success("Đã cập nhật ảnh đại diện thành công!")
+                st.success("Đã đổi ảnh!")
                 st.rerun()
                 
             if st.session_state.avatar_base64:
                 st.markdown("---")
-                if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+                if st.button("🗑️ Xóa Ảnh", use_container_width=True):
                     st.session_state.avatar_base64 = None
                     save_data()
-                    st.success("Đã xóa ảnh đại diện!")
+                    st.success("Đã xóa ảnh!")
                     st.rerun()
 
     st.markdown("---")
