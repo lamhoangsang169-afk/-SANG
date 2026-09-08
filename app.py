@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -112,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và thu gọn chữ phụ trong uploader
+# CSS tinh chỉnh ẩn hoàn toàn dòng chữ dung lượng phụ bên trong popover
 st.markdown(f"""
 <style>
     .stApp {{
@@ -152,7 +151,7 @@ st.markdown(f"""
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }}
 
-    /* Ẩn bớt dòng chữ dung lượng phụ (200MB per file...) bên trong popover để cực kỳ gọn gàng */
+    /* Ẩn hoàn toàn dòng dung lượng phụ (200MB per file...) trong popover */
     [data-testid="stPopover"] small {{
         display: none !important;
     }}
@@ -209,11 +208,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Nút Popover rút gọn, vừa vặn
+    # Nút Popover cực kỳ tối giản: chỉ có tải ảnh và xóa ảnh
     col_pop1, col_pop2, col_pop3 = st.columns([1, 2, 1])
     with col_pop2:
         with st.popover("📷 Đổi ảnh"):
-            avatar_file = st.file_uploader("Chọn ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
+            avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
             if avatar_file is not None:
                 avatar_bytes = avatar_file.getvalue()
                 st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
@@ -618,7 +617,7 @@ elif menu == "5. Cài Đặt Giao Diện":
             if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
                 st.session_state.bg_image_base64 = None
                 save_data()
-                st.success("Đã xóa hình nền về mặc định!")
+                st.success("Đã xóa ảnh hình nền về mặc định!")
                 st.rerun()
 
     st.markdown("---")
