@@ -1,7 +1,3 @@
-# Let's fix the syntax error at line 293 where `r['Hạng Mục Công Việc']` inside an f-string using double quotes caused a syntax error in Python (because double quotes inside double quotes).
-# Let's write the complete corrected code.
-
-fixed_code = '''
 import streamlit as st
 import pandas as pd
 import datetime
@@ -292,7 +288,14 @@ if menu == "1. Nhập Sản Lượng":
             st.subheader("🖼️ Xem Hình Ảnh Đính Kèm Theo Bản Ghi")
             has_image_rows = filtered_df[filtered_df["Hình Ảnh"] != ""]
             if not has_image_rows.empty:
-                img_options = [f"STT {r.STT} - {r.Ngày} - {r.Nhân Sự} - {r['Hạng Mục Công Việc']}" for idx, r in has_image_rows.iterrows()]
+                img_options = []
+                for idx, r in has_image_rows.iterrows():
+                    stt_v = r["STT"]
+                    ngay_v = r["Ngày"]
+                    ns_v = r["Nhân Sự"]
+                    hm_v = r["Hạng Mục Công Việc"]
+                    img_options.append(f"STT {stt_v} - {ngay_v} - {ns_v} - {hm_v}")
+                
                 selected_img_label = st.selectbox("Chọn bản ghi để xem ảnh chi tiết:", img_options)
                 if selected_img_label:
                     selected_stt = int(selected_img_label.split("STT ")[1].split(" -")[0])
@@ -544,9 +547,3 @@ elif menu == "5. Cài Đặt Giao Diện":
         save_data()
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
         st.rerun()
-'''
-
-with open("app.py", "w", encoding="utf-8") as f:
-    f.write(fixed_code)
-
-print("Syntax error fixed successfully.")
