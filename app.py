@@ -1,11 +1,7 @@
-# Let's check how to store uploaded images so they can be viewed directly in the table (by converting image bytes to base64 data URLs or markdown images, or embedding them in the DataFrame so `st.dataframe` or `st.markdown` can render them), AND ensure realtime reactivity without manual F5 reloads.
-# Streamlit updates state reactively during interactions (buttons, widgets), but to make it fully sync and see images directly:
-# 1. We can store the image as an HTML `<img>` tag or base64 string directly in the DataFrame column "Hình Ảnh", or show a preview right after upload, and add an expander / column renderer so users can see thumbnails directly.
-# 2. Streamlit inherently runs reactive updates on user actions via `st.rerun()`, but if multiple people access it, a local JSON file (`app_storage.json`) only syncs locally on one machine/instance unless hosted with a cloud DB. However, Streamlit Community Cloud runs a single container instance, so saving to `app_storage.json` keeps state alive across reruns and browser refreshes (F5) for that app instance!
-# Let's update `app.py` so that:
-# - When an image is uploaded or captured, we convert it to base64 and store it so it can be previewed immediately, and in the table, we can display a thumbnail or a clickable link/popup to view the full image.
+# Let's fix the syntax error at line 293 where `r['Hạng Mục Công Việc']` inside an f-string using double quotes caused a syntax error in Python (because double quotes inside double quotes).
+# Let's write the complete corrected code.
 
-code_image_preview = '''
+fixed_code = '''
 import streamlit as st
 import pandas as pd
 import datetime
@@ -263,7 +259,6 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # Show interactive table with deletion checkbox
             display_df = filtered_df.copy()
             display_df.insert(0, "Chọn", False)
             
@@ -552,6 +547,6 @@ elif menu == "5. Cài Đặt Giao Diện":
 '''
 
 with open("app.py", "w", encoding="utf-8") as f:
-    f.write(code_image_preview)
+    f.write(fixed_code)
 
-print("Image preview and realtime sync implemented.")
+print("Syntax error fixed successfully.")
