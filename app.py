@@ -3,12 +3,10 @@ import streamlit as st
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
-from PIL import Image
 import io
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Master list of all default rules
 master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 2, "Hạng Mục Công Việc": "Lấy hộp mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
@@ -53,9 +51,6 @@ if "input_df" not in st.session_state:
 if "deleted_input_df" not in st.session_state:
     st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-if "uploaded_image" not in st.session_state:
-    st.session_state.uploaded_image = None
-
 # Sidebar color customizations
 st.sidebar.markdown("### 🎨 Tùy Chỉnh Màu Sắc Giao Diện")
 primary_color = st.sidebar.color_picker("Màu chủ đạo (Tiêu đề chính)", "#ff4b4b")
@@ -83,16 +78,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🖼️ Tải Logo / Ảnh Tùy Ý")
-uploaded_file = st.sidebar.file_uploader("Kéo thả ảnh hoặc chọn file (PNG, JPG)", type=["png", "jpg", "jpeg"], key="sidebar_img")
-if uploaded_file is not None:
-    st.session_state.uploaded_image = uploaded_file
-
-if st.session_state.uploaded_image is not None:
-    st.sidebar.image(st.session_state.uploaded_image, caption="Logo trên App", use_container_width=True)
-
-st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
-st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
 
 menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
     "1. Nhập Sản Lượng", 
@@ -100,6 +85,9 @@ menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
     "3. Quản Lý Định Mức Điểm", 
     "4. Thùng Rác / Khôi Phục Sản Lượng"
 ])
+
+st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
+st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
 
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
