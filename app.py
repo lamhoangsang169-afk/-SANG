@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS toàn cục: Đồng bộ màu chữ cho toàn bộ ứng dụng (bao gồm bảng, form, nhãn) và giữ nguyên cấu trúc sidebar
+# CSS toàn cục: Đồng bộ màu chữ toàn diện & giữ nguyên cấu trúc cố định avatar, cuộn menu
 st.markdown(f"""
 <style>
     .stApp {{
@@ -163,7 +163,7 @@ st.markdown(f"""
         flex-grow: 1;
         overflow-y: auto !important;
         overflow-x: hidden;
-        padding-bottom: 80px;
+        padding-bottom: 150px; /* Tăng khoảng trống để kéo xuống thấy rõ mục Cấu Hình */
     }}
     
     /* Khung Avatar chuẩn */
