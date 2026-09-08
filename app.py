@@ -4,6 +4,7 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 import io
+import base64
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
@@ -51,28 +52,38 @@ if "input_df" not in st.session_state:
 if "deleted_input_df" not in st.session_state:
     st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-# Sidebar color customizations
-st.sidebar.markdown("### 🎨 Tùy Chỉnh Màu Sắc Giao Diện")
-primary_color = st.sidebar.color_picker("Màu chủ đạo (Tiêu đề chính)", "#ff4b4b")
-bg_color = st.sidebar.color_picker("Màu nền trang", "#ffffff")
-sidebar_bg = st.sidebar.color_picker("Màu nền thanh bên", "#f0f2f6")
-text_color = st.sidebar.color_picker("Màu chữ", "#31333F")
+# Initialize theme settings in session state
+if "primary_color" not in st.session_state:
+    st.session_state.primary_color = "#ff4b4b"
+if "bg_color" not in st.session_state:
+    st.session_state.bg_color = "#ffffff"
+if "sidebar_bg" not in st.session_state:
+    st.session_state.sidebar_bg = "#f0f2f6"
+if "text_color" not in st.session_state:
+    st.session_state.text_color = "#31333F"
+if "bg_image_base64" not in st.session_state:
+    st.session_state.bg_image_base64 = None
 
-# Apply dynamic custom CSS
+# Build background style dynamically
+bg_style = f"background-color: {st.session_state.bg_color};"
+if st.session_state.bg_image_base64:
+    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
+
+# Apply dynamic custom CSS across all pages
 st.markdown(f"""
 <style>
     .stApp {{
-        background-color: {bg_color};
-        color: {text_color};
+        {bg_style}
+        color: {st.session_state.text_color};
     }}
     [data-testid="stSidebar"] {{
-        background-color: {sidebar_bg};
+        background-color: {st.session_state.sidebar_bg};
     }}
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
-        color: {text_color} !important;
+        color: {st.session_state.text_color} !important;
     }}
     h1 {{
-        color: {primary_color} !important;
+        color: {st.session_state.primary_color} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -83,7 +94,8 @@ menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
     "1. Nhập Sản Lượng", 
     "2. Báo Cáo & Biểu Đồ Tổng Hợp", 
     "3. Quản Lý Định Mức Điểm", 
-    "4. Thùng Rác / Khôi Phục Sản Lượng"
+    "4. Thùng Rác / Khôi Phục Sản Lượng",
+    "5. Cài Đặt Giao Diện"
 ])
 
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
@@ -306,7 +318,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     
                     st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
                     if not st.session_state.deleted_input_df.empty:
-                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                    	st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
                     selected_rows = selected_rows.copy()
                     for idx, row in selected_rows.iterrows():
@@ -342,3 +354,37 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
             st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống (chưa có bản ghi sản lượng nào bị xóa).")
+
+elif menu == "5. Cài Đặt Giao Diện":
+    st.header("🎨 Cài Đặt Giao Diện & Hình Nền")
+    st.markdown("Tùy chỉnh màu sắc và tải hình nền tùy ý cho toàn bộ ứng dụng.")
+    
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.session_state.primary_color = st.color_picker("🎨 Màu chủ đạo (Tiêu đề chính)", st.session_state.primary_color)
+        st.session_state.bg_color = st.color_picker("🖼️ Màu nền trang", st.session_state.bg_color)
+    with col_c2:
+        st.session_state.sidebar_bg = st.color_picker("📂 Màu nền thanh bên", st.session_state.sidebar_bg)
+        st.session_state.text_color = st.color_picker("✏️ Màu chữ", st.session_state.text_color)
+        
+    st.markdown("---")
+    st.subheader("🖼️ Tùy Chọn Hình Nền (Wallpaper)")
+    bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
+    
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        if bg_file is not None:
+            bytes_data = bg_file.getvalue()
+            st.session_state.bg_image_base64 = base64.b64encode(bytes_data).decode()
+            st.success("Đã tải ảnh hình nền thành công!")
+    with col_b2:
+        if st.session_state.bg_image_base64 is not None:
+            if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
+                st.session_state.bg_image_base64 = None
+                st.success("Đã xóa hình nền về mặc định!")
+                st.rerun()
+
+    st.markdown("---")
+    if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
+        st.success("Đã lưu và cập nhật giao diện thành công!")
+        st.rerun()
