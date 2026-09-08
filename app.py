@@ -49,6 +49,8 @@ default_input_data = [
     }
 ]
 
+default_staff_list = ["Đức", "Bảo", "Tiến"]
+
 def load_data():
     if os.path.exists(STORAGE_FILE):
         try:
@@ -64,6 +66,7 @@ def save_data():
         "rules_df": st.session_state.rules_df.to_dict(orient="records"),
         "input_df": st.session_state.input_df.to_dict(orient="records"),
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records"),
+        "staff_list": st.session_state.staff_list,
         "primary_color": st.session_state.primary_color,
         "bg_color": st.session_state.bg_color,
         "sidebar_bg": st.session_state.sidebar_bg,
@@ -93,6 +96,9 @@ if "deleted_input_df" not in st.session_state:
         st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
     else:
         st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+
+if "staff_list" not in st.session_state:
+    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 
 if "primary_color" not in st.session_state:
     st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
@@ -173,7 +179,8 @@ with st.sidebar.expander("⚙️ Hệ Thống", expanded=True):
 menu = st.session_state.current_menu
 
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
-st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
+staff_str = ", ".join(st.session_state.staff_list)
+st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
@@ -184,7 +191,7 @@ if menu == "1. Nhập Sản Lượng":
         with col1:
             ngay = st.date_input("Ngày làm việc", datetime.date.today())
         with col2:
-            nhan_su = st.selectbox("Chọn Nhân Sự", ["Đức", "Bảo", "Tiến"])
+            nhan_su = st.selectbox("Chọn Nhân Sự", st.session_state.staff_list)
         with col3:
             danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
             hang_muc = st.selectbox("Hạng Mục Công Việc", danh_sach_hang_muc)
@@ -254,7 +261,6 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-        # Display with checkbox for deletion using st.data_editor
         display_df = filtered_df.copy()
         if selected_cols:
             display_df = display_df[selected_cols]
@@ -299,7 +305,7 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
         summary = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
-        ).reindex(["Đức", "Bảo", "Tiến"]).fillna(0).reset_index()
+        ).reindex(st.session_state.staff_list).fillna(0).reset_index()
         
         total_all_points = summary["Tổng_Điểm"].sum()
         summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
@@ -325,15 +331,14 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             hide_index=True
         )
         
-        col1, col2, col3 = st.columns(3)
+        cols = st.columns(len(st.session_state.staff_list) if len(st.session_state.staff_list) > 0 else 1)
         for idx, row in summary.iterrows():
-            with [col1, col2, col3][idx]:
+            with cols[idx % len(cols)]:
                 st.metric(label=f"Nhân sự: {row['Nhân Sự']}", value=f"{row['Tổng_Điểm']:,.1f} điểm", delta=f"{row['Tỷ_Lệ_Đóng_Góp']:.1%} tổng điểm")
                 
         st.subheader("🥧 Biểu Đồ Tỷ Lệ Đóng Góp Điểm Thi Đua")
         fig, ax = plt.subplots(figsize=(8, 6))
-        colors = ['#ff9999','#66b3ff','#99ff99']
-        ax.pie(summary["Tổng_Điểm"], labels=summary["Nhân Sự"], autopct='%1.1f%%', startangle=90, colors=colors, textprops={'fontsize': 12})
+        ax.pie(summary["Tổng_Điểm"], labels=summary["Nhân Sự"], autopct='%1.1f%%', startangle=90, textprops={'fontsize': 12})
         ax.axis('equal')
         st.pyplot(fig)
         
@@ -470,9 +475,30 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
         st.info("Thùng rác hiện tại đang trống (chưa có bản ghi sản lượng nào bị xóa).")
 
 elif menu == "5. Cài Đặt Giao Diện":
-    st.header("🎨 Cài Đặt Giao Diện & Hình Nền")
-    st.markdown("Tùy chỉnh màu sắc và tải hình nền tùy ý cho toàn bộ ứng dụng.")
+    st.header("🎨 Cài Đặt Giao Diện & Nhân Sự")
+    st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và hình nền cho toàn bộ ứng dụng.")
     
+    st.subheader("👥 Quản Lý Danh Sách Nhân Sự")
+    staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
+    edited_staff_df = st.data_editor(
+        staff_df,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="staff_editor",
+        hide_index=True
+    )
+    if not edited_staff_df.equals(staff_df):
+        new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != ""]
+        if new_staff_list:
+            st.session_state.staff_list = new_staff_list
+            save_data()
+            st.success("Đã cập nhật danh sách nhân sự thành công!")
+            st.rerun()
+        else:
+            st.warning("Danh sách nhân sự không được để trống.")
+
+    st.markdown("---")
+    st.subheader("🎨 Tùy Chỉnh Màu Sắc Giao Diện")
     col_c1, col_c2 = st.columns(2)
     with col_c1:
         st.session_state.primary_color = st.color_picker("🎨 Màu chủ đạo (Tiêu đề chính)", st.session_state.primary_color)
