@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS toàn cục: Đồng bộ màu chữ toàn diện & giữ nguyên cấu trúc cố định avatar, cuộn menu
+# CSS toàn cục: Đồng bộ màu chữ cho toàn bộ ứng dụng và cấu trúc sidebar
 st.markdown(f"""
 <style>
     .stApp {{
@@ -119,7 +119,7 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    /* Ép tất cả các thành phần văn bản, nhãn, bảng dữ liệu, input nhận màu chữ đồng bộ */
+    /* Đồng bộ màu chữ cho tất cả các thành phần */
     p, span, label, div, h2, h3, h4, h5, h6, 
     .stMarkdown, [data-testid="stMarkdownContainer"] *,
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
@@ -129,12 +129,11 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    /* Tiêu đề chính giữ màu chủ đạo */
     h1 {{
         color: {st.session_state.primary_color} !important;
     }}
 
-    /* Cấu trúc sidebar cố định avatar phía trên, menu cuộn bên dưới */
+    /* Thanh sidebar cố định avatar và cuộn menu */
     [data-testid="stSidebar"] {{
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
@@ -163,10 +162,9 @@ st.markdown(f"""
         flex-grow: 1;
         overflow-y: auto !important;
         overflow-x: hidden;
-        padding-bottom: 150px; /* Tăng khoảng trống để kéo xuống thấy rõ mục Cấu Hình */
+        padding-bottom: 50px;
     }}
     
-    /* Khung Avatar chuẩn */
     .avatar-wrapper {{
         position: relative;
         width: 100px;
@@ -228,6 +226,7 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) -----------------
 with st.sidebar:
+    # 1. Cố định Avatar ở trên cùng
     st.markdown('<div class="sidebar-fixed-avatar-section">', unsafe_allow_html=True)
     
     has_custom_avatar = False
@@ -285,6 +284,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 2. Phần menu chức năng cuộn bên dưới (Đã đặt Cài Đặt Giao Diện ngay ngắn bên trong)
     st.markdown('<div class="sidebar-scrollable-menu-section">', unsafe_allow_html=True)
     
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
