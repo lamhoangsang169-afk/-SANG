@@ -108,7 +108,6 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# Bổ sung CSS làm đậm chữ trong bảng (data_editor / dataframe)
 st.markdown(f"""
 <style>
     .stApp {{
@@ -126,7 +125,7 @@ st.markdown(f"""
     h1 {{
         color: {st.session_state.primary_color} !important;
     }}
-    /* Tối ưu làm đậm chữ trong bảng */
+    /* Làm đậm chữ trong các bảng để dễ nhìn */
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] * {{
         font-weight: 600 !important;
         color: #111111 !important;
@@ -168,7 +167,6 @@ st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 staff_str = ", ".join(st.session_state.staff_list)
 st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
-# Hàm dialog hiển thị ảnh lớn ở giữa màn hình với thanh trượt phóng to/thu nhỏ linh hoạt
 @st.dialog("🖼️ Xem & Phóng To Ảnh Công Việc", width="large")
 def show_image_dialog(b64_str, caption_text):
     st.markdown(f"### {caption_text}")
