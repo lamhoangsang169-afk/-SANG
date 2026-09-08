@@ -170,15 +170,15 @@ st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 staff_str = ", ".join(st.session_state.staff_list)
 st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
-# Định nghĩa hàm dialog hiển thị ảnh ở giữa màn hình
-@st.dialog("🖼️ Xem Ảnh Phóng To Chi Tiết", width="large")
+# Hàm dialog hiển thị ảnh lớn ở chính giữa màn hình
+@st.dialog("🖼️ Xem & Phóng To Ảnh Công Việc", width="large")
 def show_image_dialog(b64_str, caption_text):
-    st.markdown(f"**{caption_text}**")
+    st.markdown(f"### {caption_text}")
     try:
         if "," in b64_str:
             b64_str = b64_str.split(",")[1]
         img_bytes = base64.b64decode(b64_str)
-        # Cho phép người dùng tùy chọn độ rộng hiển thị trực tiếp để phóng to/thu nhỏ
+        # Thanh kéo tùy chỉnh kích thước phóng to / thu nhỏ ảnh linh hoạt
         img_width = st.slider("🔍 Kéo để phóng to / thu nhỏ ảnh:", min_value=300, max_value=1200, value=700, step=50)
         st.image(img_bytes, width=img_width)
     except Exception as ex:
@@ -269,10 +269,10 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # Thêm nút bấm nhanh mở popup xem ảnh ở giữa màn hình
+            # Khu vực chọn bản ghi để mở popup xem ảnh ở giữa màn hình
             has_image_rows = filtered_df[filtered_df["Hình Ảnh"].astype(str).str.strip() != ""]
             if not has_image_rows.empty:
-                st.markdown("##### 🔍 Chọn bản ghi để mở cửa sổ xem ảnh lớn ở giữa màn hình:")
+                st.markdown("##### 🔍 Chọn bản ghi bên dưới rồi bấm nút để xem ảnh lớn ở giữa màn hình:")
                 img_options = []
                 img_dict = {}
                 for idx, r in has_image_rows.iterrows():
@@ -280,32 +280,23 @@ if menu == "1. Nhập Sản Lượng":
                     img_options.append(lbl)
                     img_dict[lbl] = r["Hình Ảnh"]
                 
-                sel_lbl = st.selectbox("Danh sách ảnh đính kèm:", img_options, label_visibility="collapsed")
-                if st.button("🔍 Mở Ảnh Phóng To (Giữa Màn Hình)"):
-                    if sel_lbl and sel_lbl in img_dict:
-                        show_image_dialog(img_dict[sel_lbl], sel_lbl)
+                sel_col1, sel_col2 = st.columns([3, 1])
+                with sel_col1:
+                    sel_lbl = st.selectbox("Chọn ảnh đính kèm", img_options, label_visibility="collapsed")
+                with sel_col2:
+                    if st.button("🔍 Mở Ảnh Lớn (Giữa Màn Hình)", use_container_width=True):
+                        if sel_lbl and sel_lbl in img_dict:
+                            show_image_dialog(img_dict[sel_lbl], sel_lbl)
 
             display_df = filtered_df.copy()
             display_df.insert(0, "Chọn", False)
             
-            def make_img_url(val):
-                s = str(val).strip()
-                if s and s != "":
-                    if "," in s:
-                        s = s.split(",")[1]
-                    return f"data:image/png;base64,{s}"
-                return None
-
-            display_df["Ảnh Công Việc"] = display_df["Hình Ảnh"].apply(make_img_url)
-            
-            cols_order = ["Chọn", "STT", "Ảnh Công Việc", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+            # Bảng danh sách chính (Đã loại bỏ hoàn toàn cột ảnh để bảng gọn gàng sạch sẽ)
+            cols_order = ["Chọn", "STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
             display_df = display_df[[c for c in cols_order if c in display_df.columns]]
 
             edited_table = st.data_editor(
-                display_df.drop(columns=["Hình Ảnh"], errors="ignore"),
-                column_config={
-                    "Ảnh Công Việc": st.column_config.ImageColumn("Ảnh Công Việc", width="small")
-                },
+                display_df,
                 hide_index=True,
                 use_container_width=True,
                 key="input_editor_delete"
