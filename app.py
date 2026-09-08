@@ -49,7 +49,6 @@ default_input_data = [
     }
 ]
 
-# Load data from storage file if exists
 def load_data():
     if os.path.exists(STORAGE_FILE):
         try:
@@ -123,7 +122,6 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# Apply dynamic custom CSS across all pages
 st.markdown(f"""
 <style>
     .stApp {{
@@ -256,26 +254,39 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
+        # Display with checkbox for deletion using st.data_editor
+        display_df = filtered_df.copy()
         if selected_cols:
-            st.dataframe(filtered_df[selected_cols], use_container_width=True, hide_index=True)
-        else:
-            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+            display_df = display_df[selected_cols]
+            
+        display_df.insert(0, "Chọn", False)
         
-        del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
-        if st.button("🗑️ Xóa dòng đã chọn"):
-            if del_idx > 0:
-                row_to_delete = st.session_state.input_df[st.session_state.input_df["STT"] == del_idx]
-                if not row_to_delete.empty:
-                    st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, row_to_delete], ignore_index=True)
-                    st.session_state.input_df = st.session_state.input_df[st.session_state.input_df["STT"] != del_idx].reset_index(drop=True)
-                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                    if not st.session_state.deleted_input_df.empty:
-                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                    save_data()
-                    st.success(f"Đã chuyển dòng số {del_idx} vào thùng rác!")
-                    st.rerun()
-                else:
-                    st.error("Không tìm thấy số STT này!")
+        edited_table = st.data_editor(
+            display_df,
+            hide_index=True,
+            use_container_width=True,
+            key="input_editor_delete"
+        )
+        
+        if st.button("🗑️ Xóa Các Dòng Đã Tích Chọn"):
+            selected_rows = edited_table[edited_table["Chọn"] == True]
+            if not selected_rows.empty:
+                stt_to_remove = selected_rows["STT"].tolist()
+                
+                rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
+                st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
+                
+                st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                
+                if not st.session_state.deleted_input_df.empty:
+                    st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                    
+                save_data()
+                st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
+                st.rerun()
+            else:
+                st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
