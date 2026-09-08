@@ -61,8 +61,6 @@ if "sidebar_bg" not in st.session_state:
     st.session_state.sidebar_bg = "#f0f2f6"
 if "text_color" not in st.session_state:
     st.session_state.text_color = "#31333F"
-if "sidebar_spacing" not in st.session_state:
-    st.session_state.sidebar_spacing = 15
 if "bg_image_base64" not in st.session_state:
     st.session_state.bg_image_base64 = None
 if "current_menu" not in st.session_state:
@@ -73,7 +71,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# Apply dynamic custom CSS across all pages, removing fixed width locks so native sidebar resizing works smoothly
+# Apply dynamic custom CSS across all pages
 st.markdown(f"""
 <style>
     .stApp {{
@@ -84,14 +82,6 @@ st.markdown(f"""
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
         overflow: auto !important;
-    }}
-    /* Custom vertical spacing between sidebar elements/expanders */
-    [data-testid="stSidebar"] .stExpander {{
-        margin-bottom: {st.session_state.sidebar_spacing}px !important;
-    }}
-    [data-testid="stSidebar"] hr {{
-        margin-top: {st.session_state.sidebar_spacing}px !important;
-        margin-bottom: {st.session_state.sidebar_spacing}px !important;
     }}
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
         color: {st.session_state.text_color} !important;
@@ -398,10 +388,6 @@ elif menu == "5. Cài Đặt Giao Diện":
         st.session_state.sidebar_bg = st.color_picker("📂 Màu nền thanh bên", st.session_state.sidebar_bg)
         st.session_state.text_color = st.color_picker("✏️ Màu chữ", st.session_state.text_color)
         
-    st.markdown("---")
-    st.subheader("📐 Tùy Chỉnh Khoảng Cách Sidebar")
-    st.session_state.sidebar_spacing = st.slider("Khoảng cách dọc giữa các mục (Spacing)", min_value=5, max_value=50, value=st.session_state.sidebar_spacing, step=5)
-
     st.markdown("---")
     st.subheader("🖼️ Tùy Chọn Hình Nền (Wallpaper)")
     bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
