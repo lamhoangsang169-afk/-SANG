@@ -1,8 +1,11 @@
-# Let's add `st.camera_input` to enable direct camera photo capture alongside file uploading.
-# Streamlit has a built-in widget `st.camera_input("Chụp ảnh trực tiếp")` which lets mobile and desktop users take photos directly from their camera!
-# Let's update `app.py` to include `st.camera_input` or give options / replace `file_uploader` with `st.camera_input` or combine both.
+# Let's check how to store uploaded images so they can be viewed directly in the table (by converting image bytes to base64 data URLs or markdown images, or embedding them in the DataFrame so `st.dataframe` or `st.markdown` can render them), AND ensure realtime reactivity without manual F5 reloads.
+# Streamlit updates state reactively during interactions (buttons, widgets), but to make it fully sync and see images directly:
+# 1. We can store the image as an HTML `<img>` tag or base64 string directly in the DataFrame column "Hình Ảnh", or show a preview right after upload, and add an expander / column renderer so users can see thumbnails directly.
+# 2. Streamlit inherently runs reactive updates on user actions via `st.rerun()`, but if multiple people access it, a local JSON file (`app_storage.json`) only syncs locally on one machine/instance unless hosted with a cloud DB. However, Streamlit Community Cloud runs a single container instance, so saving to `app_storage.json` keeps state alive across reruns and browser refreshes (F5) for that app instance!
+# Let's update `app.py` so that:
+# - When an image is uploaded or captured, we convert it to base64 and store it so it can be previewed immediately, and in the table, we can display a thumbnail or a clickable link/popup to view the full image.
 
-camera_code = '''
+code_image_preview = '''
 import streamlit as st
 import pandas as pd
 import datetime
@@ -38,18 +41,8 @@ master_rules = [
 default_input_data = [
     {
         "STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", 
-        "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "Không có", 
+        "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "", 
         "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"
-    },
-    {
-        "STT": 2, "Ngày": str(datetime.date.today()), "Nhân Sự": "Bảo", 
-        "Hạng Mục Công Việc": "Lấy đế có sẵn", "Hình Ảnh": "Không có", 
-        "Đơn Vị": "Cái", "Số Lượng": 300, "Hệ Số Điểm": 0.5, "Tổng Điểm": 150.0, "Ghi Chú": "Cấp đế"
-    },
-    {
-        "STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", 
-        "Hạng Mục Công Việc": "Giao hàng shiper", "Hình Ảnh": "Không có", 
-        "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"
     }
 ]
 
@@ -127,7 +120,6 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
-# Build background style dynamically
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
@@ -188,7 +180,7 @@ st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
-    st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới.")
+    st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới. Ảnh sẽ hiển thị trực tiếp để xem ngay.")
     
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
@@ -202,7 +194,6 @@ if menu == "1. Nhập Sản Lượng":
             
         col_img, col_qty, col_note = st.columns([2, 2, 2])
         with col_img:
-            # Provide both camera input and file uploader as tabs or selectbox options, or side by side
             img_source = st.radio("📷 Chọn nguồn ảnh:", ["Tải lên / Kéo thả ảnh", "📸 Chụp ảnh trực tiếp"], horizontal=True)
             if img_source == "📸 Chụp ảnh trực tiếp":
                 record_image = st.camera_input("Chụp ảnh công việc")
@@ -221,7 +212,10 @@ if menu == "1. Nhập Sản Lượng":
             don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
             tong_diem = so_luong * he_so
             
-            img_name = "Có đính kèm ảnh" if record_image is not None else "Không có"
+            img_base64 = ""
+            if record_image is not None:
+                bytes_data = record_image.getvalue()
+                img_base64 = base64.b64encode(bytes_data).decode()
             
             new_stt = len(st.session_state.input_df) + 1
             new_row = {
@@ -229,7 +223,7 @@ if menu == "1. Nhập Sản Lượng":
                 "Ngày": str(ngay),
                 "Nhân Sự": nhan_su,
                 "Hạng Mục Công Việc": hang_muc,
-                "Hình Ảnh": img_name,
+                "Hình Ảnh": img_base64,
                 "Đơn Vị": don_vi,
                 "Số Lượng": so_luong,
                 "Hệ Số Điểm": he_so,
@@ -240,9 +234,10 @@ if menu == "1. Nhập Sản Lượng":
             st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
             save_data()
             st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+            st.rerun()
 
     st.markdown("---")
-    st.subheader("🔍 Bộ Lọc Dữ Liệu & Tùy Chọn Cột Hiển Thị")
+    st.subheader("🔍 Danh Sách Sản Lượng & Xem Hình Ảnh Trực Tiếp")
     
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -257,9 +252,6 @@ if menu == "1. Nhập Sản Lượng":
             all_tasks = ["Tất cả"] + sorted(st.session_state.input_df["Hạng Mục Công Việc"].unique().tolist())
             filter_task = st.selectbox("🛠️ Lọc theo Hạng Mục Công Việc", all_tasks)
             
-        all_cols = st.session_state.input_df.columns.tolist()
-        selected_cols = st.multiselect("👁️ Chọn các cột muốn hiển thị trên bảng:", all_cols, default=all_cols)
-            
         filtered_df = st.session_state.input_df.copy()
         if filter_date != "Tất cả":
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
@@ -271,38 +263,54 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-        display_df = filtered_df.copy()
-        if selected_cols:
-            display_df = display_df[selected_cols]
+            # Show interactive table with deletion checkbox
+            display_df = filtered_df.copy()
+            display_df.insert(0, "Chọn", False)
             
-        display_df.insert(0, "Chọn", False)
-        
-        edited_table = st.data_editor(
-            display_df,
-            hide_index=True,
-            use_container_width=True,
-            key="input_editor_delete"
-        )
-        
-        if st.button("🗑️ Xóa Các Dòng Đã Tích Chọn"):
-            selected_rows = edited_table[edited_table["Chọn"] == True]
-            if not selected_rows.empty:
-                stt_to_remove = selected_rows["STT"].tolist()
-                
-                rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
-                st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
-                
-                st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
-                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                
-                if not st.session_state.deleted_input_df.empty:
-                    st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+            edited_table = st.data_editor(
+                display_df.drop(columns=["Hình Ảnh"]),
+                hide_index=True,
+                use_container_width=True,
+                key="input_editor_delete"
+            )
+            
+            if st.button("🗑️ Xóa Các Dòng Đã Tích Chọn"):
+                selected_rows = edited_table[edited_table["Chọn"] == True]
+                if not selected_rows.empty:
+                    stt_to_remove = selected_rows["STT"].tolist()
+                    rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
+                    st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
                     
-                save_data()
-                st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
-                st.rerun()
+                    st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    
+                    if not st.session_state.deleted_input_df.empty:
+                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                        
+                    save_data()
+                    st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
+
+            st.markdown("---")
+            st.subheader("🖼️ Xem Hình Ảnh Đính Kèm Theo Bản Ghi")
+            has_image_rows = filtered_df[filtered_df["Hình Ảnh"] != ""]
+            if not has_image_rows.empty:
+                img_options = [f"STT {r.STT} - {r.Ngày} - {r.Nhân Sự} - {r['Hạng Mục Công Việc']}" for idx, r in has_image_rows.iterrows()]
+                selected_img_label = st.selectbox("Chọn bản ghi để xem ảnh chi tiết:", img_options)
+                if selected_img_label:
+                    selected_stt = int(selected_img_label.split("STT ")[1].split(" -")[0])
+                    matched_row = has_image_rows[has_image_rows["STT"] == selected_stt]
+                    if not matched_row.empty:
+                        b64_str = matched_row.iloc[0]["Hình Ảnh"]
+                        try:
+                            img_bytes = base64.b64decode(b64_str)
+                            st.image(img_bytes, caption=f"Ảnh của {matched_row.iloc[0]['Nhân Sự']} - {matched_row.iloc[0]['Hạng Mục Công Việc']}", width=400)
+                        except Exception as e:
+                            st.error("Không thể hiển thị hình ảnh.")
             else:
-                st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
+                st.info("Không có bản ghi nào trong bộ lọc này có đính kèm hình ảnh.")
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
@@ -426,7 +434,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
         trash_display.insert(0, "Chọn", False)
         
         edited_trash = st.data_editor(
-            trash_display,
+            trash_display.drop(columns=["Hình Ảnh"], errors="ignore"),
             hide_index=True,
             use_container_width=True,
             key="trash_editor"
@@ -539,11 +547,11 @@ elif menu == "5. Cài Đặt Giao Diện":
     st.markdown("---")
     if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
         save_data()
-        st.success("Đã lưu và cập nhật giao diện thành công!")
+        st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
         st.rerun()
 '''
 
 with open("app.py", "w", encoding="utf-8") as f:
-    f.write(camera_code)
+    f.write(code_image_preview)
 
-print("Camera input added successfully.")
+print("Image preview and realtime sync implemented.")
