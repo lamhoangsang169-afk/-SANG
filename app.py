@@ -70,7 +70,6 @@ if "input_df" not in st.session_state:
     if "input_df" in saved_data:
         st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
     else:
-        # Khởi tạo danh sách trống, không ép buộc dòng mẫu cứng để tránh hiện lại dữ liệu đã xóa
         st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
 if "deleted_input_df" not in st.session_state:
@@ -238,7 +237,7 @@ if menu == "1. Nhập Sản Lượng":
             st.rerun()
 
     st.markdown("---")
-    st.subheader("🔍 Danh Sách Sản Lượng")
+    st.subheader("🔍 Danh Sách Sản Lượng & Xem Ảnh Trực Tiếp")
     
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -267,11 +266,25 @@ if menu == "1. Nhập Sản Lượng":
             display_df = filtered_df.copy()
             display_df.insert(0, "Chọn", False)
             
-            cols_order = ["Chọn", "STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+            # Thêm cột hiển thị ảnh trực tiếp trong bảng
+            def make_img_url(val):
+                s = str(val).strip()
+                if len(s) > 50:
+                    if "," in s:
+                        s = s.split(",")[1]
+                    return f"data:image/png;base64,{s}"
+                return None
+
+            display_df["Ảnh Đính Kèm"] = display_df["Hình Ảnh"].apply(make_img_url)
+            
+            cols_order = ["Chọn", "STT", "Ảnh Đính Kèm", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
             display_df = display_df[[c for c in cols_order if c in display_df.columns]]
 
             edited_table = st.data_editor(
-                display_df,
+                display_df.drop(columns=["Hình Ảnh"], errors="ignore"),
+                column_config={
+                    "Ảnh Đính Kèm": st.column_config.ImageColumn("Ảnh Đính Kèm", width="small")
+                },
                 hide_index=True,
                 use_container_width=True,
                 key="input_editor_delete"
@@ -296,20 +309,16 @@ if menu == "1. Nhập Sản Lượng":
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
 
-            # Chỉ lọc và hiển thị các bản ghi có chuỗi hình ảnh hợp lệ
-            def is_valid_image(b64_val):
-                s = str(b64_val).strip()
-                return len(s) > 50
-
+            # Thư viện ảnh đính kèm bổ sung phía dưới để bấm phóng to toàn màn hình cực nét trên điện thoại
             valid_image_rows = []
             for idx, r in filtered_df.iterrows():
                 b64_str = str(r["Hình Ảnh"]).strip()
-                if is_valid_image(b64_str):
+                if len(b64_str) > 50:
                     valid_image_rows.append(r)
 
             if valid_image_rows:
                 st.markdown("---")
-                st.subheader("🖼️ Thư Viện Ảnh Đính Kèm (Bấm vào nút dưới mỗi ảnh để xem toàn màn hình)")
+                st.subheader("🖼️ Thư Viện Ảnh Chi Tiết (Bấm vào nút dưới mỗi ảnh để xem toàn màn hình)")
                 
                 img_cols = st.columns(3)
                 for idx, r in enumerate(valid_image_rows):
