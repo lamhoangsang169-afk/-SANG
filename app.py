@@ -8,6 +8,7 @@ import io
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
+# Master list of all default rules
 master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 2, "Hạng Mục Công Việc": "Lấy hộp mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
@@ -55,8 +56,35 @@ if "deleted_input_df" not in st.session_state:
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 
+# Sidebar color customizations
+st.sidebar.markdown("### 🎨 Tùy Chỉnh Màu Sắc Giao Diện")
+primary_color = st.sidebar.color_picker("Màu chủ đạo (Tiêu đề chính)", "#ff4b4b")
+bg_color = st.sidebar.color_picker("Màu nền trang", "#ffffff")
+sidebar_bg = st.sidebar.color_picker("Màu nền thanh bên", "#f0f2f6")
+text_color = st.sidebar.color_picker("Màu chữ", "#31333F")
+
+# Apply dynamic custom CSS
+st.markdown(f"""
+<style>
+    .stApp {{
+        background-color: {bg_color};
+        color: {text_color};
+    }}
+    [data-testid="stSidebar"] {{
+        background-color: {sidebar_bg};
+    }}
+    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
+        color: {text_color} !important;
+    }}
+    h1 {{
+        color: {primary_color} !important;
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("### 🖼️ Tải Logo / Ảnh Tùy Ý")
-uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="sidebar_img")
+uploaded_file = st.sidebar.file_uploader("Kéo thả ảnh hoặc chọn file (PNG, JPG)", type=["png", "jpg", "jpeg"], key="sidebar_img")
 if uploaded_file is not None:
     st.session_state.uploaded_image = uploaded_file
 
@@ -75,6 +103,7 @@ menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
 
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
+    st.info("💡 Mẹo: Bạn có thể **kéo thả trực tiếp** file ảnh vào ô tải lên bên dưới.")
     
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
@@ -88,7 +117,7 @@ if menu == "1. Nhập Sản Lượng":
             
         col_img, col_qty, col_note = st.columns([2, 2, 2])
         with col_img:
-            record_image = st.file_uploader("📷 Tải ảnh đính kèm (Cho hạng mục này)", type=["png", "jpg", "jpeg"], key="record_img")
+            record_image = st.file_uploader("📷 Kéo thả hoặc tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
         with col_qty:
             so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
         with col_note:
@@ -268,7 +297,6 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.markdown("Chọn trực tiếp dòng trong bảng thùng rác bên dưới, sau đó chọn hành động **Khôi phục** hoặc **Xóa vĩnh viễn**.")
     
     if not st.session_state.deleted_input_df.empty:
-        # Create a display dataframe with a selection column
         trash_display = st.session_state.deleted_input_df.copy()
         trash_display.insert(0, "Chọn", False)
         
@@ -285,16 +313,13 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
             if st.button("📥 Khôi Phục Các Dòng Đã Chọn"):
                 selected_rows = edited_trash[edited_trash["Chọn"] == True]
                 if not selected_rows.empty:
-                    # Remove 'Chọn' column before restoring
                     selected_rows = selected_rows.drop(columns=["Chọn"])
                     stt_to_remove = selected_rows["STT"].tolist()
                     
-                    # Remove from deleted_input_df
                     st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
                     if not st.session_state.deleted_input_df.empty:
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
-                    # Add to input_df with new STT
                     selected_rows = selected_rows.copy()
                     for idx, row in selected_rows.iterrows():
                         new_row = row.copy()
