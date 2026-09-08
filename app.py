@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
+from PIL import Image
+import io
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
@@ -15,7 +17,7 @@ master_rules = [
     {"STT": 5, "Hạng Mục Công Việc": "Lấy phụ kiện có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 6, "Hạng Mục Công Việc": "Lấy phụ kiện mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 7, "Hạng Mục Công Việc": "Lấy mặt có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 8, "Hạng Mục Công Việc": "Lấy mặt mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kho / Vận hành"},
+    {"STT": 8, "Hạng Mục Công Việc": "Lấy mặt mới", "Đơn Vิ": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 9, "Hạng Mục Công Việc": "Vệ sinh + kiểm tra ,+ cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.5, "Ghi Chú": "Kiểm tra chất lượng"},
     {"STT": 10, "Hạng Mục Công Việc": "Kiểm tra BTP + cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
     {"STT": 11, "Hạng Mục Công Việc": "Kiểm tra hộp + cất hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
@@ -32,22 +34,34 @@ if "rules_df" not in st.session_state:
 
 if "input_df" not in st.session_state:
     st.session_state.input_df = pd.DataFrame([
-        {"STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"},
-        {"STT": 2, "Ngày": str(datetime.date.today()), "Nhân Sự": "Bảo", "Hạng Mục Công Việc": "Lấy đế có sẵn", "Đơn Vị": "Cái", "Số Lượng": 300, "Hệ Số Điểm": 0.5, "Tổng Điểm": 150.0, "Ghi Chú": "Cấp đế"},
-        {"STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", "Hạng Mục Công Việc": "Giao hàng shiper", "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"}
+        {
+            "STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", 
+            "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "Không có", 
+            "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"
+        },
+        {
+            "STT": 2, "Ngày": str(datetime.date.today()), "Nhân Sự": "Bảo", 
+            "Hạng Mục Công Việc": "Lấy đế có sẵn", "Hình Ảnh": "Không có", 
+            "Đơn Vị": "Cái", "Số Lượng": 300, "Hệ Số Điểm": 0.5, "Tổng Điểm": 150.0, "Ghi Chú": "Cấp đế"
+        },
+        {
+            "STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", 
+            "Hạng Mục Công Việc": "Giao hàng shiper", "Hình Ảnh": "Không có", 
+            "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"
+        }
     ])
 
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 
-# Sidebar image uploader
-st.sidebar.markdown("### 🖼️ Tải Hình Ảnh Tùy Ý")
-uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+# Sidebar image uploader for app header/logo
+st.sidebar.markdown("### 🖼️ Tải Logo / Ảnh Tùy Ý")
+uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="sidebar_img")
 if uploaded_file is not None:
     st.session_state.uploaded_image = uploaded_file
 
 if st.session_state.uploaded_image is not None:
-    st.sidebar.image(st.session_state.uploaded_image, caption="Ảnh tùy chỉnh trên App", use_container_width=True)
+    st.sidebar.image(st.session_state.uploaded_image, caption="Logo trên App", use_container_width=True)
 
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
@@ -57,7 +71,7 @@ menu = st.sidebar.selectbox("📂 Chọn Chức Năng", ["1. Nhập Sản Lượ
 
 # 1. Nhập Sản Lượng
 if menu == "1. Nhập Sản Lượng":
-    st.header("📝 Nhập Sản Lượng Hàng Ngày")
+    st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
     
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
@@ -69,10 +83,12 @@ if menu == "1. Nhập Sản Lượng":
             danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
             hang_muc = st.selectbox("Hạng Mục Công Việc", danh_sach_hang_muc)
             
-        col4, col5 = st.columns(2)
-        with col4:
+        col_img, col_qty, col_note = st.columns([2, 2, 2])
+        with col_img:
+            record_image = st.file_uploader("📷 Tải ảnh đính kèm (Cho hạng mục này)", type=["png", "jpg", "jpeg"], key="record_img")
+        with col_qty:
             so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
-        with col5:
+        with col_note:
             ghi_chu = st.text_input("Ghi chú công việc", "")
             
         submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng")
@@ -82,12 +98,15 @@ if menu == "1. Nhập Sản Lượng":
             don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
             tong_diem = so_luong * he_so
             
+            img_name = "Có đính kèm ảnh" if record_image is not None else "Không có"
+            
             new_stt = len(st.session_state.input_df) + 1
             new_row = {
                 "STT": new_stt,
                 "Ngày": str(ngay),
                 "Nhân Sự": nhan_su,
                 "Hạng Mục Công Việc": hang_muc,
+                "Hình Ảnh": img_name,
                 "Đơn Vị": don_vi,
                 "Số Lượng": so_luong,
                 "Hệ Số Điểm": he_so,
@@ -95,11 +114,34 @@ if menu == "1. Nhập Sản Lượng":
                 "Ghi Chú": ghi_chu
             }
             st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
-            st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm nhận được: **{tong_diem} điểm**")
+            st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
 
-    st.subheader("📋 Danh Sách Sản Lượng Đã Nhập")
+    st.markdown("---")
+    st.subheader("🔍 Bộ Lọc Dữ Liệu & Danh Sách Sản Lượng")
+    
+    # Filter controls
     if not st.session_state.input_df.empty:
-        st.dataframe(st.session_state.input_df, use_container_width=True)
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            all_dates = ["Tất cả"] + sorted(st.session_state.input_df["Ngày"].unique().tolist())
+            filter_date = st.selectbox("📅 Lọc theo Ngày", all_dates)
+        with f_col2:
+            all_staff = ["Tất cả"] + sorted(st.session_state.input_df["Nhân Sự"].unique().tolist())
+            filter_staff = st.selectbox("👤 Lọc theo Nhân Sự", all_staff)
+        with f_col3:
+            all_tasks = ["Tất cả"] + sorted(st.session_state.input_df["Hạng Mục Công Việc"].unique().tolist())
+            filter_task = st.selectbox("🛠️ Lọc theo Hạng Mục Công Việc", all_tasks)
+            
+        # Apply filters
+        filtered_df = st.session_state.input_df.copy()
+        if filter_date != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
+        if filter_staff != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
+        if filter_task != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
+            
+        st.dataframe(filtered_df, use_container_width=True)
         
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
@@ -166,7 +208,6 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
     st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm, xóa hạng mục, hoặc **tùy chọn khôi phục** các mục đã xóa bên dưới.")
     
-    # Identify deleted items (items in master_rules that are NOT currently in st.session_state.rules_df)
     current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
     deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
     
@@ -179,11 +220,9 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         with col_r1:
             if st.button("📥 Khôi Phục Các Mục Đã Chọn"):
                 if selected_to_restore:
-                    # Find items to restore from master
                     items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
                     restored_df = pd.DataFrame(items_to_add)
                     st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
-                    # Re-index STT
                     st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
                     st.success(f"Đã khôi phục thành công các mục: {', '.join(selected_to_restore)}!")
                     st.rerun()
@@ -202,7 +241,6 @@ elif menu == "3. Quản Lý Định Mức Điểm":
 
     st.markdown("---")
     st.markdown("#### 📋 Danh Sách Định Mức Hiện Tại (Có thể chỉnh sửa hoặc xóa trực tiếp)")
-    # Use st.data_editor to allow editing and deleting rows directly!
     edited_rules = st.data_editor(
         st.session_state.rules_df, 
         num_rows="dynamic", 
@@ -210,7 +248,6 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         key="rules_editor"
     )
     
-    # Save changes automatically if modified
     if not edited_rules.equals(st.session_state.rules_df):
         st.session_state.rules_df = edited_rules
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
