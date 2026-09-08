@@ -140,7 +140,7 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }}
     .zalo-avatar-wrapper img {{
         width: 85px;
@@ -199,20 +199,21 @@ with st.sidebar:
     else:
         st.info("Chưa có ảnh đại diện.")
 
-    with st.expander("⚙️ 🌐 Đổi Ảnh Đại Diện"):
-        avatar_file = st.file_uploader("Tải ảnh đại diện mới", type=["png", "jpg", "jpeg"], key="avatar_uploader")
-        if avatar_file is not None:
-            avatar_bytes = avatar_file.getvalue()
-            st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
+    # Nút cập nhật/đổi ảnh đại diện trực tiếp ngay bên dưới ảnh
+    avatar_file = st.file_uploader("📷 Đổi ảnh đại diện", type=["png", "jpg", "jpeg"], key="avatar_uploader")
+    if avatar_file is not None:
+        avatar_bytes = avatar_file.getvalue()
+        st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
+        save_data()
+        st.success("Đã cập nhật ảnh đại diện thành công!")
+        st.rerun()
+        
+    if st.session_state.avatar_base64:
+        if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+            st.session_state.avatar_base64 = None
             save_data()
-            st.success("Đã cập nhật ảnh đại diện thành công!")
+            st.success("Đã xóa ảnh đại diện!")
             st.rerun()
-        if st.session_state.avatar_base64:
-            if st.button("🗑️ Xóa Ảnh Đại Diện"):
-                st.session_state.avatar_base64 = None
-                save_data()
-                st.success("Đã xóa ảnh đại diện!")
-                st.rerun()
 
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
