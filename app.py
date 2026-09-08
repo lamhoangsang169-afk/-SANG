@@ -258,7 +258,6 @@ if menu == "1. Nhập Sản Lượng":
             display_df = filtered_df.copy()
             display_df.insert(0, "Chọn", False)
             
-            # Tạo cột hiển thị ảnh trực tiếp trong bảng
             def make_img_url(val):
                 s = str(val).strip()
                 if s and s != "":
@@ -269,7 +268,6 @@ if menu == "1. Nhập Sản Lượng":
 
             display_df["Ảnh Công Việc"] = display_df["Hình Ảnh"].apply(make_img_url)
             
-            # Sắp xếp lại thứ tự cột cho đẹp mắt
             cols_order = ["Chọn", "STT", "Ảnh Công Việc", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
             display_df = display_df[[c for c in cols_order if c in display_df.columns]]
 
@@ -301,34 +299,6 @@ if menu == "1. Nhập Sản Lượng":
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
-
-            st.markdown("---")
-            st.subheader("🖼️ Xem Phóng To Ảnh Chi Tiết")
-            has_image_rows = filtered_df[filtered_df["Hình Ảnh"].astype(str).str.strip() != ""]
-            if not has_image_rows.empty:
-                img_options = []
-                for idx, r in has_image_rows.iterrows():
-                    stt_v = r["STT"]
-                    ngay_v = r["Ngày"]
-                    ns_v = r["Nhân Sự"]
-                    hm_v = r["Hạng Mục Công Việc"]
-                    img_options.append(f"STT {stt_v} - {ngay_v} - {ns_v} - {hm_v}")
-                
-                selected_img_label = st.selectbox("Chọn bản ghi để phóng to ảnh:", img_options)
-                if selected_img_label:
-                    selected_stt = int(selected_img_label.split("STT ")[1].split(" -")[0])
-                    matched_row = has_image_rows[has_image_rows["STT"] == selected_stt]
-                    if not matched_row.empty:
-                        b64_str = str(matched_row.iloc[0]["Hình Ảnh"]).strip()
-                        try:
-                            if "," in b64_str:
-                                b64_str = b64_str.split(",")[1]
-                            img_bytes = base64.b64decode(b64_str)
-                            st.image(img_bytes, caption=f"Ảnh của {matched_row.iloc[0]['Nhân Sự']} - {matched_row.iloc[0]['Hạng Mục Công Việc']}", width=450)
-                        except Exception as ex:
-                            st.error(f"Không thể giải mã hình ảnh: {ex}")
-            else:
-                st.info("Không có bản ghi nào trong bộ lọc này có đính kèm hình ảnh.")
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
