@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS định vị nút máy ảnh đè khít góc avatar cực kỳ chuyên nghiệp
+# CSS cố định vị trí avatar (sticky header) trên sidebar
 st.markdown(f"""
 <style>
     .stApp {{
@@ -123,6 +123,18 @@ st.markdown(f"""
         resize: horizontal !important;
         overflow: auto !important;
     }}
+    
+    /* Cố định phần chứa avatar ở đỉnh sidebar, không trôi khi cuộn */
+    .sticky-avatar-container {{
+        position: sticky;
+        top: 0px;
+        background-color: {st.session_state.sidebar_bg};
+        z-index: 999;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+    }}
+
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
         color: {st.session_state.text_color} !important;
     }}
@@ -138,9 +150,9 @@ st.markdown(f"""
     /* Khung Avatar chuẩn */
     .avatar-wrapper {{
         position: relative;
-        width: 105px;
-        height: 105px;
-        margin: 10px auto 20px auto;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
     }}
     
     /* Đưa nút popover phủ trọn vào góc icon máy ảnh góc phải dưới */
@@ -154,8 +166,8 @@ st.markdown(f"""
         background-color: #ffffff !important;
         border: 2px solid {st.session_state.primary_color} !important;
         border-radius: 50% !important;
-        width: 36px !important;
-        height: 36px !important;
+        width: 34px !important;
+        height: 34px !important;
         padding: 0px !important;
         display: flex !important;
         align-items: center !important;
@@ -168,7 +180,7 @@ st.markdown(f"""
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
         content: "📷";
-        font-size: 16px;
+        font-size: 14px;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -199,11 +211,10 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN CỐ ĐỊNH -----------------
 with st.sidebar:
-    # Đã bỏ chữ "Ảnh Đại Diện" ở phía trên hoàn toàn
+    st.markdown('<div class="sticky-avatar-container">', unsafe_allow_html=True)
     
-    # Chuẩn bị hiển thị ảnh hoặc icon mặc định
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -223,16 +234,15 @@ with st.sidebar:
             st.markdown("##### 🔍 Xem Ảnh Đại Diện")
             st.image(avatar_bytes_obj, use_container_width=True)
             
-        # Hiển thị ảnh thu nhỏ làm avatar
         encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
         st.markdown(f"""
         <div style="cursor: pointer; text-align: center;">
-            <img src="data:image/png;base64,{encoded_img}" style="width:105px; height:105px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+            <img src="data:image/png;base64,{encoded_img}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div style="width:105px; height:105px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:42px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+        <div style="width:100px; height:100px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:38px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
             👤
         </div>
         """, unsafe_allow_html=True)
@@ -258,8 +268,8 @@ with st.sidebar:
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # Kết thúc sticky container
 
-    st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
     with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
