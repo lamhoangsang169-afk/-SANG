@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Default original rules
-default_rules = [
+# Master list of all default rules
+master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 2, "Hạng Mục Công Việc": "Lấy hộp mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 3, "Hạng Mục Công Việc": "Lấy đế có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
@@ -28,7 +28,7 @@ default_rules = [
 
 # Initialize Session State data if not present
 if "rules_df" not in st.session_state:
-    st.session_state.rules_df = pd.DataFrame(default_rules)
+    st.session_state.rules_df = pd.DataFrame(master_rules)
 
 if "input_df" not in st.session_state:
     st.session_state.input_df = pd.DataFrame([
@@ -164,15 +164,44 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
 # 3. Quản Lý Định Mức Điểm
 elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
-    st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm, xóa hạng mục, hoặc khôi phục lại danh mục mặc định ban đầu.")
+    st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm, xóa hạng mục, hoặc **tùy chọn khôi phục** các mục đã xóa bên dưới.")
     
-    col_btn1, col_btn2 = st.columns([2, 5])
-    with col_btn1:
-        if st.button("🔄 Khôi Phục Danh Mục Mặc Định"):
-            st.session_state.rules_df = pd.DataFrame(default_rules)
-            st.success("Đã khôi phục toàn bộ hạng mục mặc định ban đầu thành công!")
+    # Identify deleted items (items in master_rules that are NOT currently in st.session_state.rules_df)
+    current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+    deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
+    
+    if deleted_items_list:
+        st.markdown("#### ♻️ Khôi Phục Từng Mục Đã Xóa")
+        deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
+        selected_to_restore = st.multiselect("Chọn các hạng mục muốn khôi phục lại:", deleted_names)
+        
+        col_r1, col_r2 = st.columns([2, 5])
+        with col_r1:
+            if st.button("📥 Khôi Phục Các Mục Đã Chọn"):
+                if selected_to_restore:
+                    # Find items to restore from master
+                    items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
+                    restored_df = pd.DataFrame(items_to_add)
+                    st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
+                    # Re-index STT
+                    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+                    st.success(f"Đã khôi phục thành công các mục: {', '.join(selected_to_restore)}!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng chọn ít nhất một mục để khôi phục.")
+        with col_r2:
+            if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
+                st.session_state.rules_df = pd.DataFrame(master_rules)
+                st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
+                st.rerun()
+    else:
+        if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
+            st.session_state.rules_df = pd.DataFrame(master_rules)
+            st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
             st.rerun()
-            
+
+    st.markdown("---")
+    st.markdown("#### 📋 Danh Sách Định Mức Hiện Tại (Có thể chỉnh sửa hoặc xóa trực tiếp)")
     # Use st.data_editor to allow editing and deleting rows directly!
     edited_rules = st.data_editor(
         st.session_state.rules_df, 
