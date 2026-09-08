@@ -269,12 +269,12 @@ if menu == "1. Nhập Sản Lượng":
 
             display_df["Ảnh Công Việc"] = display_df["Hình Ảnh"].apply(make_img_url)
             
-            # Sắp xếp lại thứ tự cột cho đẹp mắt (Cột ảnh nằm ngay sau Chọn hoặc STT)
+            # Sắp xếp lại thứ tự cột cho đẹp mắt
             cols_order = ["Chọn", "STT", "Ảnh Công Việc", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
             display_df = display_df[[c for c in cols_order if c in display_df.columns]]
 
             edited_table = st.data_editor(
-                display_df.drop(columns=["Hình Ảnh"]),
+                display_df.drop(columns=["Hình Ảnh"], errors="ignore"),
                 column_config={
                     "Ảnh Công Việc": st.column_config.ImageColumn("Ảnh Công Việc", width="small")
                 },
