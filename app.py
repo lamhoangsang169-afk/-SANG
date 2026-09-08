@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -34,6 +33,19 @@ if "input_df" not in st.session_state:
         {"STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", "Hạng Mục Công Việc": "Giao hàng shiper", "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"}
     ])
 
+if "uploaded_image" not in st.session_state:
+    st.session_state.uploaded_image = None
+
+# Sidebar image uploader
+st.sidebar.markdown("### 🖼️ Tải Hình Ảnh Tùy Ý")
+uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+if uploaded_file is not None:
+    st.session_state.uploaded_image = uploaded_file
+
+# Display image in sidebar if available
+if st.session_state.uploaded_image is not None:
+    st.sidebar.image(st.session_state.uploaded_image, caption="Ảnh tùy chỉnh trên App", use_container_width=True)
+
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
 
@@ -62,7 +74,6 @@ if menu == "1. Nhập Sản Lượng":
             
         submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng")
         if submitted:
-            # Get coefficient
             row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
             he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
             don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
@@ -87,12 +98,10 @@ if menu == "1. Nhập Sản Lượng":
     if not st.session_state.input_df.empty:
         st.dataframe(st.session_state.input_df, use_container_width=True)
         
-        # Delete row option
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
             if del_idx > 0:
                 st.session_state.input_df = st.session_state.input_df[st.session_state.input_df["STT"] != del_idx].reset_index(drop=True)
-                # Re-index STT
                 st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                 st.success(f"Đã xóa dòng số {del_idx}!")
                 st.rerun()
@@ -106,7 +115,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
     if not st.session_state.input_df.empty:
         df_in = st.session_state.input_df
         
-        # Aggregate by personnel (Đức, Bảo, Tiến)
         summary = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
@@ -135,13 +143,11 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             use_container_width=True
         )
         
-        # Display metrics
         col1, col2, col3 = st.columns(3)
         for idx, row in summary.iterrows():
             with [col1, col2, col3][idx]:
                 st.metric(label=f"Nhân sự: {row['Nhân Sự']}", value=f"{row['Tổng_Điểm']:,.1f} điểm", delta=f"{row['Tỷ_Lệ_Đóng_Góp']:.1%} tổng điểm")
                 
-        # Pie Chart
         st.subheader("🥧 Biểu Đồ Tỷ Lệ Đóng Góp Điểm Thi Đua")
         fig, ax = plt.subplots(figsize=(8, 6))
         colors = ['#ff9999','#66b3ff','#99ff99']
@@ -155,7 +161,7 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
 # 3. Quản Lý Định Mức Điểm
 elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
-    st.markdown("Bạn có thể thêm hạng mục mới hoặc thay đổi hệ số điểm tại đây. Hệ thống sẽ tự động cập nhật cho các phần nhập liệu.")
+    st.markdown("Bạn có thể thêm hạng mục mới hoặc thay đổi hệ số điểm tại đây.")
     
     st.dataframe(st.session_state.rules_df, use_container_width=True)
     
