@@ -1,4 +1,8 @@
+# Let's add `st.camera_input` to enable direct camera photo capture alongside file uploading.
+# Streamlit has a built-in widget `st.camera_input("Chụp ảnh trực tiếp")` which lets mobile and desktop users take photos directly from their camera!
+# Let's update `app.py` to include `st.camera_input` or give options / replace `file_uploader` with `st.camera_input` or combine both.
 
+camera_code = '''
 import streamlit as st
 import pandas as pd
 import datetime
@@ -184,7 +188,7 @@ st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
-    st.info("💡 Mẹo: Bạn có thể **kéo thả trực tiếp** file ảnh vào ô tải lên bên dưới.")
+    st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới.")
     
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
@@ -198,7 +202,13 @@ if menu == "1. Nhập Sản Lượng":
             
         col_img, col_qty, col_note = st.columns([2, 2, 2])
         with col_img:
-            record_image = st.file_uploader("📷 Kéo thả hoặc tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+            # Provide both camera input and file uploader as tabs or selectbox options, or side by side
+            img_source = st.radio("📷 Chọn nguồn ảnh:", ["Tải lên / Kéo thả ảnh", "📸 Chụp ảnh trực tiếp"], horizontal=True)
+            if img_source == "📸 Chụp ảnh trực tiếp":
+                record_image = st.camera_input("Chụp ảnh công việc")
+            else:
+                record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+                
         with col_qty:
             so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
         with col_note:
@@ -531,3 +541,9 @@ elif menu == "5. Cài Đặt Giao Diện":
         save_data()
         st.success("Đã lưu và cập nhật giao diện thành công!")
         st.rerun()
+'''
+
+with open("app.py", "w", encoding="utf-8") as f:
+    f.write(camera_code)
+
+print("Camera input added successfully.")
