@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh phủ nút upload trong suốt đè lên icon máy ảnh
+# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và căn chỉnh thanh popover
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,7 +135,7 @@ st.markdown(f"""
         color: #111111 !important;
     }}
     
-    /* Thiết kế khung Avatar Zalo */
+    /* Thiết kế khung Avatar Zalo chuẩn */
     .avatar-container {{
         position: relative;
         width: 95px;
@@ -149,40 +149,6 @@ st.markdown(f"""
         object-fit: cover;
         border: 3px solid {st.session_state.primary_color};
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }}
-    .camera-badge {{
-        position: absolute;
-        bottom: 0px;
-        right: 0px;
-        background-color: #ffffff;
-        border: 2px solid #cbd5e1;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        font-size: 14px;
-        cursor: pointer;
-        z-index: 2;
-    }}
-
-    /* Đặt file uploader phủ kín vị trí icon máy ảnh và làm trong suốt hoàn toàn */
-    .upload-overlay-wrapper {{
-        position: absolute;
-        bottom: 0px;
-        right: 0px;
-        width: 32px;
-        height: 32px;
-        z-index: 10;
-        opacity: 0;
-        cursor: pointer;
-    }}
-    .upload-overlay-wrapper div, .upload-overlay-wrapper input {{
-        cursor: pointer !important;
-        width: 32px !important;
-        height: 32px !important;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -213,7 +179,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN TÍCH HỢP TRỰC TIẾP -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
 with st.sidebar:
     st.markdown("### 👤 Ảnh Đại Diện")
     
@@ -231,33 +197,32 @@ with st.sidebar:
     if not avatar_img_tag:
         avatar_img_tag = f'<div style="width:95px;height:95px;border-radius:50%;background:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:32px;">👤</div>'
 
-    # Hiển thị avatar và icon máy ảnh
     st.markdown(f"""
     <div class="avatar-container">
         {avatar_img_tag}
-        <div class="camera-badge" title="Nhấp vào để đổi ảnh">📷</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Đặt file_uploader vô hình chồng khít lên vị trí icon máy ảnh để bấm trực tiếp vào icon là chọn ảnh
-    st.markdown('<div class="upload-overlay-wrapper">', unsafe_allow_html=True)
-    avatar_file = st.file_uploader("Đổi ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_overlay", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if avatar_file is not None:
-        avatar_bytes = avatar_file.getvalue()
-        st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
-        save_data()
-        st.success("Đã cập nhật ảnh đại diện thành công!")
-        st.rerun()
-
-    # Nút xóa ảnh đại diện gọn gàng bên dưới
-    if st.session_state.avatar_base64:
-        if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
-            st.session_state.avatar_base64 = None
-            save_data()
-            st.success("Đã xóa ảnh đại diện!")
-            st.rerun()
+    # Nút Popover tích hợp icon máy ảnh để thay đổi hoặc xóa ảnh đại diện ngay tại chỗ
+    col_pop1, col_pop2, col_pop3 = st.columns([1, 2, 1])
+    with col_pop2:
+        with st.popover("📷 Cài đặt ảnh"):
+            st.markdown("##### ⚙️ Quản Lý Ảnh Đại Diện")
+            avatar_file = st.file_uploader("Tải ảnh mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover")
+            if avatar_file is not None:
+                avatar_bytes = avatar_file.getvalue()
+                st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
+                save_data()
+                st.success("Đã cập nhật ảnh đại diện thành công!")
+                st.rerun()
+                
+            if st.session_state.avatar_base64:
+                st.markdown("---")
+                if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+                    st.session_state.avatar_base64 = None
+                    save_data()
+                    st.success("Đã xóa ảnh đại diện!")
+                    st.rerun()
 
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
@@ -648,7 +613,7 @@ elif menu == "5. Cài Đặt Giao Diện":
             if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
                 st.session_state.bg_image_base64 = None
                 save_data()
-                st.success("Đã xóa ảnh hình nền về mặc định!")
+                st.success("Đã xóa hình nền về mặc định!")
                 st.rerun()
 
     st.markdown("---")
