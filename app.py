@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS đỉnh cao: định vị chính xác popover chồng khít lên icon máy ảnh ở góc avatar
+# CSS định vị nút máy ảnh đè khít góc avatar cực kỳ chuyên nghiệp
 st.markdown(f"""
 <style>
     .stApp {{
@@ -136,26 +136,18 @@ st.markdown(f"""
     }}
     
     /* Khung Avatar chuẩn */
-    .avatar-container {{
+    .avatar-wrapper {{
         position: relative;
-        width: 100px;
-        height: 100px;
-        margin: 10px auto 15px auto;
+        width: 105px;
+        height: 105px;
+        margin: 10px auto 20px auto;
     }}
-    .avatar-container img {{
-        width: 100px;
-        height: 100px;
-        border-radius: 50% !important;
-        object-fit: cover;
-        border: 3px solid {st.session_state.primary_color};
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }}
-
-    /* Đưa nút popover phủ trọn vào góc icon máy ảnh góc avatar */
+    
+    /* Đưa nút popover phủ trọn vào góc icon máy ảnh góc phải dưới */
     .avatar-popover-wrapper {{
         position: absolute;
-        bottom: -2px;
-        right: -2px;
+        bottom: 0px;
+        right: 0px;
         z-index: 99;
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button {{
@@ -170,7 +162,7 @@ st.markdown(f"""
         justify-content: center !important;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }}
-    /* Ẩn chữ bên trong nút popover, chỉ hiện icon máy ảnh */
+    /* Ẩn chữ trong nút popover, thay bằng icon máy ảnh */
     .avatar-popover-wrapper [data-testid="stPopover"] button p {{
         display: none !important;
     }}
@@ -209,39 +201,52 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
 with st.sidebar:
-    st.markdown("### 👤 Ảnh Đại Diện")
+    # Đã bỏ chữ "Ảnh Đại Diện" ở phía trên hoàn toàn
     
-    avatar_img_tag = ""
+    # Chuẩn bị hiển thị ảnh hoặc icon mặc định
+    has_custom_avatar = False
+    avatar_bytes_obj = None
     if st.session_state.avatar_base64:
         try:
             pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
             pure_b64 += "=" * (-len(pure_b64) % 4)
-            avatar_bytes = base64.b64decode(pure_b64)
-            encoded_img = base64.b64encode(avatar_bytes).decode("utf-8")
-            avatar_img_tag = f'<img src="data:image/png;base64,{encoded_img}" alt="Avatar">'
+            avatar_bytes_obj = base64.b64decode(pure_b64)
+            has_custom_avatar = True
         except Exception:
             pass
+
+    st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
+    
+    # Khi bấm vào ảnh đại diện sẽ hiện popup xem ảnh to hơn
+    if has_custom_avatar:
+        with st.popover(" ", use_container_width=False):
+            st.markdown("##### 🔍 Xem Ảnh Đại Diện")
+            st.image(avatar_bytes_obj, use_container_width=True)
             
-    if not avatar_img_tag:
-        avatar_img_tag = f'<div style="width:100px;height:100px;border-radius:50%;background:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:36px;">👤</div>'
+        # Hiển thị ảnh thu nhỏ làm avatar
+        encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
+        st.markdown(f"""
+        <div style="cursor: pointer; text-align: center;">
+            <img src="data:image/png;base64,{encoded_img}" style="width:105px; height:105px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div style="width:105px; height:105px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:42px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+            👤
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Hiển thị avatar và tích hợp popover ngay trên icon máy ảnh góc phải dưới
-    st.markdown(f"""
-    <div class="avatar-container">
-        {avatar_img_tag}
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Đặt popover tinh chỉnh nằm đè chính xác vào góc máy ảnh
+    # Nút Popover máy ảnh nằm đè chính xác vào góc phải dưới của avatar
     st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
     with st.popover("📷"):
-        st.markdown("##### Quản Lý Ảnh Đại Diện")
+        st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
         avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
         if avatar_file is not None:
             avatar_bytes = avatar_file.getvalue()
             st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
             save_data()
-            st.success("Đã đổi ảnh đại diện!")
+            st.success("Đã cập nhật ảnh đại diện!")
             st.rerun()
             
         if st.session_state.avatar_base64:
@@ -251,6 +256,7 @@ with st.sidebar:
                 save_data()
                 st.success("Đã xóa ảnh đại diện!")
                 st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
