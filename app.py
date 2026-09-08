@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import datetime
@@ -42,7 +43,6 @@ uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=[
 if uploaded_file is not None:
     st.session_state.uploaded_image = uploaded_file
 
-# Display image in sidebar if available
 if st.session_state.uploaded_image is not None:
     st.sidebar.image(st.session_state.uploaded_image, caption="Ảnh tùy chỉnh trên App", use_container_width=True)
 
@@ -161,30 +161,18 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
 # 3. Quản Lý Định Mức Điểm
 elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
-    st.markdown("Bạn có thể thêm hạng mục mới hoặc thay đổi hệ số điểm tại đây.")
+    st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm trên bảng dưới đây, hoặc thêm/xóa hạng mục tùy ý.")
     
-    st.dataframe(st.session_state.rules_df, use_container_width=True)
+    # Use st.data_editor to allow editing and deleting rows directly!
+    edited_rules = st.data_editor(
+        st.session_state.rules_df, 
+        num_rows="dynamic", 
+        use_container_width=True, 
+        key="rules_editor"
+    )
     
-    st.subheader("➕ Thêm Hạng Mục Mới")
-    with st.form("add_rule_form"):
-        new_hang_muc = st.text_input("Tên Hạng Mục Công Việc Mới")
-        new_don_vi = st.text_input("Đơn Vị", "Cái")
-        new_he_so = st.number_input("Hệ Số Điểm (Điểm/Cái)", min_value=0.0, value=1.0, step=0.1)
-        new_ghichu = st.text_input("Ghi Chú", "Sản xuất / Vận hành")
-        
-        add_rule_btn = st.form_submit_button("Thêm Hạng Mục")
-        if add_rule_btn and new_hang_muc:
-            if new_hang_muc in st.session_state.rules_df["Hạng Mục Công Việc"].values:
-                st.error("Hạng mục này đã tồn tại!")
-            else:
-                next_stt = len(st.session_state.rules_df) + 1
-                new_rule = {
-                    "STT": next_stt,
-                    "Hạng Mục Công Việc": new_hang_muc,
-                    "Đơn Vị": new_don_vi,
-                    "Hệ Số Điểm": float(new_he_so),
-                    "Ghi Chú": new_ghichu
-                }
-                st.session_state.rules_df = pd.concat([st.session_state.rules_df, pd.DataFrame([new_rule])], ignore_index=True)
-                st.success(f"Đã thêm hạng mục **{new_hang_muc}** thành công!")
-                st.rerun()
+    # Save changes automatically if modified
+    if not edited_rules.equals(st.session_state.rules_df):
+        st.session_state.rules_df = edited_rules
+        st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
+        st.rerun()
