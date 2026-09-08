@@ -8,7 +8,6 @@ import io
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Master list of all default rules
 master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 2, "Hạng Mục Công Việc": "Lấy hộp mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
@@ -28,7 +27,6 @@ master_rules = [
     {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
 ]
 
-# Initialize Session State data if not present
 if "rules_df" not in st.session_state:
     st.session_state.rules_df = pd.DataFrame(master_rules)
 
@@ -51,14 +49,12 @@ if "input_df" not in st.session_state:
         }
     ])
 
-# Trash bin for deleted production records
 if "deleted_input_df" not in st.session_state:
     st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 
-# Sidebar image uploader for app header/logo
 st.sidebar.markdown("### 🖼️ Tải Logo / Ảnh Tùy Ý")
 uploaded_file = st.sidebar.file_uploader("Chọn ảnh (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="sidebar_img")
 if uploaded_file is not None:
@@ -70,7 +66,6 @@ if st.session_state.uploaded_image is not None:
 st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 st.markdown("### Dành cho nhân sự: **Đức, Bảo, Tiến**")
 
-# Sidebar navigation with 4 menu items
 menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
     "1. Nhập Sản Lượng", 
     "2. Báo Cáo & Biểu Đồ Tổng Hợp", 
@@ -78,7 +73,6 @@ menu = st.sidebar.selectbox("📂 Chọn Chức Năng", [
     "4. Thùng Rác / Khôi Phục Sản Lượng"
 ])
 
-# 1. Nhập Sản Lượng
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
     
@@ -128,7 +122,6 @@ if menu == "1. Nhập Sản Lượng":
     st.markdown("---")
     st.subheader("🔍 Bộ Lọc Dữ Liệu & Tùy Chọn Cột Hiển Thị")
     
-    # Filter controls
     if not st.session_state.input_df.empty:
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1:
@@ -141,11 +134,9 @@ if menu == "1. Nhập Sản Lượng":
             all_tasks = ["Tất cả"] + sorted(st.session_state.input_df["Hạng Mục Công Việc"].unique().tolist())
             filter_task = st.selectbox("🛠️ Lọc theo Hạng Mục Công Việc", all_tasks)
             
-        # Column selector (drop/select columns)
         all_cols = st.session_state.input_df.columns.tolist()
         selected_cols = st.multiselect("👁️ Chọn các cột muốn hiển thị trên bảng:", all_cols, default=all_cols)
             
-        # Apply filters
         filtered_df = st.session_state.input_df.copy()
         if filter_date != "Tất cả":
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
@@ -154,13 +145,11 @@ if menu == "1. Nhập Sản Lượng":
         if filter_task != "Tất cả":
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
-        # Display with selected columns
         if selected_cols:
             st.dataframe(filtered_df[selected_cols], use_container_width=True)
         else:
             st.dataframe(filtered_df, use_container_width=True)
         
-        # Delete row functionality with trash bin logging
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
             if del_idx > 0:
@@ -176,7 +165,6 @@ if menu == "1. Nhập Sản Lượng":
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
-# 2. Báo Cáo & Biểu Đồ Tổng Hợp
 elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
     st.header("📊 Báo Cáo Tổng Hợp & Đánh Giá Thi Đua")
     
@@ -226,7 +214,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
     else:
         st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
 
-# 3. Quản Lý Định Mức Điểm
 elif menu == "3. Quản Lý Định Mức Điểm":
     st.header("⚙️ Quản Lý Danh Mục & Hệ Số Điểm")
     st.markdown("Bạn có thể **chỉnh sửa trực tiếp** tên công việc/hệ số điểm, xóa hạng mục, hoặc khôi phục các mục định mức đã xóa.")
@@ -276,29 +263,51 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
         st.rerun()
 
-# 4. Thùng Rác / Khôi Phục Sản Lượng
 elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.header("🗑️ Thùng Rác & Khôi Phục Bản Ghi Sản Lượng Đã Xóa")
-    st.markdown("Tại đây lưu trữ các dòng sản lượng đã bị xóa từ trang Nhập Sản Lượng. Bạn có thể xem lại và khôi phục khi cần.")
+    st.markdown("Tại đây lưu trữ các dòng sản lượng đã bị xóa từ trang Nhập Sản Lượng. Bạn có thể khôi phục hoặc **xóa vĩnh viễn** để giải phóng bộ nhớ.")
     
     if not st.session_state.deleted_input_df.empty:
         st.dataframe(st.session_state.deleted_input_df, use_container_width=True)
         
-        restore_stt = st.number_input("Nhập STT dòng đã xóa muốn khôi phục lại:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="restore_trash_stt")
-        if st.button("📥 Khôi Phục Bản Ghi Này"):
-            if restore_stt > 0:
-                row_to_restore = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] == restore_stt]
-                if not row_to_restore.empty:
-                    st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != restore_stt].reset_index(drop=True)
+        col_act1, col_act2 = st.columns(2)
+        
+        with col_act1:
+            st.markdown("#### 📥 Khôi Phục Bản Ghi")
+            restore_stt = st.number_input("Nhập STT dòng trong thùng rác muốn khôi phục:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="restore_trash_stt")
+            if st.button("📥 Khôi Phục Bản Ghi Này"):
+                if restore_stt > 0:
+                    row_to_restore = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] == restore_stt]
+                    if not row_to_restore.empty:
+                        st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != restore_stt].reset_index(drop=True)
+                        if not st.session_state.deleted_input_df.empty:
+                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                        
+                        row_to_restore = row_to_restore.copy()
+                        row_to_restore["STT"] = len(st.session_state.input_df) + 1
+                        st.session_state.input_df = pd.concat([st.session_state.input_df, row_to_restore], ignore_index=True)
+                        st.success("Đã khôi phục dòng sản lượng thành công về danh sách chính!")
+                        st.rerun()
+                    else:
+                        st.error("Không tìm thấy số STT này trong thùng rác!")
+
+        with col_act2:
+            st.markdown("#### ❌ Xóa Vĩnh Viễn Bản Ghi")
+            perm_del_stt = st.number_input("Nhập STT dòng trong thùng rác muốn xóa vĩnh viễn:", min_value=0, max_value=len(st.session_state.deleted_input_df), value=0, step=1, key="perm_del_stt")
+            if st.button("🔥 Xóa Vĩnh Viễn Dòng Này"):
+                if perm_del_stt > 0:
+                    st.session_state.deleted_input_df = st.session_state.deleted_input_df[st.session_state.deleted_input_df["STT"] != perm_del_stt].reset_index(drop=True)
                     if not st.session_state.deleted_input_df.empty:
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                    
-                    row_to_restore = row_to_restore.copy()
-                    row_to_restore["STT"] = len(st.session_state.input_df) + 1
-                    st.session_state.input_df = pd.concat([st.session_state.input_df, row_to_restore], ignore_index=True)
-                    st.success("Đã khôi phục dòng sản lượng thành công về danh sách chính!")
+                    st.success(f"Đã xóa vĩnh viễn dòng số {perm_del_stt} khỏi thùng rác!")
                     st.rerun()
                 else:
                     st.error("Không tìm thấy số STT này trong thùng rác!")
+
+        st.markdown("---")
+        if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác"):
+            st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+            st.success("Đã dọn sạch toàn bộ thùng rác!")
+            st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống (chưa có bản ghi sản lượng nào bị xóa).")
