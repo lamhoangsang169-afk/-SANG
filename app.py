@@ -92,7 +92,7 @@ st.markdown(f"""
 
 st.sidebar.markdown("### 📂 Chọn Chức Năng")
 
-# Expander for items 1 to 4 so it can expand/collapse
+# Expander for items 1 to 4
 with st.sidebar.expander("📌 Các Mục Quản Lý (1 - 4)", expanded=True):
     if st.button("1. Nhập Sản Lượng", use_container_width=True):
         st.session_state.current_menu = "1. Nhập Sản Lượng"
@@ -109,11 +109,11 @@ with st.sidebar.expander("📌 Các Mục Quản Lý (1 - 4)", expanded=True):
 
 st.sidebar.markdown("---")
 
-# Separated section for Settings / Cài đặt giao diện
-st.sidebar.markdown("### ⚙️ Hệ Thống")
-if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-    st.session_state.current_menu = "5. Cài Đặt Giao Diện"
-    st.rerun()
+# Expander for System / Cài đặt giao diện under "⚙️ Hệ Thống"
+with st.sidebar.expander("⚙️ Hệ Thống", expanded=True):
+    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+        st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+        st.rerun()
 
 menu = st.session_state.current_menu
 
