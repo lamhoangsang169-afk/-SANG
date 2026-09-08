@@ -30,7 +30,7 @@ master_rules = [
     {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
 ]
 
-default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
+default_staff_list = ["Đức", "Bảo", "Tiến"]
 
 def load_data():
     if os.path.exists(STORAGE_FILE):
@@ -111,67 +111,39 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS toàn cục: Đồng bộ màu chữ cho toàn bộ ứng dụng và cấu trúc sidebar
+# CSS định vị nút máy ảnh đè khít góc avatar cực kỳ chuyên nghiệp
 st.markdown(f"""
 <style>
     .stApp {{
         {bg_style}
-        color: {st.session_state.text_color} !important;
+        color: {st.session_state.text_color};
     }}
-    
-    /* Đồng bộ màu chữ cho tất cả các thành phần */
-    p, span, label, div, h2, h3, h4, h5, h6, 
-    .stMarkdown, [data-testid="stMarkdownContainer"] *,
-    [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
-    [data-testid="stWidgetLabel"] *, .streamlit-expanderHeader *,
-    [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] *, [data-testid="stTable"] *,
-    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput * {{
-        color: {st.session_state.text_color} !important;
-    }}
-    
-    h1 {{
-        color: {st.session_state.primary_color} !important;
-    }}
-
-    /* Thanh sidebar cố định avatar và cuộn menu */
     [data-testid="stSidebar"] {{
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
-        overflow: hidden !important;
+        overflow: auto !important;
     }}
-    
-    [data-testid="stSidebar"] * {{
+    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
         color: {st.session_state.text_color} !important;
     }}
-    
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
+    h1 {{
+        color: {st.session_state.primary_color} !important;
     }}
-
-    .sidebar-fixed-avatar-section {{
-        flex-shrink: 0;
-        background-color: {st.session_state.sidebar_bg};
-        padding-top: 10px;
-        z-index: 99;
-    }}
-
-    .sidebar-scrollable-menu-section {{
-        flex-grow: 1;
-        overflow-y: auto !important;
-        overflow-x: hidden;
-        padding-bottom: 50px;
+    /* Làm đậm chữ trong bảng rõ ràng */
+    [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] * {{
+        font-weight: 600 !important;
+        color: #111111 !important;
     }}
     
+    /* Khung Avatar chuẩn */
     .avatar-wrapper {{
         position: relative;
-        width: 100px;
-        height: 100px;
-        margin: 0 auto;
+        width: 105px;
+        height: 105px;
+        margin: 10px auto 20px auto;
     }}
     
+    /* Đưa nút popover phủ trọn vào góc icon máy ảnh góc phải dưới */
     .avatar-popover-wrapper {{
         position: absolute;
         bottom: 0px;
@@ -182,22 +154,24 @@ st.markdown(f"""
         background-color: #ffffff !important;
         border: 2px solid {st.session_state.primary_color} !important;
         border-radius: 50% !important;
-        width: 34px !important;
-        height: 34px !important;
+        width: 36px !important;
+        height: 36px !important;
         padding: 0px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }}
+    /* Ẩn chữ trong nút popover, thay bằng icon máy ảnh */
     .avatar-popover-wrapper [data-testid="stPopover"] button p {{
         display: none !important;
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
         content: "📷";
-        font-size: 14px;
+        font-size: 16px;
     }}
 
+    /* Thẻ thông tin nhân sự chuyên nghiệp */
     .staff-badge-container {{
         background-color: rgba(0, 0, 0, 0.03);
         border-left: 4px solid {st.session_state.primary_color};
@@ -207,6 +181,7 @@ st.markdown(f"""
         font-size: 0.95rem;
     }}
 
+    /* Responsive cho Điện thoại (Mobile) */
     @media (max-width: 768px) {{
         h1 {{
             font-size: 1.5rem !important;
@@ -224,11 +199,11 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
 with st.sidebar:
-    # 1. Cố định Avatar ở trên cùng
-    st.markdown('<div class="sidebar-fixed-avatar-section">', unsafe_allow_html=True)
+    # Đã bỏ chữ "Ảnh Đại Diện" ở phía trên hoàn toàn
     
+    # Chuẩn bị hiển thị ảnh hoặc icon mặc định
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -242,24 +217,27 @@ with st.sidebar:
 
     st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
     
+    # Khi bấm vào ảnh đại diện sẽ hiện popup xem ảnh to hơn
     if has_custom_avatar:
         with st.popover(" ", use_container_width=False):
             st.markdown("##### 🔍 Xem Ảnh Đại Diện")
             st.image(avatar_bytes_obj, use_container_width=True)
             
+        # Hiển thị ảnh thu nhỏ làm avatar
         encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
         st.markdown(f"""
         <div style="cursor: pointer; text-align: center;">
-            <img src="data:image/png;base64,{encoded_img}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+            <img src="data:image/png;base64,{encoded_img}" style="width:105px; height:105px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div style="width:100px; height:100px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:38px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+        <div style="width:105px; height:105px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:42px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
             👤
         </div>
         """, unsafe_allow_html=True)
 
+    # Nút Popover máy ảnh nằm đè chính xác vào góc phải dưới của avatar
     st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
     with st.popover("📷"):
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
@@ -282,11 +260,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # 2. Phần menu chức năng cuộn bên dưới (Đã đặt Cài Đặt Giao Diện ngay ngắn bên trong)
-    st.markdown('<div class="sidebar-scrollable-menu-section">', unsafe_allow_html=True)
-    
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
     with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
@@ -314,11 +287,10 @@ with st.sidebar:
             st.session_state.current_menu = "5. Cài Đặt Giao Diện"
             save_data()
             st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
 
+# Tiêu đề hệ thống tối ưu chuyên nghiệp
 st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 
 staff_joined = " | ".join([f"**{s}**" for s in st.session_state.staff_list])
