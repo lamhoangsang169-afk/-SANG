@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS giao diện tinh gọn, chuyên nghiệp
+# CSS đỉnh cao: định vị chính xác popover chồng khít lên icon máy ảnh ở góc avatar
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,12 +135,12 @@ st.markdown(f"""
         color: #111111 !important;
     }}
     
-    /* Thiết kế khung Avatar Zalo/Facebook chuẩn */
+    /* Khung Avatar chuẩn */
     .avatar-container {{
         position: relative;
         width: 100px;
         height: 100px;
-        margin: 0 auto 5px auto;
+        margin: 10px auto 15px auto;
     }}
     .avatar-container img {{
         width: 100px;
@@ -150,21 +150,33 @@ st.markdown(f"""
         border: 3px solid {st.session_state.primary_color};
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }}
-    .camera-badge-absolute {{
+
+    /* Đưa nút popover phủ trọn vào góc icon máy ảnh góc avatar */
+    .avatar-popover-wrapper {{
         position: absolute;
-        bottom: 0px;
-        right: 0px;
-        background-color: #ffffff;
-        border: 2px solid {st.session_state.primary_color};
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        font-size: 14px;
-        cursor: pointer;
+        bottom: -2px;
+        right: -2px;
+        z-index: 99;
+    }}
+    .avatar-popover-wrapper [data-testid="stPopover"] button {{
+        background-color: #ffffff !important;
+        border: 2px solid {st.session_state.primary_color} !important;
+        border-radius: 50% !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }}
+    /* Ẩn chữ bên trong nút popover, chỉ hiện icon máy ảnh */
+    .avatar-popover-wrapper [data-testid="stPopover"] button p {{
+        display: none !important;
+    }}
+    .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
+        content: "📷";
+        font-size: 16px;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -213,33 +225,33 @@ with st.sidebar:
     if not avatar_img_tag:
         avatar_img_tag = f'<div style="width:100px;height:100px;border-radius:50%;background:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:36px;">👤</div>'
 
-    # Sử dụng popover bọc quanh nút bấm icon máy ảnh giống y như mẫu yêu cầu
-    col_av1, col_av2, col_av3 = st.columns([1, 2, 1])
-    with col_av2:
-        with st.popover("📷 Cập nhật ảnh đại diện", use_container_width=True):
-            avatar_file = st.file_uploader("Tải ảnh mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
-            if avatar_file is not None:
-                avatar_bytes = avatar_file.getvalue()
-                st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
-                save_data()
-                st.success("Đã cập nhật ảnh thành công!")
-                st.rerun()
-                
-            if st.session_state.avatar_base64:
-                st.markdown("---")
-                if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
-                    st.session_state.avatar_base64 = None
-                    save_data()
-                    st.success("Đã xóa ảnh đại diện!")
-                    st.rerun()
-
-    # Hiển thị ảnh đại diện với icon máy ảnh góc phải dưới
+    # Hiển thị avatar và tích hợp popover ngay trên icon máy ảnh góc phải dưới
     st.markdown(f"""
-    <div class="avatar-container" style="margin-top: 10px;">
+    <div class="avatar-container">
         {avatar_img_tag}
-        <div class="camera-badge-absolute" title="Nhấp vào nút trên để cập nhật">📷</div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Đặt popover tinh chỉnh nằm đè chính xác vào góc máy ảnh
+    st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
+    with st.popover("📷"):
+        st.markdown("##### Quản Lý Ảnh Đại Diện")
+        avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
+        if avatar_file is not None:
+            avatar_bytes = avatar_file.getvalue()
+            st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
+            save_data()
+            st.success("Đã đổi ảnh đại diện!")
+            st.rerun()
+            
+        if st.session_state.avatar_base64:
+            st.markdown("---")
+            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+                st.session_state.avatar_base64 = None
+                save_data()
+                st.success("Đã xóa ảnh đại diện!")
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
