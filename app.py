@@ -207,9 +207,9 @@ if menu == "1. Nhập Sản Lượng":
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
         if selected_cols:
-            st.dataframe(filtered_df[selected_cols], use_container_width=True)
+            st.dataframe(filtered_df[selected_cols], use_container_width=True, hide_index=True)
         else:
-            st.dataframe(filtered_df, use_container_width=True)
+            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
         
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
@@ -259,7 +259,8 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 "Tổng_Điểm": "{:,.1f}",
                 "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
             }),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
         
         col1, col2, col3 = st.columns(3)
@@ -324,13 +325,13 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         st.session_state.rules_df, 
         num_rows="dynamic", 
         use_container_width=True, 
-        key="rules_editor"
+        key="rules_editor",
+        hide_index=True
     )
     
     if not edited_rules.equals(st.session_state.rules_df):
         edited_rules["STT"] = range(1, len(edited_rules) + 1)
         st.session_state.rules_df = edited_rules
-        pages_to_rerun = True
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
         st.rerun()
 
@@ -377,7 +378,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
 
         with col_act2:
             if st.button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn"):
-                selected_rows = edited_trash[edited_trash["Chọn"] == True]
+                selected_rows = edited_trash[edited_trash["Chọn"] == Type(False) if 'Type' in globals() else edited_trash["Chọn"] == True]
                 if not selected_rows.empty:
                     selected_rows = selected_rows.drop(columns=["Chọn"])
                     stt_to_remove = selected_rows["STT"].tolist()
