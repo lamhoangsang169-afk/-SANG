@@ -167,21 +167,6 @@ st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 staff_str = ", ".join(st.session_state.staff_list)
 st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
-@st.dialog("🖼️ Xem & Phóng To Ảnh Công Việc", width="large")
-def show_image_dialog(b64_str, caption_text):
-    st.markdown(f"### {caption_text}")
-    try:
-        if "," in b64_str:
-            pure_b64 = b64_str.split(",")[1]
-        else:
-            pure_b64 = b64_str
-        pure_b64 += "=" * (-len(pure_b64) % 4)
-        img_bytes = base64.b64decode(pure_b64)
-        img_width = st.slider("🔍 Kéo để phóng to / thu nhỏ ảnh tùy ý:", min_value=250, max_value=1200, value=700, step=50)
-        st.image(img_bytes, width=img_width)
-    except Exception as ex:
-        st.error(f"Không thể giải mã hình ảnh: {ex}")
-
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
     st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới.")
@@ -298,39 +283,6 @@ if menu == "1. Nhập Sản Lượng":
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
-
-            # Thư viện ảnh đính kèm rõ nét bên dưới, tối ưu chạm trên điện thoại
-            valid_image_rows = []
-            for idx, r in filtered_df.iterrows():
-                b64_str = str(r["Hình Ảnh"]).strip()
-                if len(b64_str) > 50:
-                    valid_image_rows.append(r)
-
-            if valid_image_rows:
-                st.markdown("---")
-                st.subheader("🖼️ Thư Viện Ảnh Đính Kèm (Bấm vào nút bên dưới để xem toàn màn hình)")
-                
-                img_cols = st.columns(3)
-                for idx, r in enumerate(valid_image_rows):
-                    col_target = img_cols[idx % 3]
-                    with col_target:
-                        stt_v = r["STT"]
-                        ngay_v = r["Ngày"]
-                        ns_v = r["Nhân Sự"]
-                        hm_v = r["Hạng Mục Công Việc"]
-                        b64_str = str(r["Hình Ảnh"]).strip()
-                        caption_str = f"STT {stt_v} - {ngay_v} - {ns_v} - {hm_v}"
-                        
-                        try:
-                            pure_b64 = b64_str.split(",")[1] if "," in b64_str else b64_str
-                            pure_b64 += "=" * (-len(pure_b64) % 4)
-                            img_bytes = base64.b64decode(pure_b64)
-                            
-                            st.image(img_bytes, caption=caption_str, use_column_width=True)
-                            if st.button(f"🔍 Phóng To Ảnh (STT {stt_v})", key=f"zoom_btn_{stt_v}_{idx}", use_container_width=True):
-                                show_image_dialog(b64_str, caption_str)
-                        except Exception:
-                            pass
         else:
             st.info("Không tìm thấy bản ghi nào khớp với bộ lọc.")
     else:
