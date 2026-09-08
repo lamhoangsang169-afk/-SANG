@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh phong cách Zalo cho ảnh đại diện (bo tròn, căn giữa)
+# CSS tinh chỉnh giao diện chuẩn Zalo/Facebook với huy hiệu máy ảnh ở góc dưới bên phải
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,20 +135,35 @@ st.markdown(f"""
         color: #111111 !important;
     }}
     
-    /* Phong cách Avatar Zalo (bo tròn hình tròn hoàn hảo) */
-    .zalo-avatar-wrapper {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 10px;
+    /* Thiết kế khung Avatar kèm huy hiệu máy ảnh góc dưới bên phải giống hệt mẫu */
+    .avatar-container {{
+        position: relative;
+        width: 95px;
+        height: 95px;
+        margin: 0 auto 15px auto;
     }}
-    .zalo-avatar-wrapper img {{
-        width: 85px;
-        height: 85px;
+    .avatar-container img {{
+        width: 95px;
+        height: 95px;
         border-radius: 50% !important;
         object-fit: cover;
         border: 3px solid {st.session_state.primary_color};
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }}
+    .camera-badge {{
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        background-color: #e2e8f0;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-size: 14px;
     }}
 
     /* Thẻ thông tin nhân sự chuyên nghiệp */
@@ -179,28 +194,34 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN PHONG CÁCH ZALO -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN GIỐNG MẪU -----------------
 with st.sidebar:
     st.markdown("### 👤 Ảnh Đại Diện")
     
+    avatar_img_tag = ""
     if st.session_state.avatar_base64:
         try:
             pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
             pure_b64 += "=" * (-len(pure_b64) % 4)
             avatar_bytes = base64.b64decode(pure_b64)
             encoded_img = base64.b64encode(avatar_bytes).decode("utf-8")
-            st.markdown(f"""
-            <div class="zalo-avatar-wrapper">
-                <img src="data:image/png;base64,{encoded_img}" alt="Avatar">
-            </div>
-            """, unsafe_allow_html=True)
+            avatar_img_tag = f'<img src="data:image/png;base64,{encoded_img}" alt="Avatar">'
         except Exception:
-            st.info("Chưa có ảnh đại diện hợp lệ.")
-    else:
-        st.info("Chưa có ảnh đại diện.")
+            pass
+            
+    if not avatar_img_tag:
+        # Ảnh mặc định nếu chưa có
+        avatar_img_tag = f'<div style="width:95px;height:95px;border-radius:50%;background:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:32px;">👤</div>'
 
-    # Nút cập nhật/đổi ảnh đại diện trực tiếp ngay bên dưới ảnh
-    avatar_file = st.file_uploader("📷 Đổi ảnh đại diện", type=["png", "jpg", "jpeg"], key="avatar_uploader")
+    st.markdown(f"""
+    <div class="avatar-container">
+        {avatar_img_tag}
+        <div class="camera-badge">📷</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Nút tải ảnh lên để cập nhật
+    avatar_file = st.file_uploader("📷 Tải/Đổi ảnh đại diện mới", type=["png", "jpg", "jpeg"], key="avatar_uploader")
     if avatar_file is not None:
         avatar_bytes = avatar_file.getvalue()
         st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
@@ -604,7 +625,7 @@ elif menu == "5. Cài Đặt Giao Diện":
             if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
                 st.session_state.bg_image_base64 = None
                 save_data()
-                st.success("Đã xóa hình nền về mặc định!")
+                st.success("Đã xóa ảnh hình nền về mặc định!")
                 st.rerun()
 
     st.markdown("---")
