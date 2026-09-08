@@ -303,14 +303,23 @@ if menu == "1. Nhập Sản Lượng":
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
 
-            # Thư viện ảnh đính kèm an toàn, tối ưu mobile
-            has_image_rows = filtered_df[filtered_df["Hình Ảnh"].astype(str).str.strip() != ""]
-            if not has_image_rows.empty:
+            # Chỉ lọc và hiển thị các bản ghi có chuỗi hình ảnh hợp lệ
+            def is_valid_image(b64_val):
+                s = str(b64_val).strip()
+                return len(s) > 50  # Chuỗi base64 hợp lệ phải đủ dài
+
+            valid_image_rows = []
+            for idx, r in filtered_df.iterrows():
+                b64_str = str(r["Hình Ảnh"]).strip()
+                if is_valid_image(b64_str):
+                    valid_image_rows.append(r)
+
+            if valid_image_rows:
                 st.markdown("---")
-                st.subheader("🖼️ Thư Viện Ảnh Đính Kèm (Bấm vào nút bên dưới mỗi ảnh để xem toàn màn hình)")
+                st.subheader("🖼️ Thư Viện Ảnh Đính Kèm (Bấm vào nút dưới mỗi ảnh để xem toàn màn hình)")
                 
                 img_cols = st.columns(3)
-                for idx, r in has_image_rows.iterrows():
+                for idx, r in enumerate(valid_image_rows):
                     col_target = img_cols[idx % 3]
                     with col_target:
                         stt_v = r["STT"]
@@ -320,17 +329,16 @@ if menu == "1. Nhập Sản Lượng":
                         b64_str = str(r["Hình Ảnh"]).strip()
                         caption_str = f"STT {stt_v} - {ngay_v} - {ns_v} - {hm_v}"
                         
-                        if b64_str and b64_str != "":
-                            try:
-                                pure_b64 = b64_str.split(",")[1] if "," in b64_str else b64_str
-                                pure_b64 += "=" * (-len(pure_b64) % 4)
-                                img_bytes = base64.b64decode(pure_b64)
-                                
-                                st.image(img_bytes, caption=caption_str, use_column_width=True)
-                                if st.button(f"🔍 Xem Toàn Màn Hình (STT {stt_v})", key=f"zoom_btn_{stt_v}_{idx}", use_container_width=True):
-                                    show_image_dialog(b64_str, caption_str)
-                            except Exception:
-                                st.info(f"STT {stt_v}: Ảnh định dạng cũ / không hợp lệ")
+                        try:
+                            pure_b64 = b64_str.split(",")[1] if "," in b64_str else b64_str
+                            pure_b64 += "=" * (-len(pure_b64) % 4)
+                            img_bytes = base64.b64decode(pure_b64)
+                            
+                            st.image(img_bytes, caption=caption_str, use_column_width=True)
+                            if st.button(f"🔍 Xem Toàn Màn Hình (STT {stt_v})", key=f"zoom_btn_{stt_v}_{idx}", use_container_width=True):
+                                show_image_dialog(b64_str, caption_str)
+                        except Exception:
+                            pass
         else:
             st.info("Không tìm thấy bản ghi nào khớp với bộ lọc.")
     else:
