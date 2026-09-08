@@ -5,8 +5,12 @@ import datetime
 import matplotlib.pyplot as plt
 import io
 import base64
+import json
+import os
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
+
+STORAGE_FILE = "app_storage.json"
 
 master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
@@ -27,50 +31,92 @@ master_rules = [
     {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
 ]
 
+default_input_data = [
+    {
+        "STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", 
+        "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "Không có", 
+        "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"
+    },
+    {
+        "STT": 2, "Ngày": str(datetime.date.today()), "Nhân Sự": "Bảo", 
+        "Hạng Mục Công Việc": "Lấy đế có sẵn", "Hình Ảnh": "Không có", 
+        "Đơn Vị": "Cái", "Số Lượng": 300, "Hệ Số Điểm": 0.5, "Tổng Điểm": 150.0, "Ghi Chú": "Cấp đế"
+    },
+    {
+        "STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", 
+        "Hạng Mục Công Việc": "Giao hàng shiper", "Hình Ảnh": "Không có", 
+        "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"
+    }
+]
+
+# Load data from storage file if exists
+def load_data():
+    if os.path.exists(STORAGE_FILE):
+        try:
+            with open(STORAGE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data
+        except:
+            pass
+    return {}
+
+def save_data():
+    data = {
+        "rules_df": st.session_state.rules_df.to_dict(orient="records"),
+        "input_df": st.session_state.input_df.to_dict(orient="records"),
+        "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records"),
+        "primary_color": st.session_state.primary_color,
+        "bg_color": st.session_state.bg_color,
+        "sidebar_bg": st.session_state.sidebar_bg,
+        "text_color": st.session_state.text_color,
+        "bg_image_base64": st.session_state.bg_image_base64,
+        "current_menu": st.session_state.current_menu
+    }
+    with open(STORAGE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, default=str)
+
+saved_data = load_data()
+
 if "rules_df" not in st.session_state:
-    st.session_state.rules_df = pd.DataFrame(master_rules)
+    if "rules_df" in saved_data and saved_data["rules_df"]:
+        st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
+    else:
+        st.session_state.rules_df = pd.DataFrame(master_rules)
 
 if "input_df" not in st.session_state:
-    st.session_state.input_df = pd.DataFrame([
-        {
-            "STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", 
-            "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "Không có", 
-            "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"
-        },
-        {
-            "STT": 2, "Ngày": str(datetime.date.today()), "Nhân Sự": "Bảo", 
-            "Hạng Mục Công Việc": "Lấy đế có sẵn", "Hình Ảnh": "Không có", 
-            "Đơn Vị": "Cái", "Số Lượng": 300, "Hệ Số Điểm": 0.5, "Tổng Điểm": 150.0, "Ghi Chú": "Cấp đế"
-        },
-        {
-            "STT": 3, "Ngày": str(datetime.date.today()), "Nhân Sự": "Tiến", 
-            "Hạng Mục Công Việc": "Giao hàng shiper", "Hình Ảnh": "Không có", 
-            "Đơn Vị": "Cái", "Số Lượng": 398, "Hệ Số Điểm": 1.0, "Tổng Điểm": 398.0, "Ghi Chú": "Giao đơn"
-        }
-    ])
+    if "input_df" in saved_data and saved_data["input_df"]:
+        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
+    else:
+        st.session_state.input_df = pd.DataFrame(default_input_data)
 
 if "deleted_input_df" not in st.session_state:
-    st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+    if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
+        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
+    else:
+        st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-# Initialize theme settings in session state
 if "primary_color" not in st.session_state:
-    st.session_state.primary_color = "#ff4b4b"
+    st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
 if "bg_color" not in st.session_state:
-    st.session_state.bg_color = "#ffffff"
+    st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
 if "sidebar_bg" not in st.session_state:
-    st.session_state.sidebar_bg = "#f0f2f6"
+    st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
 if "text_color" not in st.session_state:
-    st.session_state.text_color = "#31333F"
+    st.session_state.text_color = saved_data.get("text_color", "#31333F")
 if "bg_image_base64" not in st.session_state:
-    st.session_state.bg_image_base64 = None
+    st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 if "current_menu" not in st.session_state:
-    st.session_state.current_menu = "1. Nhập Sản Lượng"
+    st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
-# Ensure STT is always sequential in DataFrames
+# Ensure STT is always sequential
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
 if not st.session_state.rules_df.empty:
     st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+if not st.session_state.deleted_input_df.empty:
+    st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+
+save_data()
 
 # Build background style dynamically
 bg_style = f"background-color: {st.session_state.bg_color};"
@@ -100,27 +146,30 @@ st.markdown(f"""
 
 st.sidebar.markdown("### 📂 Chọn Chức Năng")
 
-# Expander for items 1 to 4
 with st.sidebar.expander("📌 Các Mục Quản Lý (1 - 4)", expanded=True):
     if st.button("1. Nhập Sản Lượng", use_container_width=True):
         st.session_state.current_menu = "1. Nhập Sản Lượng"
+        save_data()
         st.rerun()
     if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
         st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
+        save_data()
         st.rerun()
     if st.button("3. Quản Lý Định Mức Điểm", use_container_width=True):
         st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
+        save_data()
         st.rerun()
     if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
         st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
+        save_data()
         st.rerun()
 
 st.sidebar.markdown("---")
 
-# Expander for System / Cài đặt giao diện under "⚙️ Hệ Thống"
 with st.sidebar.expander("⚙️ Hệ Thống", expanded=True):
     if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
         st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+        save_data()
         st.rerun()
 
 menu = st.session_state.current_menu
@@ -174,6 +223,7 @@ if menu == "1. Nhập Sản Lượng":
             }
             st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
             st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+            save_data()
             st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
 
     st.markdown("---")
@@ -221,6 +271,7 @@ if menu == "1. Nhập Sản Lượng":
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     if not st.session_state.deleted_input_df.empty:
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                    save_data()
                     st.success(f"Đã chuyển dòng số {del_idx} vào thùng rác!")
                     st.rerun()
                 else:
@@ -301,6 +352,7 @@ elif menu == "3. Quản Lý Định Mức Điểm":
                     restored_df = pd.DataFrame(items_to_add)
                     st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
                     st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+                    save_data()
                     st.success(f"Đã khôi phục thành công các mục: {', '.join(selected_to_restore)}!")
                     st.rerun()
                 else:
@@ -309,12 +361,14 @@ elif menu == "3. Quản Lý Định Mức Điểm":
             if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
                 st.session_state.rules_df = pd.DataFrame(master_rules)
                 st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+                save_data()
                 st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
                 st.rerun()
     else:
         if st.button("🔄 Khôi Phục Toàn Bộ Danh Mục Mặc Định"):
             st.session_state.rules_df = pd.DataFrame(master_rules)
             st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+            save_data()
             st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
             st.rerun()
 
@@ -332,6 +386,7 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     if not edited_rules.equals(st.session_state.rules_df):
         edited_rules["STT"] = range(1, len(edited_rules) + 1)
         st.session_state.rules_df = edited_rules
+        save_data()
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
         st.rerun()
 
@@ -371,6 +426,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                         st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    save_data()
                     st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
                     st.rerun()
                 else:
@@ -378,7 +434,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
 
         with col_act2:
             if st.button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn"):
-                selected_rows = edited_trash[edited_trash["Chọn"] == Type(False) if 'Type' in globals() else edited_trash["Chọn"] == True]
+                selected_rows = edited_trash[edited_trash["Chọn"] == True]
                 if not selected_rows.empty:
                     selected_rows = selected_rows.drop(columns=["Chọn"])
                     stt_to_remove = selected_rows["STT"].tolist()
@@ -387,6 +443,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     if not st.session_state.deleted_input_df.empty:
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
+                    save_data()
                     st.success("Đã xóa vĩnh viễn các dòng đã chọn khỏi thùng rác!")
                     st.rerun()
                 else:
@@ -395,6 +452,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
         st.markdown("---")
         if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác"):
             st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+            save_data()
             st.success("Đã dọn sạch toàn bộ thùng rác!")
             st.rerun()
     else:
@@ -421,15 +479,18 @@ elif menu == "5. Cài Đặt Giao Diện":
         if bg_file is not None:
             bytes_data = bg_file.getvalue()
             st.session_state.bg_image_base64 = base64.b64encode(bytes_data).decode()
+            save_data()
             st.success("Đã tải ảnh hình nền thành công!")
     with col_b2:
         if st.session_state.bg_image_base64 is not None:
             if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
                 st.session_state.bg_image_base64 = None
+                save_data()
                 st.success("Đã xóa hình nền về mặc định!")
                 st.rerun()
 
     st.markdown("---")
     if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
+        save_data()
         st.success("Đã lưu và cập nhật giao diện thành công!")
         st.rerun()
