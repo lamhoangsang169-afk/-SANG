@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh chỉnh giao diện, bo tròn ảnh đại diện và tối ưu responsive
+# CSS tinh chỉnh phong cách Zalo cho ảnh đại diện (bo tròn, căn giữa)
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,6 +135,22 @@ st.markdown(f"""
         color: #111111 !important;
     }}
     
+    /* Phong cách Avatar Zalo (bo tròn hình tròn hoàn hảo) */
+    .zalo-avatar-wrapper {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 15px;
+    }}
+    .zalo-avatar-wrapper img {{
+        width: 85px;
+        height: 85px;
+        border-radius: 50% !important;
+        object-fit: cover;
+        border: 3px solid {st.session_state.primary_color};
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }}
+
     /* Thẻ thông tin nhân sự chuyên nghiệp */
     .staff-badge-container {{
         background-color: rgba(0, 0, 0, 0.03);
@@ -163,27 +179,33 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN -----------------
+# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN PHONG CÁCH ZALO -----------------
 with st.sidebar:
     st.markdown("### 👤 Ảnh Đại Diện")
+    
     if st.session_state.avatar_base64:
         try:
             pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
             pure_b64 += "=" * (-len(pure_b64) % 4)
             avatar_bytes = base64.b64decode(pure_b64)
-            st.image(avatar_bytes, use_column_width=True)
+            encoded_img = base64.b64encode(avatar_bytes).decode("utf-8")
+            st.markdown(f"""
+            <div class="zalo-avatar-wrapper">
+                <img src="data:image/png;base64,{encoded_img}" alt="Avatar">
+            </div>
+            """, unsafe_allow_html=True)
         except Exception:
             st.info("Chưa có ảnh đại diện hợp lệ.")
     else:
-        st.info("Chưa có ảnh đại diện. Hãy tải ảnh lên bên dưới.")
+        st.info("Chưa có ảnh đại diện.")
 
-    with st.expander("⚙️ Đổi Ảnh Đại Diện"):
-        avatar_file = st.file_uploader("Chọn ảnh mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="avatar_uploader")
+    with st.expander("⚙️ 🌐 Đổi Ảnh Đại Diện"):
+        avatar_file = st.file_uploader("Tải ảnh đại diện mới", type=["png", "jpg", "jpeg"], key="avatar_uploader")
         if avatar_file is not None:
             avatar_bytes = avatar_file.getvalue()
             st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
             save_data()
-            st.success("Đã cập nhật ảnh đại diện mới thành công!")
+            st.success("Đã cập nhật ảnh đại diện thành công!")
             st.rerun()
         if st.session_state.avatar_base64:
             if st.button("🗑️ Xóa Ảnh Đại Diện"):
