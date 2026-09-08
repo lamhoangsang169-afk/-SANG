@@ -111,34 +111,43 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS định vị cố định khu vực avatar ở đỉnh thanh bên
+# CSS xử lý cố định vùng avatar và cho phép phần menu cuộn độc lập bên dưới
 st.markdown(f"""
 <style>
     .stApp {{
         {bg_style}
         color: {st.session_state.text_color};
     }}
+    
+    /* Cấu trúc lại thanh sidebar thành không cuộn toàn trang mà cuộn phần thân */
     [data-testid="stSidebar"] {{
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
-        overflow: hidden !important;
+        overflow: hidden !important; /* Khóa cuộn chung của sidebar */
     }}
     
-    /* Vùng chứa cuộn nội dung bên trong sidebar đặt ở dưới avatar */
-    [data-testid="stSidebar"] > div:nth-child(1) > div:nth-child(2) {{
-        overflow-y: auto !important;
-        height: 100vh !important;
-        padding-bottom: 100px;
+    /* Vùng chứa nội dung bên trong sidebar */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }}
 
-    /* Cố định khối đầu tiên chứa avatar ở trên cùng tuyệt đối */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:first-child {{
-        position: sticky !important;
-        top: 0px !important;
-        background-color: {st.session_state.sidebar_bg} !important;
-        z-index: 9999 !important;
-        padding-top: 15px !important;
-        padding-bottom: 10px !important;
+    /* Khối đầu chứa Avatar và đường gạch ngang (Đứng yên tuyệt đối) */
+    .sidebar-fixed-avatar-section {{
+        flex-shrink: 0;
+        background-color: {st.session_state.sidebar_bg};
+        padding-top: 10px;
+        z-index: 99;
+    }}
+
+    /* Khối sau chứa Chức năng hệ thống (Có thanh trượt cuộn độc lập) */
+    .sidebar-scrollable-menu-section {{
+        flex-grow: 1;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        padding-bottom: 80px;
     }}
 
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
@@ -147,6 +156,7 @@ st.markdown(f"""
     h1 {{
         color: {st.session_state.primary_color} !important;
     }}
+    
     /* Làm đậm chữ trong bảng rõ ràng */
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] * {{
         font-weight: 600 !important;
@@ -219,7 +229,9 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) -----------------
 with st.sidebar:
-    # 1. Cụm hình đại diện cố định ở trên cùng
+    # PHẦN 1: Cố định hình đại diện và đường gạch ngang ở trên
+    st.markdown('<div class="sidebar-fixed-avatar-section">', unsafe_allow_html=True)
+    
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -273,10 +285,13 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 2. Thanh gạch ngang ngăn cách
+    # Đường gạch ngang cố định ngay dưới avatar
     st.markdown("---")
+    st.markdown('</div>', unsafe_allow_html=True) # Kết thúc phần cố định
 
-    # 3. Các chức năng hệ thống bên dưới thanh gạch ngang
+    # PHẦN 2: Khu vực chức năng hệ thống có thanh trượt cuộn độc lập bên dưới
+    st.markdown('<div class="sidebar-scrollable-menu-section">', unsafe_allow_html=True)
+    
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
     with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
@@ -304,6 +319,8 @@ with st.sidebar:
             st.session_state.current_menu = "5. Cài Đặt Giao Diện"
             save_data()
             st.rerun()
+            
+    st.markdown('</div>', unsafe_allow_html=True) # Kết thúc phần cuộn
 
 menu = st.session_state.current_menu
 
