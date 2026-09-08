@@ -30,14 +30,6 @@ master_rules = [
     {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
 ]
 
-default_input_data = [
-    {
-        "STT": 1, "Ngày": str(datetime.date.today()), "Nhân Sự": "Đức", 
-        "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Hình Ảnh": "", 
-        "Đơn Vị": "Cái", "Số Lượng": 200, "Hệ Số Điểm": 0.5, "Tổng Điểm": 100.0, "Ghi Chú": "Ca sáng"
-    }
-]
-
 default_staff_list = ["Đức", "Bảo", "Tiến"]
 
 def load_data():
@@ -75,10 +67,11 @@ if "rules_df" not in st.session_state:
         st.session_state.rules_df = pd.DataFrame(master_rules)
 
 if "input_df" not in st.session_state:
-    if "input_df" in saved_data and saved_data["input_df"]:
+    if "input_df" in saved_data:
         st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
     else:
-        st.session_state.input_df = pd.DataFrame(default_input_data)
+        # Khởi tạo danh sách trống, không ép buộc dòng mẫu cứng để tránh hiện lại dữ liệu đã xóa
+        st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
 if "deleted_input_df" not in st.session_state:
     if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
@@ -306,7 +299,7 @@ if menu == "1. Nhập Sản Lượng":
             # Chỉ lọc và hiển thị các bản ghi có chuỗi hình ảnh hợp lệ
             def is_valid_image(b64_val):
                 s = str(b64_val).strip()
-                return len(s) > 50  # Chuỗi base64 hợp lệ phải đủ dài
+                return len(s) > 50
 
             valid_image_rows = []
             for idx, r in filtered_df.iterrows():
