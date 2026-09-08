@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS định vị cố định phần tử đầu tiên của sidebar (Sticky Header tuyệt đối)
+# CSS định vị cố định phần trên cùng của sidebar
 st.markdown(f"""
 <style>
     .stApp {{
@@ -124,16 +124,14 @@ st.markdown(f"""
         overflow: auto !important;
     }}
     
-    /* Cố định khối đầu tiên trong sidebar (khu vực chứa avatar) */
+    /* Cố định khối đầu tiên chứa avatar ở trên thanh ngang */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:first-child {{
         position: sticky;
         top: 0px;
         background-color: {st.session_state.sidebar_bg};
         z-index: 999;
         padding-top: 10px;
-        padding-bottom: 10px;
-        margin-bottom: 10px;
-        border-bottom: 1px solid rgba(0,0,0,0.08);
+        padding-bottom: 5px;
     }}
 
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, label {{
@@ -212,8 +210,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN CỐ ĐỊNH -----------------
+# ----------------- THANH BÊN (SIDEBAR) -----------------
 with st.sidebar:
+    # 1. Cụm hình đại diện đặt ở trên cùng (trên thanh gạch ngang)
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -227,7 +226,6 @@ with st.sidebar:
 
     st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
     
-    # Khi bấm vào ảnh đại diện sẽ hiện popup xem ảnh to hơn
     if has_custom_avatar:
         with st.popover(" ", use_container_width=False):
             st.markdown("##### 🔍 Xem Ảnh Đại Diện")
@@ -268,6 +266,10 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # 2. Thanh gạch ngang ngăn cách phía dưới avatar
+    st.markdown("---")
+
+    # 3. Các chức năng hệ thống tiếp theo bên dưới
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
     with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
