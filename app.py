@@ -170,9 +170,23 @@ st.title("🏭 HỆ THỐNG QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 staff_str = ", ".join(st.session_state.staff_list)
 st.markdown(f"### Dành cho nhân sự: **{staff_str}**")
 
+# Định nghĩa hàm dialog hiển thị ảnh ở giữa màn hình
+@st.dialog("🖼️ Xem Ảnh Phóng To Chi Tiết", width="large")
+def show_image_dialog(b64_str, caption_text):
+    st.markdown(f"**{caption_text}**")
+    try:
+        if "," in b64_str:
+            b64_str = b64_str.split(",")[1]
+        img_bytes = base64.b64decode(b64_str)
+        # Cho phép người dùng tùy chọn độ rộng hiển thị trực tiếp để phóng to/thu nhỏ
+        img_width = st.slider("🔍 Kéo để phóng to / thu nhỏ ảnh:", min_value=300, max_value=1200, value=700, step=50)
+        st.image(img_bytes, width=img_width)
+    except Exception as ex:
+        st.error(f"Không thể giải mã hình ảnh: {ex}")
+
 if menu == "1. Nhập Sản Lượng":
     st.header("📝 Nhập Sản Lượng Hàng Ngày & Đính Kèm Ảnh")
-    st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới. Ảnh sẽ hiển thị trực tiếp để xem ngay.")
+    st.info("💡 Mẹo: Bạn có thể **chụp ảnh trực tiếp từ camera điện thoại** hoặc **tải/kéo thả** file ảnh bên dưới.")
     
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
@@ -255,6 +269,22 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
+            # Thêm nút bấm nhanh mở popup xem ảnh ở giữa màn hình
+            has_image_rows = filtered_df[filtered_df["Hình Ảnh"].astype(str).str.strip() != ""]
+            if not has_image_rows.empty:
+                st.markdown("##### 🔍 Chọn bản ghi để mở cửa sổ xem ảnh lớn ở giữa màn hình:")
+                img_options = []
+                img_dict = {}
+                for idx, r in has_image_rows.iterrows():
+                    lbl = f"STT {r['STT']} - Ngày: {r['Ngày']} - {r['Nhân Sự']} - {r['Hạng Mục Công Việc']}"
+                    img_options.append(lbl)
+                    img_dict[lbl] = r["Hình Ảnh"]
+                
+                sel_lbl = st.selectbox("Danh sách ảnh đính kèm:", img_options, label_visibility="collapsed")
+                if st.button("🔍 Mở Ảnh Phóng To (Giữa Màn Hình)"):
+                    if sel_lbl and sel_lbl in img_dict:
+                        show_image_dialog(img_dict[sel_lbl], sel_lbl)
+
             display_df = filtered_df.copy()
             display_df.insert(0, "Chọn", False)
             
