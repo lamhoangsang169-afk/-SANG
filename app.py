@@ -17,7 +17,7 @@ master_rules = [
     {"STT": 5, "Hạng Mục Công Việc": "Lấy phụ kiện có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 6, "Hạng Mục Công Việc": "Lấy phụ kiện mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 7, "Hạng Mục Công Việc": "Lấy mặt có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 8, "Hạng Mục Công Việc": "Lấy mặt mới", "Đơn Vิ": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kho / Vận hành"},
+    {"STT": 8, "Hạng Mục Công Việc": "Lấy mặt mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kho / Vận hành"},
     {"STT": 9, "Hạng Mục Công Việc": "Vệ sinh + kiểm tra ,+ cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.5, "Ghi Chú": "Kiểm tra chất lượng"},
     {"STT": 10, "Hạng Mục Công Việc": "Kiểm tra BTP + cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
     {"STT": 11, "Hạng Mục Công Việc": "Kiểm tra hộp + cất hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
@@ -117,7 +117,7 @@ if menu == "1. Nhập Sản Lượng":
             st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
 
     st.markdown("---")
-    st.subheader("🔍 Bộ Lọc Dữ Liệu & Danh Sách Sản Lượng")
+    st.subheader("🔍 Bộ Lọc Dữ Liệu & Tùy Chọn Cột Hiển Thị")
     
     # Filter controls
     if not st.session_state.input_df.empty:
@@ -132,6 +132,10 @@ if menu == "1. Nhập Sản Lượng":
             all_tasks = ["Tất cả"] + sorted(st.session_state.input_df["Hạng Mục Công Việc"].unique().tolist())
             filter_task = st.selectbox("🛠️ Lọc theo Hạng Mục Công Việc", all_tasks)
             
+        # Column selector (drop/select columns)
+        all_cols = st.session_state.input_df.columns.tolist()
+        selected_cols = st.multiselect("👁️ Chọn các cột muốn hiển thị trên bảng:", all_cols, default=all_cols)
+            
         # Apply filters
         filtered_df = st.session_state.input_df.copy()
         if filter_date != "Tất cả":
@@ -141,7 +145,11 @@ if menu == "1. Nhập Sản Lượng":
         if filter_task != "Tất cả":
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
-        st.dataframe(filtered_df, use_container_width=True)
+        # Display with selected columns
+        if selected_cols:
+            st.dataframe(filtered_df[selected_cols], use_container_width=True)
+        else:
+            st.dataframe(filtered_df, use_container_width=True)
         
         del_idx = st.number_input("Nhập STT dòng muốn xóa (nếu cần)", min_value=0, max_value=len(st.session_state.input_df), value=0, step=1)
         if st.button("🗑️ Xóa dòng đã chọn"):
