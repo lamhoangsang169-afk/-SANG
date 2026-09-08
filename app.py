@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS cố định vị trí avatar (sticky header) trên sidebar
+# CSS định vị cố định phần tử đầu tiên của sidebar (Sticky Header tuyệt đối)
 st.markdown(f"""
 <style>
     .stApp {{
@@ -124,14 +124,15 @@ st.markdown(f"""
         overflow: auto !important;
     }}
     
-    /* Cố định phần chứa avatar ở đỉnh sidebar, không trôi khi cuộn */
-    .sticky-avatar-container {{
+    /* Cố định khối đầu tiên trong sidebar (khu vực chứa avatar) */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div:first-child {{
         position: sticky;
         top: 0px;
         background-color: {st.session_state.sidebar_bg};
         z-index: 999;
         padding-top: 10px;
         padding-bottom: 10px;
+        margin-bottom: 10px;
         border-bottom: 1px solid rgba(0,0,0,0.08);
     }}
 
@@ -213,8 +214,6 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) & ẢNH ĐẠI DIỆN CỐ ĐỊNH -----------------
 with st.sidebar:
-    st.markdown('<div class="sticky-avatar-container">', unsafe_allow_html=True)
-    
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -268,7 +267,6 @@ with st.sidebar:
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)  # Kết thúc sticky container
 
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
