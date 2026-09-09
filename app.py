@@ -353,7 +353,7 @@ if menu == "1. Nhập Sản Lượng":
         with col_note:
             ghi_chu = st.text_input("Ghi chú", "")
             
-        submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
+        submitted = st.form_submit_button(" Đã Hoàn Thành ", use_container_width=True)
         if submitted:
             row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
             he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
