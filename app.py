@@ -544,7 +544,7 @@ if menu == "1. Nhập Sản Lượng":
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh Thu Nhỏ")
+    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh Trực Tiếp")
     
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -570,6 +570,9 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
+            # THANH TRƯỢT TÙY CHỈNH KÍCH THƯỚC ẢNH CHUNG HOẶC RIÊNG CHO TỪNG DÒNG
+            zoom_level = st.slider("🔍 Thanh trượt phóng to / thu nhỏ ảnh toàn bộ danh sách:", min_value=60, max_value=350, value=90, step=10)
+            
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
                     c_check, c_info, c_img = st.columns([0.6, 7.4, 2])
@@ -594,10 +597,13 @@ if menu == "1. Nhập Sản Lượng":
                                 pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
-                                # Hiển thị ảnh thu nhỏ (90px) và tích hợp popover để bấm xem phóng to ngay lập tức
-                                st.image(img_bytes, width=90)
-                                with st.popover("🔍 Phóng to", use_container_width=True):
-                                    st.image(img_bytes, caption=f"Ảnh chi tiết (STT {row['STT']})", use_container_width=True)
+                                
+                                # Hiển thị ảnh theo kích thước tùy chỉnh từ thanh trượt
+                                st.image(img_bytes, width=zoom_level)
+                                
+                                # Hỗ trợ xem ảnh chi tiết lớn hơn bằng nút popover tích hợp sẵn ngay bên dưới ảnh
+                                with st.popover("🔎 Xem chi tiết", use_container_width=True):
+                                    st.image(img_bytes, caption=f"Ảnh phóng to bản ghi STT {row['STT']}", use_container_width=True)
                             except Exception:
                                 st.text("Lỗi ảnh")
                         else:
