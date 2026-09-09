@@ -328,6 +328,11 @@ with st.sidebar:
             st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
             save_data()
             st.rerun()
+        # [THÊM MỚI VỊ TRÍ 1]: Nút chuyển sang mục làm sạch dữ liệu
+        if st.button("6. Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
+            st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
+            save_data()
+            st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
@@ -914,4 +919,63 @@ elif menu == "5. Cài Đặt Giao Diện":
     if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
         save_data()
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
+        st.rerun()
+
+# [THÊM MỚI VỊ TRÍ 2]: Khối giao diện và logic chức năng làm sạch dữ liệu
+elif menu == "6. Làm Sạch Dữ Liệu":
+    st.header("Làm Sạch & Tối Ưu Dữ Liệu Ứng Dụng")
+    st.markdown("Xóa bớt các dữ liệu cũ không cần thiết để giảm dung lượng tệp lưu trữ `app_storage.json` và tăng tốc độ xử lý cho ứng dụng.")
+
+    file_size_kb = 0
+    if os.path.exists(STORAGE_FILE):
+        file_size_kb = os.path.getsize(STORAGE_FILE) / 1024
+
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        st.metric("📦 Tổng bản ghi sản lượng", len(st.session_state.input_df))
+    with col_s2:
+        st.metric("🗑️ Bản ghi trong thùng rác", len(st.session_state.deleted_input_df))
+    with col_s3:
+        st.metric("💾 Dung lượng tệp lưu trữ", f"{file_size_kb:.2f} KB")
+
+    st.markdown("---")
+    
+    st.subheader("1. Xóa Bớt Dữ Liệu Sản Lượng Cũ")
+    st.markdown("Chọn mốc thời gian để xóa toàn bộ các báo cáo sản lượng trước ngày đó (giúp loại bỏ ảnh và dữ liệu nặng lâu ngày).")
+    
+    with st.form("clean_by_date_form"):
+        clean_date = st.date_input("Xóa tất cả dữ liệu sản lượng trước ngày:")
+        confirm_text = st.text_input("Nhập chữ 'XAC NHAN' để mở khóa tính năng xóa:", "")
+        
+        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
+        if clean_btn:
+            if confirm_text == "XAC NHAN":
+                if not st.session_state.input_df.empty:
+                    st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
+                    target_dt = pd.to_datetime(clean_date)
+                    
+                    keep_df = st.session_state.input_df[st.session_state.input_df["_dt"] >= target_dt].drop(columns=["_dt"])
+                    removed_count = len(st.session_state.input_df) - len(keep_df)
+                    
+                    st.session_state.input_df = keep_df
+                    if not st.session_state.input_df.empty:
+                        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                        
+                    save_data()
+                    st.success(f"Đã dọn dẹp thành công! Đã xóa {removed_count} bản ghi cũ trước ngày {clean_date}.")
+                    st.rerun()
+                else:
+                    st.info("Danh sách sản lượng hiện đang trống.")
+            else:
+                st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN' để thực hiện thao tác xóa dữ liệu.")
+
+    st.markdown("---")
+
+    st.subheader("2. Dọn Sạch Thùng Rác & Tối Ưu Hóa Tệp Lưu Trữ")
+    st.markdown("Thùng rác chứa các ảnh chụp cũ có dung lượng lớn. Dọn sạch thùng rác sẽ lập tức giảm đáng kể dung lượng file `app_storage.json`.")
+
+    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác & Giải Phóng Dung Lượng", use_container_width=True):
+        st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns if not st.session_state.input_df.empty else ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+        save_data()
+        st.success("Đã làm sạch hoàn toàn thùng rác và giải phóng bộ nhớ tệp thành công!")
         st.rerun()
