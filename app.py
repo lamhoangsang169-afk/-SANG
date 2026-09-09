@@ -316,27 +316,31 @@ with st.sidebar:
             st.session_state.current_menu = "1. Nhập Sản Lượng"
             save_data()
             st.rerun()
-        if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
-            st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
+        if st.button("2. Chấm Công Ca Làm Việc", use_container_width=True):
+            st.session_state.current_menu = "2. Chấm Công Ca Làm Việc"
             save_data()
             st.rerun()
-        if st.button("3. Quản Lý Định Mức", use_container_width=True):
-            st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
+        if st.button("3. Báo Cáo & Biểu Đồ", use_container_width=True):
+            st.session_state.current_menu = "3. Báo Cáo & Biểu Đồ Tổng Hợp"
             save_data()
             st.rerun()
-        if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
-            st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
+        if st.button("4. Quản Lý Định Mức", use_container_width=True):
+            st.session_state.current_menu = "4. Quản Lý Định Mức Điểm"
+            save_data()
+            st.rerun()
+        if st.button("5. Thùng Rác Sản Lượng", use_container_width=True):
+            st.session_state.current_menu = "5. Thùng Rác / Khôi Phục Sản Lượng"
             save_data()
             st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
     if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-        st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+        st.session_state.current_menu = "6. Cài Đặt Giao Diện"
         save_data()
         st.rerun()
     if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
-        st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
+        st.session_state.current_menu = "7. Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
 
@@ -357,82 +361,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# ==================== 1. NHẬP SẢN LƯỢNG ====================
 if menu == "1. Nhập Sản Lượng":
-    st.subheader("Chấm Công Ca Làm Việc (Múi giờ VN: GMT+7)")
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
     
-    with st.form("attendance_form"):
-        att_col1, att_col2, att_col3 = st.columns(3)
-        with att_col1:
-            att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
-        with att_col2:
-            att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
-        with att_col3:
-            att_note = st.text_input("Ghi chú ca", "", key="att_note")
-            
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca tự động)", use_container_width=True)
-        with col_btn2:
-            check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca tự động)", use_container_width=True)
-            
-        current_time_str = now_vn.strftime("%H:%M:%S")
-        
-        if check_in_clicked:
-            new_att_stt = len(st.session_state.attendance_df) + 1
-            new_att_row = {
-                "STT": new_att_stt,
-                "Ngày": str(att_date),
-                "Nhân Sự": att_staff,
-                "Giờ Vào Ca": current_time_str,
-                "Giờ Ra Ca": "Chưa kết thúc",
-                "Ghi Chú": att_note
-            }
-            st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-            save_data()
-            st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
-            st.rerun()
-            
-        if check_out_clicked:
-            if not st.session_state.attendance_df.empty:
-                mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
-                       (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
-                       (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
-                if mask.any():
-                    st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
-                    save_data()
-                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
-                    st.rerun()
-                else:
-                    new_att_stt = len(st.session_state.attendance_df) + 1
-                    new_att_row = {
-                        "STT": new_att_stt,
-                        "Ngày": str(att_date),
-                        "Nhân Sự": att_staff,
-                        "Giờ Vào Ca": "--",
-                        "Giờ Ra Ca": current_time_str,
-                        "Ghi Chú": att_note
-                    }
-                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-                    save_data()
-                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
-                    st.rerun()
-            else:
-                st.warning("Chưa có lịch sử chấm công vào ca nào để kết thúc!")
-
-    if not st.session_state.attendance_df.empty:
-        with st.expander("📋 Xem Lịch Sử Chấm Công", expanded=False):
-            st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    # --- ĐÃ DI CHUYỂN PHẦN HIỂN THỊ TRẠNG THÁI NHÂN SỰ LÊN TRƯỚC ---
     active_staff = []
     inactive_staff = []
-    
     if not st.session_state.attendance_df.empty:
         today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
         checked_in_set = set(today_att[today_att["Giờ Vào Ca"] != "--"]["Nhân Sự"].tolist())
@@ -456,12 +391,11 @@ if menu == "1. Nhập Sản Lượng":
         {status_html}
     </div>
     """, unsafe_allow_html=True)
-    # -------------------------------------------------------------
 
     st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
 
     if not active_staff:
-        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
+        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng vào mục **2. Chấm Công Ca Làm Việc** để thực hiện Check-in trước khi nhập sản lượng!")
     else:
         st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh.*")
         
@@ -624,7 +558,111 @@ if menu == "1. Nhập Sản Lượng":
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
-elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
+# ==================== 2. CHẤM CÔNG CA LÀM VIỆC ====================
+elif menu == "2. Chấm Công Ca Làm Việc":
+    st.header("Quản Lý Chấm Công Ca Làm Việc")
+    st.markdown("Thực hiện Check-in vào ca và Check-out kết thúc ca cho nhân sự theo múi giờ Việt Nam (GMT+7).")
+    
+    now_vn = datetime.datetime.now(VN_TIMEZONE)
+    today_str = str(now_vn.date())
+    
+    active_staff = []
+    inactive_staff = []
+    if not st.session_state.attendance_df.empty:
+        today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
+        checked_in_set = set(today_att[today_att["Giờ Vào Ca"] != "--"]["Nhân Sự"].tolist())
+    else:
+        checked_in_set = set()
+
+    for s in st.session_state.staff_list:
+        if s in checked_in_set:
+            active_staff.append(s)
+        else:
+            inactive_staff.append(s)
+
+    status_html = ""
+    for s in active_staff:
+        status_html += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
+    for s in inactive_staff:
+        status_html += f"🔴 <b>{s}</b> - Không hoạt động<br>"
+        
+    st.markdown(f"""
+    <div style="background: rgba(255,255,255,0.7); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
+        <h4 style="margin-top:0; margin-bottom:10px;">📌 Trạng Thái Nhân Sự Hôm Nay ({today_str})</h4>
+        {status_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.form("attendance_form"):
+        att_col1, att_col2, att_col3 = st.columns(3)
+        with att_col1:
+            att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
+        with att_col2:
+            att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
+        with att_col3:
+            att_note = st.text_input("Ghi chú ca", "", key="att_note")
+            
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca tự động)", use_container_width=True)
+        with col_btn2:
+            check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca tự động)", use_container_width=True)
+            
+        current_time_str = now_vn.strftime("%H:%M:%S")
+        
+        if check_in_clicked:
+            new_att_stt = len(st.session_state.attendance_df) + 1
+            new_att_row = {
+                "STT": new_att_stt,
+                "Ngày": str(att_date),
+                "Nhân Sự": att_staff,
+                "Giờ Vào Ca": current_time_str,
+                "Giờ Ra Ca": "Chưa kết thúc",
+                "Ghi Chú": att_note
+            }
+            st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+            save_data()
+            st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
+            st.rerun()
+            
+        if check_out_clicked:
+            if not st.session_state.attendance_df.empty:
+                mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
+                       (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
+                       (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
+                if mask.any():
+                    st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
+                    save_data()
+                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.rerun()
+                else:
+                    new_att_stt = len(st.session_state.attendance_df) + 1
+                    new_att_row = {
+                        "STT": new_att_stt,
+                        "Ngày": str(att_date),
+                        "Nhân Sự": att_staff,
+                        "Giờ Vào Ca": "--",
+                        "Giờ Ra Ca": current_time_str,
+                        "Ghi Chú": att_note
+                    }
+                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                    save_data()
+                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.rerun()
+            else:
+                st.warning("Chưa có lịch sử chấm công vào ca nào để kết thúc!")
+
+    st.markdown("---")
+    st.subheader("📋 Lịch Sử Chấm Công Chi Tiết")
+    if not st.session_state.attendance_df.empty:
+        st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Chưa có dữ liệu lịch sử chấm công.")
+
+# ==================== 3. BÁO CÁO & BIỂU ĐỒ ====================
+elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     st.header("Báo Cáo Tổng Hợp & Đánh Giá Thi Đua")
     
     if not st.session_state.input_df.empty:
@@ -676,7 +714,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.rerun()
 
         fig, ax = plt.subplots(figsize=(5, 5))
-        
         current_colors = st.session_state.chart_colors[:len(summary)]
         
         max_pts = summary["Tổng_Điểm"].max()
@@ -720,11 +757,11 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        
     else:
         st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
 
-elif menu == "3. Quản Lý Định Mức Điểm":
+# ==================== 4. QUẢN LÝ ĐỊNH MỨC ====================
+elif menu == "4. Quản Lý Định Mức Điểm":
     st.header("Quản Lý Danh Mục & Hệ Số Điểm")
     st.markdown("Chỉnh sửa trực tiếp tên công việc, hệ số điểm hoặc khôi phục các mục định mức.")
     
@@ -786,7 +823,8 @@ elif menu == "3. Quản Lý Định Mức Điểm":
             st.success("Đã lưu và cập nhật danh mục định mức điểm thành công!")
             st.rerun()
 
-elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
+# ==================== 5. THÙNG RÁC SẢN LƯỢNG ====================
+elif menu == "5. Thùng Rác / Khôi Phục Sản Lượng":
     st.header("Thùng Rác & Khôi Phục Bản Ghi")
     st.markdown("Quản lý các bản ghi sản lượng đã xóa. Có thể khôi phục hoặc xóa vĩnh viễn.")
     
@@ -804,7 +842,6 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
             )
             
             col_act1, col_act2 = st.columns(2)
-            
             with col_act1:
                 restore_btn = st.form_submit_button("📥 Khôi Phục Dòng Đã Chọn", use_container_width=True)
             with col_act2:
@@ -858,7 +895,8 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     else:
         st.info("Thùng rác hiện tại đang trống.")
 
-elif menu == "5. Cài Đặt Giao Diện":
+# ==================== 6. CÀI ĐẶT GIAO DIỆN ====================
+elif menu == "6. Cài Đặt Giao Diện":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
     st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và hình nền cho toàn bộ ứng dụng.")
     
@@ -922,7 +960,8 @@ elif menu == "5. Cài Đặt Giao Diện":
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
         st.rerun()
 
-elif menu == "6. Làm Sạch Dữ Liệu":
+# ==================== 7. LÀM SẠCH DỮ LIỆU ====================
+elif menu == "7. Làm Sạch Dữ Liệu":
     st.header("Làm Sạch & Tối Ưu Dữ Liệu Ứng Dụng")
     st.markdown("Xóa bớt các dữ liệu cũ không cần thiết để giảm dung lượng tệp lưu trữ `app_storage.json` và tăng tốc độ xử lý cho ứng dụng.")
 
