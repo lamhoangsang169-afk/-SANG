@@ -38,7 +38,7 @@ def load_data():
             with open(STORAGE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return data
-        except:
+        except Exception:
             pass
     return {}
 
@@ -57,8 +57,11 @@ def save_data():
         "avatar_base64": st.session_state.avatar_base64,
         "current_menu": st.session_state.current_menu
     }
-    with open(STORAGE_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, default=str)
+    try:
+        with open(STORAGE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, default=str)
+    except Exception:
+        pass
 
 saved_data = load_data()
 
@@ -113,7 +116,6 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
 
-# Hàm chuyển màu HEX sang RGBA để áp dụng độ trong suốt cho sidebar
 def hex_to_rgba(hex_str, opacity):
     hex_str = hex_str.lstrip('#')
     if len(hex_str) == 3:
@@ -148,7 +150,6 @@ st.markdown(f"""
         color: {st.session_state.primary_color} !important;
     }}
 
-    /* Thanh sidebar tuân theo màu và độ trong suốt riêng biệt */
     [data-testid="stSidebar"] {{
         background-color: {sidebar_rgba} !important;
         backdrop-filter: blur(8px);
@@ -648,7 +649,6 @@ elif menu == "5. Cài Đặt Giao Diện":
         st.session_state.sidebar_bg = st.color_picker("Màu nền thanh bên", st.session_state.sidebar_bg)
         st.session_state.text_color = st.color_picker("Màu chữ", st.session_state.text_color)
         
-    # Thêm thanh trượt tùy chỉnh độ trong suốt của Sidebar để nhìn thấu ảnh nền
     st.session_state.sidebar_opacity = st.slider(
         "Độ trong suốt của thanh Sidebar (0.0 = trong suốt hoàn toàn thấy ảnh nền, 1.0 = đặc màu)", 
         min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05
