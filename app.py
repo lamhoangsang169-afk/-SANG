@@ -128,16 +128,17 @@ def sync_from_storage():
 
 sync_from_storage()
 
+# Đồng bộ thời gian thực liên tục từ file lưu trữ hệ thống
+saved_fresh_data = load_data()
+if "input_df" in saved_fresh_data:
+    st.session_state.input_df = pd.DataFrame(saved_fresh_data["input_df"])
+if "attendance_df" in saved_fresh_data:
+    st.session_state.attendance_df = pd.DataFrame(saved_fresh_data["attendance_df"])
+
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
 if not st.session_state.attendance_df.empty:
     st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-if not st.session_state.rules_df.empty:
-    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-if not st.session_state.deleted_input_df.empty:
-    st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-
-save_data()
 
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
@@ -570,8 +571,8 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # THANH TRƯỢT TÙY CHỈNH KÍCH THƯỚC ẢNH CHUNG HOẶC RIÊNG CHO TỪNG DÒNG
-            zoom_level = st.slider("🔍 Thanh trượt phóng to / thu nhỏ ảnh toàn bộ danh sách:", min_value=60, max_value=350, value=90, step=10)
+            # THANH TRƯỢT TÙY CHỈNH PHÓNG TO / THU NHỎ ẢNH THỜI GIAN THỰC
+            zoom_level = st.slider("🔍 Thanh trượt phóng to / thu nhỏ ảnh toàn bộ danh sách:", min_value=60, max_value=400, value=90, step=10)
             
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
@@ -598,12 +599,12 @@ if menu == "1. Nhập Sản Lượng":
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
                                 
-                                # Hiển thị ảnh theo kích thước tùy chỉnh từ thanh trượt
+                                # Chèn ảnh với kích thước tùy chỉnh từ thanh trượt real-time
                                 st.image(img_bytes, width=zoom_level)
                                 
-                                # Hỗ trợ xem ảnh chi tiết lớn hơn bằng nút popover tích hợp sẵn ngay bên dưới ảnh
+                                # Hỗ trợ xem chi tiết lớn hơn nhanh chóng bằng popup tích hợp ngay cạnh
                                 with st.popover("🔎 Xem chi tiết", use_container_width=True):
-                                    st.image(img_bytes, caption=f"Ảnh phóng to bản ghi STT {row['STT']}", use_container_width=True)
+                                    st.image(img_bytes, caption=f"Ảnh chi tiết bản ghi STT {row['STT']}", use_container_width=True)
                             except Exception:
                                 st.text("Lỗi ảnh")
                         else:
