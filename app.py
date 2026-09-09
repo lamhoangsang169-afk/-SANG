@@ -95,7 +95,7 @@ saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 st.session_state.input_df = pd.DataFrame(saved_data["input_df"]) if "input_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
-st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
+st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
 st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"]) if "deleted_input_df" in saved_data else pd.DataFrame(columns=st.session_state.input_df.columns)
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
@@ -391,7 +391,7 @@ if menu == "1. Nhập Sản Lượng":
     inactive_staff = []
     if not st.session_state.attendance_df.empty:
         today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
-        checked_in_set = set(today_att[today_att["Giờ Vào Ca"] != "--"]["Nhân Sự"].tolist())
+        checked_in_set = set(today_att[today_att["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
     else:
         checked_in_set = set()
 
@@ -416,7 +416,7 @@ if menu == "1. Nhập Sản Lượng":
     st.subheader(f"Nhập Sản Lượng Hàng Ngày ({today_str})")
 
     if not active_staff:
-        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng bấm vào nút **Chấm Công Ca Làm Việc** ở thanh bên trái để thực hiện Check-in trước khi nhập sản lượng!")
+        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng bấm vào nút **Chấm Công Ca Làm Việc** ở thanh bên trái để thực hiện Check-in trước khi nhập sản lượng!")
     else:
         st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
         
@@ -550,7 +550,7 @@ if menu == "1. Nhập Sản Lượng":
 # ==================== 2. CHẤM CÔNG CA LÀM VIỆC ====================
 elif menu == "2. Chấm Công Ca Làm Việc":
     st.header("Quản Lý Chấm Công Ca Làm Việc")
-    st.markdown("Thực hiện Check-in và Check-out theo múi giờ Việt Nam (GMT+7).")
+    st.markdown("Thực hiện Check-in và Check-out theo múi giờ Việt Nam (GMT+7). Hệ thống sẽ tự động tính số phút làm việc từ lúc Check-in đến khi Check-out.")
     
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
@@ -559,7 +559,7 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     inactive_staff = []
     if not st.session_state.attendance_df.empty:
         today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
-        checked_in_set = set(today_att[today_att["Giờ Vào Ca"] != "--"]["Nhân Sự"].tolist())
+        checked_in_set = set(today_att[today_att["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
     else:
         checked_in_set = set()
 
@@ -593,20 +593,33 @@ elif menu == "2. Chấm Công Ca Làm Việc":
         current_time_str = now_vn.strftime("%H:%M:%S")
         
         if check_in_clicked:
-            new_att_stt = len(st.session_state.attendance_df) + 1
-            new_att_row = {
-                "STT": new_att_stt,
-                "Ngày": str(att_date),
-                "Nhân Sự": att_staff,
-                "Giờ Vào Ca": current_time_str,
-                "Giờ Ra Ca": "Chưa kết thúc",
-                "Ghi Chú": att_note
-            }
-            st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-            save_data()
-            st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
-            st.rerun()
+            # Kiểm tra xem nhân sự này đã check-in mà chưa check-out chưa
+            already_active = False
+            if not st.session_state.attendance_df.empty:
+                active_check = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
+                               (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
+                               (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
+                if active_check.any():
+                    already_active = True
+
+            if already_active:
+                st.warning(f"⚠️ Nhân sự **{att_staff}** đang trong ca làm việc, không thể Check-in lại khi chưa Check-out!")
+            else:
+                new_att_stt = len(st.session_state.attendance_df) + 1
+                new_att_row = {
+                    "STT": new_att_stt,
+                    "Ngày": str(att_date),
+                    "Nhân Sự": att_staff,
+                    "Giờ Vào Ca": current_time_str,
+                    "Giờ Ra Ca": "Chưa kết thúc",
+                    "Số Phút Làm Việc": 0,
+                    "Ghi Chú": att_note
+                }
+                st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+                st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                save_data()
+                st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
+                st.rerun()
             
         if check_out_clicked:
             if not st.session_state.attendance_df.empty:
@@ -614,30 +627,32 @@ elif menu == "2. Chấm Công Ca Làm Việc":
                        (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
                        (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
                 if mask.any():
+                    in_time_str = st.session_state.attendance_df.loc[mask, "Giờ Vào Ca"].values[0]
+                    try:
+                        t_in = datetime.datetime.strptime(in_time_str, "%H:%M:%S")
+                        t_out = datetime.datetime.strptime(current_time_str, "%H:%M:%S")
+                        diff_minutes = int((t_out - t_in).total_seconds() / 60)
+                        if diff_minutes < 0:
+                            diff_minutes = 0
+                    except Exception:
+                        diff_minutes = 0
+
                     st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
+                    st.session_state.attendance_df.loc[mask, "Số Phút Làm Việc"] = diff_minutes
+                    if att_note:
+                        old_note = st.session_state.attendance_df.loc[mask, "Ghi Chú"].values[0]
+                        st.session_state.attendance_df.loc[mask, "Ghi Chú"] = f"{old_note} | {att_note}".strip(" | ")
+                        
                     save_data()
-                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}. Tổng thời gian làm việc: **{diff_minutes} phút**!")
                     st.rerun()
                 else:
-                    new_att_stt = len(st.session_state.attendance_df) + 1
-                    new_att_row = {
-                        "STT": new_att_stt,
-                        "Ngày": str(att_date),
-                        "Nhân Sự": att_staff,
-                        "Giờ Vào Ca": "--",
-                        "Giờ Ra Ca": current_time_str,
-                        "Ghi Chú": att_note
-                    }
-                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-                    save_data()
-                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
-                    st.rerun()
+                    st.warning(f"⚠️ Nhân sự **{att_staff}** chưa được Check-in trong ngày hôm nay để có thể Check-out!")
             else:
-                st.warning("Chưa có lịch sử chấm công vào ca nào để kết thúc!")
+                st.warning("Chưa có lịch sử chấm công nào trong hệ thống!")
 
     st.markdown("---")
-    st.subheader("📋 Lịch Sử Chấm Công")
+    st.subheader("📋 Lịch Sử Chấm Công & Số Phút Làm Việc")
     if not st.session_state.attendance_df.empty:
         st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
     else:
@@ -897,7 +912,6 @@ elif menu == "6. Cài Đặt Giao Diện":
     st.markdown("---")
     st.subheader("🖼️ Quản Lý Hình Nền (Tải lên / Xóa / Tắt nền)")
 
-    # Nút bật/tắt nhanh hình nền hiện tại nếu đang có ảnh nền
     if st.session_state.bg_image_base64:
         col_b_off, col_b_del = st.columns(2)
         with col_b_off:
