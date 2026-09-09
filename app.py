@@ -142,12 +142,16 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    p, span, label, div, h2, h3, h4, h5, h6, 
+    p, span, label, div, h1, h2, h3, h4, h5, h6, 
     .stMarkdown, [data-testid="stMarkdownContainer"] *,
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
     [data-testid="stWidgetLabel"] *, .streamlit-expanderHeader *,
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] *, [data-testid="stTable"] *,
-    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput * {{
+    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput *,
+    table, th, td, tr, [class*="css-"], 
+    div[data-baseweb="select"] *, span[title], 
+    div[data-testid="stDataFrame"] div, div[data-testid="stDataEditor"] div,
+    canvas {{
         color: {st.session_state.text_color} !important;
     }}
     
@@ -407,30 +411,32 @@ if menu == "1. Nhập Sản Lượng":
             cols_order = ["Chọn", "STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
             display_df = display_df[[c for c in cols_order if c in display_df.columns]]
 
-            edited_table = st.data_editor(
-                display_df,
-                hide_index=True,
-                use_container_width=True,
-                key="input_editor_delete"
-            )
-            
-            if st.button("🗑️ Xóa Các Dòng Đã Tích Chọn"):
-                selected_rows = edited_table[edited_table["Chọn"] == True]
-                if not selected_rows.empty:
-                    stt_to_remove = selected_rows["STT"].tolist()
-                    rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
-                    st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
-                    
-                    st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
-                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                    
-                    if not st.session_state.deleted_input_df.empty:
-                        st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+            with st.form("input_delete_form"):
+                edited_table = st.data_editor(
+                    display_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="input_editor_delete"
+                )
+                delete_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
+                if delete_submitted:
+                    selected_rows = edited_table[edited_table["Chọn"] == True]
+                    if not selected_rows.empty:
+                        stt_to_remove = selected_rows["STT"].tolist()
+                        rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
+                        st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
                         
-                    save_data()
-                    st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
-                else:
-                    st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
+                        st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                        
+                        if not st.session_state.deleted_input_df.empty:
+                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                            
+                        save_data()
+                        st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
         else:
             st.info("Không tìm thấy bản ghi nào khớp với bộ lọc.")
     else:
@@ -498,7 +504,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 explode_values.append(0.0)
 
-        # Hiển thị tỷ lệ phần trăm trực tiếp trên biểu đồ tròn
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
@@ -579,19 +584,21 @@ elif menu == "3. Quản Lý Định Mức Điểm":
     st.markdown("---")
     st.markdown("#### Danh Sách Định Mức Hiện Tại")
     
-    edited_rules = st.data_editor(
-        st.session_state.rules_df, 
-        num_rows="dynamic", 
-        use_container_width=True, 
-        key="rules_editor",
-        hide_index=True
-    )
-    
-    if not edited_rules.equals(st.session_state.rules_df):
-        edited_rules["STT"] = range(1, len(edited_rules) + 1)
-        st.session_state.rules_df = edited_rules
-        save_data()
-        st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
+    with st.form("rules_form"):
+        edited_rules = st.data_editor(
+            st.session_state.rules_df, 
+            num_rows="dynamic", 
+            use_container_width=True, 
+            key="rules_editor",
+            hide_index=True
+        )
+        save_rules_btn = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
+        if save_rules_btn:
+            edited_rules["STT"] = range(1, len(edited_rules) + 1)
+            st.session_state.rules_df = edited_rules
+            save_data()
+            st.success("Đã lưu và cập nhật danh mục định mức điểm thành công!")
+            st.rerun()
 
 elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.header("Thùng Rác & Khôi Phục Bản Ghi")
@@ -602,17 +609,22 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
         trash_display = st.session_state.deleted_input_df.copy()
         trash_display.insert(0, "Chọn", False)
         
-        edited_trash = st.data_editor(
-            trash_display.drop(columns=["Hình Ảnh"], errors="ignore"),
-            hide_index=True,
-            use_container_width=True,
-            key="trash_editor"
-        )
-        
-        col_act1, col_act2 = st.columns(2)
-        
-        with col_act1:
-            if st.button("📥 Khôi Phục Dòng Đã Chọn"):
+        with st.form("trash_form"):
+            edited_trash = st.data_editor(
+                trash_display.drop(columns=["Hình Ảnh"], errors="ignore"),
+                hide_index=True,
+                use_container_width=True,
+                key="trash_editor"
+            )
+            
+            col_act1, col_act2 = st.columns(2)
+            
+            with col_act1:
+                restore_btn = st.form_submit_button("📥 Khôi Phục Dòng Đã Chọn", use_container_width=True)
+            with col_act2:
+                delete_perm_btn = st.form_submit_button("🔥 Xóa Vĩnh Viễn Dòng Đã Chọn", use_container_width=True)
+                
+            if restore_btn:
                 selected_rows = edited_trash[edited_trash["Chọn"] == True]
                 if not selected_rows.empty:
                     selected_rows = selected_rows.drop(columns=["Chọn"])
@@ -631,11 +643,11 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
                     st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
+                    st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
 
-        with col_act2:
-            if st.button("🔥 Xóa Vĩnh Viễn Dòng Đã Chọn"):
+            if delete_perm_btn:
                 selected_rows = edited_trash[edited_trash["Chọn"] == True]
                 if not selected_rows.empty:
                     selected_rows = selected_rows.drop(columns=["Chọn"])
@@ -647,6 +659,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     
                     save_data()
                     st.success("Đã xóa vĩnh viễn các dòng đã chọn khỏi thùng rác!")
+                    st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
 
@@ -655,6 +668,7 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
             st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
             save_data()
             st.success("Đã dọn sạch toàn bộ thùng rác!")
+            st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống.")
 
@@ -663,22 +677,25 @@ elif menu == "5. Cài Đặt Giao Diện":
     st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và hình nền cho toàn bộ ứng dụng.")
     
     st.subheader("Quản Lý Danh Sách Nhân Sự")
-    staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
-    edited_staff_df = st.data_editor(
-        staff_df,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="staff_editor",
-        hide_index=True
-    )
-    if not edited_staff_df.equals(staff_df):
-        new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != ""]
-        if new_staff_list:
-            st.session_state.staff_list = new_staff_list
-            save_data()
-            st.success("Đã cập nhật danh sách nhân sự thành công!")
-        else:
-            st.warning("Danh sách nhân sự không được để trống.")
+    with st.form("staff_form"):
+        staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
+        edited_staff_df = st.data_editor(
+            staff_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="staff_editor",
+            hide_index=True
+        )
+        save_staff_btn = st.form_submit_button("💾 Lưu Danh Sách Nhân Sự", use_container_width=True)
+        if save_staff_btn:
+            new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != ""]
+            if new_staff_list:
+                st.session_state.staff_list = new_staff_list
+                save_data()
+                st.success("Đã cập nhật danh sách nhân sự thành công!")
+                st.rerun()
+            else:
+                st.warning("Danh sách nhân sự không được để trống.")
 
     st.markdown("---")
     st.subheader("Tùy Chỉnh Màu Sắc Giao Diện")
