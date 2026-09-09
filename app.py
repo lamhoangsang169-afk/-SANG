@@ -4,14 +4,6 @@ import datetime
 import matplotlib.pyplot as plt
 import io
 import base64
-if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
-            st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
-            save_data()
-            st.rerun()
-        if st.button("6. Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
-            st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
-            save_data()
-            st.rerun()
 import json
 import os
 
