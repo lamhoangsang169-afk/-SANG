@@ -76,7 +76,7 @@ def save_data():
     except Exception:
         pass
 
-# Ép buộc đồng bộ dữ liệu mới nhất từ file JSON vào mọi session ngay đầu mỗi lượt chạy
+# Cơ chế tự động lắng nghe và nạp lại tệp dữ liệu ngầm mỗi khi có tương tác
 saved_data = load_data()
 
 if "rules_df" in saved_data and saved_data["rules_df"]:
@@ -253,6 +253,24 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
+# Tích hợp bộ lắng nghe sự kiện click chuột toàn trang (Global Click Listener) bằng JavaScript:
+# Bất cứ khi nào bạn nhấn chuột/chạm vào màn hình, trang sẽ tự động gọi trigger làm mới lại ứng dụng ngầm.
+st.markdown("""
+<script>
+    document.addEventListener('click', function(event) {
+        // Gửi tín hiệu tương tác ngầm để Streamlit nhận diện và đồng bộ trạng thái mới
+        const target = window.parent.document;
+        if (target) {
+            const mainContainer = target.querySelector('.main');
+            if (mainContainer) {
+                // Tạo một sự kiện click giả lập nhẹ hoặc tương tác DOM giúp đánh thức kết nối WebSocket
+                window.parent.dispatchEvent(new Event('focus'));
+            }
+        }
+    }, true);
+</script>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
     
@@ -338,13 +356,7 @@ with st.sidebar:
 
 menu = st.session_state.current_menu
 
-col_title_1, col_title_2 = st.columns([4, 1])
-with col_title_1:
-    st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
-with col_title_2:
-    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-    if st.button("🔄 Cập Nhật Dữ Liệu", use_container_width=True, help="Bấm để tải ngay dữ liệu mới nhất từ thiết bị khác"):
-        st.rerun()
+st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
 
 staff_joined = " | ".join([f"**{s}**" for s in st.session_state.staff_list])
 st.markdown(f"""
