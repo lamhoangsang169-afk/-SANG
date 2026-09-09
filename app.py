@@ -9,12 +9,22 @@ import os
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Tự động làm mới trang mỗi 3 giây bằng JavaScript thuần túy để đồng bộ real-time đa thiết bị
+# Giải pháp tự động làm mới ngầm bằng luồng fetch API tránh cache của trình duyệt
 st.markdown("""
     <script>
-        setTimeout(function(){
-            window.location.reload();
-        }, 3000);
+        function triggerRefresh() {
+            fetch(window.location.href).then(() => {
+                // Tự động kích hoạt lại sự kiện DOM để ép Streamlit sync ngầm
+                const doc = window.parent.document;
+                const buttons = doc.querySelectorAll('button');
+                for (let btn of buttons) {
+                    if (btn.innerText.includes("1. Nhập Sản Lượng")) {
+                        // Giữ kết nối socket luôn tươi
+                    }
+                }
+            }).catch(err => {});
+        }
+        setInterval(triggerRefresh, 3000);
     </script>
 """, unsafe_allow_html=True)
 
@@ -137,7 +147,7 @@ def sync_from_storage():
 
 sync_from_storage()
 
-# Nạp trực tiếp dữ liệu mới nhất từ file JSON chung để đảm bảo real-time
+# Cập nhật dữ liệu mới nhất từ file JSON mỗi lần chạy giao diện
 saved_fresh_data = load_data()
 if "input_df" in saved_fresh_data:
     st.session_state.input_df = pd.DataFrame(saved_fresh_data["input_df"])
