@@ -139,7 +139,6 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
-# Giao diện chính (Đã gỡ bỏ @st.fragment để tránh làm mới liên tục)
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
@@ -472,7 +471,7 @@ if menu == "1. Nhập Sản Lượng":
     if not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
     else:
-        st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh thì mới có thể bấm báo cáo sản lượng.*")
+        st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh.*")
         
         with st.form("entry_form"):
             col1, col2, col3 = st.columns(3)
@@ -497,53 +496,53 @@ if menu == "1. Nhập Sản Lượng":
             with col_note:
                 ghi_chu = st.text_input("Ghi chú", "")
                 
-            is_valid = True
-            missing_fields = []
-            if not nhan_su:
-                is_valid = False
-                missing_fields.append("Nhân sự thực hiện")
-            if not hang_muc:
-                is_valid = False
-                missing_fields.append("Hạng mục công việc")
-            if record_image is None:
-                is_valid = False
-                missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
+            # Nút luôn sáng, kiểm tra điều kiện ngay khi bấm
+            submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
 
-            if not is_valid:
-                st.warning(f"⚠️ Vui lòng hoàn thành các mục bắt buộc sau trước khi thêm: {', '.join(missing_fields)}")
-                submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True, disabled=True)
-            else:
-                submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
+            if submitted:
+                is_valid = True
+                missing_fields = []
+                if not nhan_su:
+                    is_valid = False
+                    missing_fields.append("Nhân sự thực hiện")
+                if not hang_muc:
+                    is_valid = False
+                    missing_fields.append("Hạng mục công việc")
+                if record_image is None:
+                    is_valid = False
+                    missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
 
-            if submitted and is_valid:
-                row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
-                he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
-                don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
-                tong_diem = so_luong * he_so
-                
-                img_base64 = ""
-                if record_image is not None:
-                    bytes_data = record_image.getvalue()
-                    img_base64 = base64.b64encode(bytes_data).decode("utf-8")
-                
-                new_stt = len(st.session_state.input_df) + 1
-                new_row = {
-                    "STT": new_stt,
-                    "Ngày": today_str,
-                    "Nhân Sự": nhan_su,
-                    "Hạng Mục Công Việc": hang_muc,
-                    "Hình Ảnh": img_base64,
-                    "Đơn Vị": don_vi,
-                    "Số Lượng": so_luong,
-                    "Hệ Số Điểm": he_so,
-                    "Tổng Điểm": round(tong_diem, 2),
-                    "Ghi Chú": ghi_chu
-                }
-                st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
-                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                save_data()
-                st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
-                st.rerun()
+                if not is_valid:
+                    st.error(f"⚠️ Vui lòng hoàn thành các mục bắt buộc sau trước khi báo cáo: {', '.join(missing_fields)}")
+                else:
+                    row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
+                    he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
+                    don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
+                    tong_diem = so_luong * he_so
+                    
+                    img_base64 = ""
+                    if record_image is not None:
+                        bytes_data = record_image.getvalue()
+                        img_base64 = base64.b64encode(bytes_data).decode("utf-8")
+                    
+                    new_stt = len(st.session_state.input_df) + 1
+                    new_row = {
+                        "STT": new_stt,
+                        "Ngày": today_str,
+                        "Nhân Sự": nhan_su,
+                        "Hạng Mục Công Việc": hang_muc,
+                        "Hình Ảnh": img_base64,
+                        "Đơn Vị": don_vi,
+                        "Số Lượng": so_luong,
+                        "Hệ Số Điểm": he_so,
+                        "Tổng Điểm": round(tong_diem, 2),
+                        "Ghi Chú": ghi_chu
+                    }
+                    st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
+                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    save_data()
+                    st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                    st.rerun()
 
     st.markdown("---")
     st.subheader("Danh Sách Sản Lượng")
