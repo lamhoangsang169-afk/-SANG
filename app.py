@@ -142,14 +142,17 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    /* Ép toàn bộ các thẻ văn bản, bảng, data_editor, dataframe đổi màu chữ đồng bộ */
+    /* Ép toàn bộ các thẻ văn bản, bảng, data_editor, dataframe, cell, header đổi màu chữ đồng bộ */
     p, span, label, div, h1, h2, h3, h4, h5, h6, 
     .stMarkdown, [data-testid="stMarkdownContainer"] *,
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
     [data-testid="stWidgetLabel"] *, .streamlit-expanderHeader *,
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] *, [data-testid="stTable"] *,
     .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput *,
-    table, th, td, tr, [class*="css-"] {{
+    table, th, td, tr, [class*="css-"], 
+    div[data-baseweb="select"] *, span[title], 
+    div[data-testid="stDataFrame"] div, div[data-testid="stDataEditor"] div,
+    canvas {{
         color: {st.session_state.text_color} !important;
     }}
     
