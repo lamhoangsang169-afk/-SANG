@@ -429,61 +429,85 @@ def render_app():
         st.markdown("---")
 
         st.subheader("Nhập Sản Lượng Hàng Ngày")
-        st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm.")
         
-        with st.form("entry_form"):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                ngay = st.date_input("Ngày làm việc", now_vn.date())
-            with col2:
-                nhan_su = st.selectbox("Nhân sự thực hiện", st.session_state.staff_list)
-            with col3:
-                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
-                hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
-                
-            col_img, col_qty, col_note = st.columns([2, 2, 2])
-            with col_img:
-                img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
-                if img_source == "Chụp trực tiếp":
-                    record_image = st.camera_input("Chụp ảnh công việc")
-                else:
-                    record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+        # --- KIỂM TRA ĐIỀU KIỆN CHECK-IN ---
+        # Lấy giá trị ngày và nhân sự đang được chọn ở form nhập bên dưới (hoặc dùng tạm state mặc định)
+        col_chk_check1, col_chk_check2 = st.columns(2)
+        with col_chk_check1:
+            check_ngay = st.date_input("Chọn ngày kiểm tra check-in", now_vn.date(), key="check_ngay_input")
+        with col_chk_check2:
+            check_nhan_su = st.selectbox("Chọn nhân sự kiểm tra check-in", st.session_state.staff_list, key="check_ns_input")
+
+        is_checked_in = False
+        if not st.session_state.attendance_df.empty:
+            # Kiểm tra xem nhân sự này trong ngày `check_ngay` đã có dòng nào "Chưa kết thúc" hoặc đã vào ca hợp lệ chưa
+            valid_att = st.session_state.attendance_df[
+                (st.session_state.attendance_df["Nhân Sự"] == check_nhan_su) & 
+                (st.session_state.attendance_df["Ngày"] == str(check_ngay)) &
+                (st.session_state.attendance_df["Giờ Vào Ca"] != "--")
+            ]
+            if not valid_att.empty:
+                is_checked_in = True
+
+        if not is_checked_in:
+            st.warning(f"⚠️ Nhân sự **{check_nhan_su}** chưa **Check-in (Vào ca)** vào ngày **{check_ngay}**. Vui lòng thực hiện Check-in ở phần trên trước khi nhập sản lượng!")
+        else:
+            st.success(f"✅ Nhân sự **{check_nhan_su}** đã vào ca hợp lệ vào ngày **{check_ngay}**. Bạn có thể nhập sản lượng bên dưới:")
+            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm.")
+            
+            with st.form("entry_form"):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    ngay = st.date_input("Ngày làm việc", check_ngay, disabled=True)
+                with col2:
+                    nhan_su = st.selectbox("Nhân sự thực hiện", [check_nhan_su], disabled=True)
+                with col3:
+                    danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
+                    hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                     
-            with col_qty:
-                so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
-            with col_note:
-                ghi_chu = st.text_input("Ghi chú", "")
-                
-            submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
-            if submitted:
-                row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
-                he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
-                don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
-                tong_diem = so_luong * he_so
-                
-                img_base64 = ""
-                if record_image is not None:
-                    bytes_data = record_image.getvalue()
-                    img_base64 = base64.b64encode(bytes_data).decode("utf-8")
-                
-                new_stt = len(st.session_state.input_df) + 1
-                new_row = {
-                    "STT": new_stt,
-                    "Ngày": str(ngay),
-                    "Nhân Sự": nhan_su,
-                    "Hạng Mục Công Việc": hang_muc,
-                    "Hình Ảnh": img_base64,
-                    "Đơn Vị": don_vi,
-                    "Số Lượng": so_luong,
-                    "Hệ Số Điểm": he_so,
-                    "Tổng Điểm": round(tong_diem, 2),
-                    "Ghi Chú": ghi_chu
-                }
-                st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
-                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                save_data()
-                st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
-                st.rerun()
+                col_img, col_qty, col_note = st.columns([2, 2, 2])
+                with col_img:
+                    img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
+                    if img_source == "Chụp trực tiếp":
+                        record_image = st.camera_input("Chụp ảnh công việc")
+                    else:
+                        record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+                        
+                with col_qty:
+                    so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
+                with col_note:
+                    ghi_chu = st.text_input("Ghi chú", "")
+                    
+                submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
+                if submitted:
+                    row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
+                    he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
+                    don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
+                    tong_diem = so_luong * he_so
+                    
+                    img_base64 = ""
+                    if record_image is not None:
+                        bytes_data = record_image.getvalue()
+                        img_base64 = base64.b64encode(bytes_data).decode("utf-8")
+                    
+                    new_stt = len(st.session_state.input_df) + 1
+                    new_row = {
+                        "STT": new_stt,
+                        "Ngày": str(check_ngay),
+                        "Nhân Sự": check_nhan_su,
+                        "Hạng Mục Công Việc": hang_muc,
+                        "Hình Ảnh": img_base64,
+                        "Đơn Vị": don_vi,
+                        "Số Lượng": so_luong,
+                        "Hệ Số Điểm": he_so,
+                        "Tổng Điểm": round(tong_diem, 2),
+                        "Ghi Chú": ghi_chu
+                    }
+                    st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
+                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                    save_data()
+                    st.success(f"Đã thêm thành công sản lượng cho **{check_nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                    st.rerun()
 
         st.markdown("---")
         st.subheader("Danh Sách Sản Lượng")
