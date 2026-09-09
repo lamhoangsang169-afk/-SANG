@@ -151,7 +151,7 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         height: 100vh;
-        overflow: hidden !important;
+        overflow-y: auto !important; /* Cho phép cuộn dọc toàn bộ thanh Sidebar */
         padding: 0px !important;
     }}
     
@@ -160,7 +160,8 @@ st.markdown(f"""
     }}
     
     .fixed-avatar-container {{
-        position: relative;
+        position: sticky;
+        top: 0;
         z-index: 999999;
         background-color: {sidebar_rgba};
         padding-top: 15px;
@@ -169,11 +170,11 @@ st.markdown(f"""
         margin-bottom: 10px;
         text-align: center;
         flex-shrink: 0;
+        backdrop-filter: blur(8px);
     }}
 
     .sidebar-scrollable-content {{
         flex-grow: 1;
-        overflow-y: auto;
         padding-left: 1rem;
         padding-right: 1rem;
         padding-bottom: 50px;
