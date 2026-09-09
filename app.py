@@ -113,6 +113,7 @@ def sync_from_storage():
     st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
     st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
+# Khởi tạo dữ liệu ban đầu
 if "initialized" not in st.session_state:
     sync_from_storage()
     st.session_state.initialized = True
@@ -130,6 +131,7 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
+# Hàm bọc toàn bộ giao diện và logic chạy định kỳ 3 giây để đồng bộ real-time tức thì
 @st.fragment(run_every=3)
 def render_app():
     sync_from_storage()
@@ -176,68 +178,47 @@ def render_app():
             color: {st.session_state.primary_color} !important;
         }}
 
-        /* Tùy chỉnh thanh Sidebar và tạo vùng chứa cuộn riêng bên trong */
         [data-testid="stSidebar"] {{
             background-color: {sidebar_rgba} !important;
             backdrop-filter: blur(8px);
-            position: relative;
-        }}
-        
-        /* Cố định tuyệt đối vùng chứa avatar ở trên cùng sidebar */
-        .fixed-avatar-container {{
-            position: absolute;
-            top: 0px;
-            left: 0px;
-            width: 100%;
-            z-index: 9999;
-            background-color: {sidebar_rgba};
-            padding-top: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid {st.session_state.primary_color};
-            text-align: center;
-        }}
-
-        /* Đẩy phần nội dung menu bên dưới xuống tránh bị che khuất bởi avatar cố định */
-        [data-testid="stSidebar"] > div:first-child {{
-            padding-top: 210px !important;
+            resize: horizontal !important;
         }}
         
         [data-testid="stSidebar"] * {{
             color: {st.session_state.text_color} !important;
         }}
-
-        /* Kích thước ảnh đại diện to cân đối (~160px) */
+        
         .avatar-wrapper {{
             position: relative;
-            width: 160px;
-            height: 160px;
+            width: 60px;
+            height: 60px;
             margin: 0 auto;
         }}
         
         .avatar-popover-wrapper {{
             position: absolute;
-            bottom: 4px;
-            right: 12px;
-            z-index: 99999;
+            bottom: -2px;
+            right: -6px;
+            z-index: 99;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button {{
             background-color: #ffffff !important;
-            border: 2px solid {st.session_state.primary_color} !important;
+            border: 1.5px solid {st.session_state.primary_color} !important;
             border-radius: 50% !important;
-            width: 34px !important;
-            height: 34px !important;
+            width: 24px !important;
+            height: 24px !important;
             padding: 0px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button p {{
             display: none !important;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
             content: "⋮";
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
             color: #333333;
             line-height: 1;
@@ -272,9 +253,6 @@ def render_app():
 
     # ----------------- THANH BÊN (SIDEBAR) -----------------
     with st.sidebar:
-        # Khung cố định tuyệt đối chứa avatar và thanh ngang phân cách
-        st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
-        
         has_custom_avatar = False
         avatar_bytes_obj = None
         if st.session_state.avatar_base64:
@@ -296,12 +274,12 @@ def render_app():
             encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
             st.markdown(f"""
             <div style="cursor: pointer; text-align: center;">
-                <img src="data:image/png;base64,{encoded_img}" style="width:160px; height:160px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+                <img src="data:image/png;base64,{encoded_img}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-            <div style="width:160px; height:160px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:60px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3); margin: 0 auto;">
+            <div style="width:60px; height:60px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:24px; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
                 👤
             </div>
             """, unsafe_allow_html=True)
@@ -326,9 +304,9 @@ def render_app():
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True) # Kết thúc fixed-avatar-container
 
+        st.markdown("---")
+        
         st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
         with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
@@ -852,4 +830,5 @@ def render_app():
             st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
             st.rerun()
 
+# Gọi hàm render để ứng dụng hiển thị và tự động đồng bộ real-time mượt mà
 render_app()
