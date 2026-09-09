@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import pytz
 import matplotlib.pyplot as plt
 import io
 import base64
@@ -10,6 +11,7 @@ import os
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
 STORAGE_FILE = "app_storage.json"
+VN_TIMEZONE = pytz.timezone('Asia/Ho_Chi_Minh')
 
 master_rules = [
     {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
@@ -156,7 +158,7 @@ st.markdown(f"""
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
     [data-testid="stWidgetLabel"] *, .streamlit-expanderHeader *,
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] *, [data-testid="stTable"] *,
-    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput *,
+    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput *, .stTimeInput *,
     table, th, td, tr, [class*="css-"], 
     div[data-baseweb="select"] *, span[title], 
     div[data-testid="stDataFrame"] div, div[data-testid="stDataEditor"] div,
@@ -331,36 +333,40 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if menu == "1. Nhập Sản Lượng":
-    # --- MỤC CHẤM CÔNG GIỜ VÀO / RA CA ---
-    st.subheader("Chấm Công Ca Làm Việc")
+    # --- MỤC CHẤM CÔNG GIỜ VÀO / RA CA (CHỌN TRỰC QUAN THEO MÚI GIỜ VIỆT NAM) ---
+    st.subheader("Chấm Công Ca Làm Việc (Múi giờ VN: GMT+7)")
+    now_vn = datetime.datetime.now(VN_TIMEZONE)
+    
     with st.form("attendance_form"):
         att_col1, att_col2, att_col3, att_col4, att_col5 = st.columns(5)
         with att_col1:
-            att_date = st.date_input("Ngày chấm công", datetime.date.today(), key="att_date")
+            att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
         with att_col2:
             att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
         with att_col3:
-            time_in = st.text_input("Giờ vào ca", value="08:00", key="att_time_in")
+            time_in = st.time_input("Giờ vào ca", datetime.time(8, 0), key="att_time_in")
         with att_col4:
-            time_out = st.text_input("Giờ ra ca", value="17:00", key="att_time_out")
+            time_out = st.time_input("Giờ ra ca", datetime.time(17, 0), key="att_time_out")
         with att_col5:
             att_note = st.text_input("Ghi chú ca", "", key="att_note")
             
         att_submitted = st.form_submit_button("⏰ Xác Nhận Chấm Công", use_container_width=True)
         if att_submitted:
+            time_in_str = time_in.strftime("%H:%M")
+            time_out_str = time_out.strftime("%H:%M")
             new_att_stt = len(st.session_state.attendance_df) + 1
             new_att_row = {
                 "STT": new_att_stt,
                 "Ngày": str(att_date),
                 "Nhân Sự": att_staff,
-                "Giờ Vào Ca": time_in,
-                "Giờ Ra Ca": time_out,
+                "Giờ Vào Ca": time_in_str,
+                "Giờ Ra Ca": time_out_str,
                 "Ghi Chú": att_note
             }
             st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
             st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
             save_data()
-            st.success(f"Đã chấm công thành công cho **{att_staff}** (Vào: {time_in} - Ra: {time_out})!")
+            st.success(f"Đã chấm công thành công cho **{att_staff}** (Vào: {time_in_str} - Ra: {time_out_str})!")
             st.rerun()
 
     if not st.session_state.attendance_df.empty:
@@ -376,7 +382,7 @@ if menu == "1. Nhập Sản Lượng":
     with st.form("entry_form"):
         col1, col2, col3 = st.columns(3)
         with col1:
-            ngay = st.date_input("Ngày làm việc", datetime.date.today())
+            ngay = st.date_input("Ngày làm việc", now_vn.date())
         with col2:
             nhan_su = st.selectbox("Nhân sự thực hiện", st.session_state.staff_list)
         with col3:
