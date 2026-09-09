@@ -496,7 +496,6 @@ if menu == "1. Nhập Sản Lượng":
             with col_note:
                 ghi_chu = st.text_input("Ghi chú", "")
                 
-            # Nút luôn sáng, kiểm tra điều kiện ngay khi bấm
             submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
 
             if submitted:
@@ -603,6 +602,28 @@ if menu == "1. Nhập Sản Lượng":
                         st.rerun()
                     else:
                         st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
+            
+            # --- KHU VỰC XEM ẢNH ĐÍNH KÈM CỦA CÁC BẢN GHI ---
+            st.markdown("---")
+            st.markdown("#### 🖼️ Xem Ảnh Đính Kèm Của Bản Ghi")
+            img_options = [f"STT {row['STT']} - {row['Ngày']} - {row['Nhân Sự']} - {row['Hạng Mục Công Việc']}" for idx, row in filtered_df.iterrows()]
+            selected_img_label = st.selectbox("Chọn bản ghi để xem ảnh báo cáo sản lượng:", img_options)
+            
+            if selected_img_label:
+                selected_stt = int(selected_img_label.split(" - ")[0].replace("STT ", ""))
+                matched_row = filtered_df[filtered_df["STT"] == selected_stt]
+                if not matched_row.empty:
+                    img_b64_val = matched_row["Hình Ảnh"].values[0]
+                    if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                        try:
+                            pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
+                            pure_b64 += "=" * (-len(pure_b64) % 4)
+                            img_bytes = base64.b64decode(pure_b64)
+                            st.image(img_bytes, caption=f"Ảnh của bản ghi STT {selected_stt}", width=400)
+                        except Exception:
+                            st.info("Không thể giải mã hình ảnh của bản ghi này.")
+                    else:
+                        st.info("Bản ghi này không có ảnh đính kèm.")
         else:
             st.info("Không tìm thấy bản ghi nào khớp với bộ lọc.")
     else:
