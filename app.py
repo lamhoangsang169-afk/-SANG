@@ -448,7 +448,7 @@ def render_app():
                 inactive_staff.append(s)
 
         # Hiển thị trực quan theo yêu cầu
-        status_html = "##### 📌 Trạng Thái Nhân Sự Hôm Nay:\n"
+        status_html = ":\n"
         for s in active_staff:
             status_html += f"🟢 **{s}** - Đang Làm Việc<br>"
         for s in inactive_staff:
