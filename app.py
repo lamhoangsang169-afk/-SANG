@@ -467,7 +467,7 @@ def render_app():
         if not active_staff:
             st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
         else:
-            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh thì mới có thể bấm thêm bản ghi.*")
+            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh thì mới có thể bấm báo cáo sản lượng.*")
             
             with st.form("entry_form"):
                 col1, col2, col3 = st.columns(3)
@@ -507,9 +507,9 @@ def render_app():
 
                 if not is_valid:
                     st.warning(f"⚠️ Vui lòng hoàn thành các mục bắt buộc sau trước khi thêm: {', '.join(missing_fields)}")
-                    submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True, disabled=True)
+                    submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True, disabled=True)
                 else:
-                    submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
+                    submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
 
                 if submitted and is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
@@ -538,7 +538,7 @@ def render_app():
                     st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                    st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
 
         st.markdown("---")
