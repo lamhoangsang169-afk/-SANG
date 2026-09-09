@@ -198,11 +198,11 @@ def render_app():
             margin-bottom: 15px;
         }}
 
-        /* Thu nhỏ kích thước khung Avatar tương đương 6cm (~42px) */
+        /* Thu nhỏ kích thước khung Avatar tương đương 6cm (~80px) */
         .avatar-wrapper {{
             position: relative;
-            width: 42px;
-            height: 42px;
+            width: 80px;
+            height: 80px;
             margin: 0 auto;
         }}
         
