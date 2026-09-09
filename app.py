@@ -880,5 +880,4 @@ def render_app():
             save_data()
             st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
             st.rerun()
-
 render_app()
