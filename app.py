@@ -176,21 +176,26 @@ def render_app():
             color: {st.session_state.primary_color} !important;
         }}
 
+        /* Cố định hoàn toàn thanh Sidebar và cấu hình cuộn nội dung bên trong nó */
         [data-testid="stSidebar"] {{
             background-color: {sidebar_rgba} !important;
             backdrop-filter: blur(8px);
-            resize: horizontal !important;
+            position: fixed !important;
+            height: 100vh !important;
+            top: 0px !important;
+            left: 0px !important;
+            overflow-y: auto !important;
         }}
         
         [data-testid="stSidebar"] * {{
             color: {st.session_state.text_color} !important;
         }}
         
-        /* Cố định vùng chứa Avatar ở đầu Sidebar kèm thanh ngang phân cách */
+        /* Ghim cứng khu vực chứa avatar ở trên cùng, không di chuyển khi cuộn */
         .fixed-avatar-container {{
             position: sticky;
             top: 0px;
-            z-index: 999;
+            z-index: 9999;
             background-color: {sidebar_rgba};
             padding-top: 15px;
             padding-bottom: 15px;
@@ -199,7 +204,7 @@ def render_app():
             text-align: center;
         }}
 
-        /* Tăng kích thước ảnh đại diện to lên cân đối (~6cm tương đương 160px) */
+        /* Kích thước ảnh đại diện to cân đối (~160px) */
         .avatar-wrapper {{
             position: relative;
             width: 160px;
@@ -211,7 +216,7 @@ def render_app():
             position: absolute;
             bottom: 4px;
             right: 12px;
-            z-index: 99;
+            z-index: 999;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button {{
             background-color: #ffffff !important;
@@ -265,7 +270,7 @@ def render_app():
 
     # ----------------- THANH BÊN (SIDEBAR) -----------------
     with st.sidebar:
-        # Khung cố định ở trên cùng sidebar chứa avatar & thanh ngang phân cách
+        # Khung cố định chứa avatar và thanh ngang phân cách
         st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
         
         has_custom_avatar = False
