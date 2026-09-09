@@ -328,16 +328,16 @@ with st.sidebar:
             st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
             save_data()
             st.rerun()
-        # [THÊM MỚI VỊ TRÍ 1]: Nút chuyển sang mục làm sạch dữ liệu
-        if st.button("6. Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
-            st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
-            save_data()
-            st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
     if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
         st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+        save_data()
+        st.rerun()
+    # Đã đưa nút Làm Sạch & Tối Ưu Dữ Liệu xuống dưới mục Cấu Hình Hệ Thống
+    if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
+        st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
 
@@ -921,7 +921,6 @@ elif menu == "5. Cài Đặt Giao Diện":
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
         st.rerun()
 
-# [THÊM MỚI VỊ TRÍ 2]: Khối giao diện và logic chức năng làm sạch dữ liệu
 elif menu == "6. Làm Sạch Dữ Liệu":
     st.header("Làm Sạch & Tối Ưu Dữ Liệu Ứng Dụng")
     st.markdown("Xóa bớt các dữ liệu cũ không cần thiết để giảm dung lượng tệp lưu trữ `app_storage.json` và tăng tốc độ xử lý cho ứng dụng.")
