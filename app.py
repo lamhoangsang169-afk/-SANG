@@ -544,7 +544,7 @@ if menu == "1. Nhập Sản Lượng":
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh")
+    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh Trực Tiếp")
     
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -570,29 +570,21 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # CHIA BỐ CỤC 2 CỘT SONG SONG ĐỂ DỄ ĐỐI CHIẾU
+            display_df = filtered_df.copy()
+            display_df.insert(0, "Chọn", False)
+            # Thêm cột trạng thái ảnh để hiển thị trong bảng
+            display_df.insert(2, "Ảnh Báo Cáo", display_df["Hình Ảnh"].apply(lambda x: "📸 Có ảnh" if x and len(str(x)) > 10 else "❌ Không có"))
+            
+            cols_order = ["Chọn", "STT", "Ảnh Báo Cáo", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+            display_df = display_df[[c for c in cols_order if c in display_df.columns]]
+
+            # CHIA BỐ CỤC 2 CỘT: BẢNG BÊN TRÁI, ẢNH HIỂN THỊ TRỰC TIẾP BÊN PHẢI
             col_table, col_preview = st.columns([7, 4])
             
             with col_table:
-                display_df = filtered_df.copy()
-                display_df.insert(0, "Chọn", False)
-                
-                # Thêm cột ảnh trực quan vào bảng danh sách
-                thumb_list = []
-                for idx, row in filtered_df.iterrows():
-                    img_val = row.get("Hình Ảnh", "")
-                    if img_val and isinstance(img_val, str) and len(img_val) > 10:
-                        thumb_list.append("📷 Có ảnh")
-                    else:
-                        thumb_list.append("❌ Không")
-                display_df.insert(4, "Ảnh Báo Cáo", thumb_list)
-                
-                cols_order = ["Chọn", "STT", "Ảnh Báo Cáo", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
-                display_df = display_df[[c for c in cols_order if c in display_df.columns]]
-
                 with st.form("input_delete_form"):
                     edited_table = st.data_editor(
-                        display_df,
+                        display_df.drop(columns=["Ảnh Báo Cáo"], errors="ignore"),
                         hide_index=True,
                         use_container_width=True,
                         key="input_editor_delete"
