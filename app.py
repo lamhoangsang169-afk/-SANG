@@ -498,16 +498,18 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 explode_values.append(0.0)
 
-        wedges, texts = ax.pie(
+        # Hiển thị tỷ lệ phần trăm trực tiếp trên biểu đồ tròn
+        wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
-            autopct=None, 
+            autopct='%1.1f%%', 
             startangle=90, 
             colors=current_colors,
             explode=explode_values,
             shadow=True
         )
         
+        plt.setp(autotexts, size=10, weight="bold", color="white")
         ax.axis('equal')
         
         col_chart, col_legend = st.columns([1, 1])
