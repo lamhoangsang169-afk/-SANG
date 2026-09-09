@@ -895,17 +895,35 @@ elif menu == "6. Cài Đặt Giao Diện":
         st.rerun()
 
     st.markdown("---")
-    st.subheader("🖼️ Kho Lưu Trữ Hình Nền (Tối đa 5 hình)")
+    st.subheader("🖼️ Quản Lý Hình Nền (Tải lên / Xóa / Tắt nền)")
+
+    # Nút bật/tắt nhanh hình nền hiện tại nếu đang có ảnh nền
+    if st.session_state.bg_image_base64:
+        col_b_off, col_b_del = st.columns(2)
+        with col_b_off:
+            if st.button("👁️ Tắt / Ẩn Hình Nền (Dùng màu đơn)", use_container_width=True):
+                st.session_state.bg_image_base64 = None
+                save_data()
+                st.success("Đã ẩn hình nền, chuyển về màu nền trang đơn sắc!")
+                st.rerun()
+        with col_b_del:
+            if st.button("🗑️ Xóa Vĩnh Viễn Hình Nền Hiện Tại", use_container_width=True):
+                st.session_state.bg_image_base64 = None
+                if st.session_state.wallpaper_library:
+                    st.session_state.wallpaper_library.pop(0) if len(st.session_state.wallpaper_library) > 0 else None
+                save_data()
+                st.success("Đã xóa hình nền!")
+                st.rerun()
     
     current_count = len(st.session_state.wallpaper_library)
-    st.info(f"Đang lưu trữ: **{current_count} / 5** hình ảnh.")
+    st.info(f"Kho lưu trữ hình nền: **{current_count} / 5** hình ảnh.")
 
     if current_count >= 5:
         st.warning("⚠️ Kho lưu trữ đã đạt giới hạn 5 hình! Vui lòng xóa bớt ảnh bên dưới trước khi tải thêm.")
     else:
         bg_file = st.file_uploader("Tải ảnh hình nền mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="bg_uploader_standalone")
         if bg_file is not None:
-            if st.button("➕ Thêm Ảnh Này Vào Kho Lưu Trữ", use_container_width=True):
+            if st.button("➕ Thêm & Đặt Làm Hình Nền Chính", use_container_width=True):
                 if len(st.session_state.wallpaper_library) < 5:
                     compressed_bg = compress_image_to_base64(bg_file, max_size=(1024, 1024), quality=70)
                     if compressed_bg:
@@ -919,7 +937,7 @@ elif menu == "6. Cài Đặt Giao Diện":
 
     if st.session_state.wallpaper_library:
         st.markdown("---")
-        st.markdown("#### 📂 Quản Lý Hình Nền Đã Lưu")
+        st.markdown("#### 📂 Kho Lưu Trữ Hình Nền Của Bạn")
         for idx, img_b64 in enumerate(st.session_state.wallpaper_library):
             try:
                 pure_b64 = img_b64.split(",")[1] if "," in img_b64 else img_b64
@@ -928,18 +946,18 @@ elif menu == "6. Cài Đặt Giao Diện":
                 
                 b_col1, b_col2 = st.columns(2)
                 with b_col1:
-                    if st.button(f"Chọn #{idx+1}", key=f"use_wall_{idx}", use_container_width=True):
+                    if st.button(f"Chọn Ảnh #{idx+1} Làm Nền", key=f"use_wall_{idx}", use_container_width=True):
                         st.session_state.bg_image_base64 = img_b64
                         save_data()
-                        st.success(f"Đã chọn Ảnh #{idx+1} làm hình nền!")
+                        st.success(f"Đã kích hoạt Ảnh #{idx+1} làm hình nền chính!")
                         st.rerun()
                 with b_col2:
-                    if st.button(f"Xóa #{idx+1}", key=f"del_wall_{idx}", use_container_width=True):
+                    if st.button(f"Xóa Ảnh #{idx+1}", key=f"del_wall_{idx}", use_container_width=True):
                         if st.session_state.bg_image_base64 == img_b64:
                             st.session_state.bg_image_base64 = None
                         st.session_state.wallpaper_library.pop(idx)
                         save_data()
-                        st.warning(f"Đã xóa Ảnh #{idx+1}!")
+                        st.warning(f"Đã xóa Ảnh #{idx+1} khỏi kho!")
                         st.rerun()
             except Exception:
                 pass
