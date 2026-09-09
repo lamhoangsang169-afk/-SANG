@@ -491,10 +491,8 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 save_data()
                 st.success("Đã cập nhật màu sắc biểu đồ!")
 
-        chart_size_cm = st.slider("Kích thước biểu đồ (cm)", min_value=8, max_value=25, value=12, step=1)
-        chart_size_inch = chart_size_cm / 2.54
-
-        fig, ax = plt.subplots(figsize=(chart_size_inch, chart_size_inch))
+        # Cố định kích thước biểu đồ gọn gàng (~12cm)
+        fig, ax = plt.subplots(figsize=(5, 5))
         
         current_colors = st.session_state.chart_colors[:len(summary)]
         
@@ -506,7 +504,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 explode_values.append(0.0)
 
-        # Vẽ biểu đồ tròn với tỷ lệ chuẩn (aspect equal) để giữ nguyên hình tròn hoàn hảo, ẩn nhãn trực tiếp trên hình
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
@@ -521,7 +518,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
         plt.setp(autotexts, size=10, weight="bold", color="white")
         ax.axis('equal')
         
-        # Bố cục chia 2 cột: Cột trái chứa biểu đồ tròn cân đối, cột phải chứa bảng chú thích (Legend) tên nhân sự và màu sắc tương ứng
         col_chart, col_legend = st.columns([1, 1])
         with col_chart:
             st.pyplot(fig)
