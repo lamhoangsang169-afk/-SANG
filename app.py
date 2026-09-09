@@ -431,8 +431,10 @@ def render_app():
 
         st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
         
-        # --- LẤY DANH SÁCH NHÂN SỰ ĐÃ CHECK-IN HÔM NAY ---
+        # --- PHÂN LOẠI & HIỂN THỊ TRẠNG THÁI NHÂN SỰ HÔM NAY ---
         active_staff = []
+        inactive_staff = []
+        
         if not st.session_state.attendance_df.empty:
             today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
             checked_in_set = set(today_att[today_att["Giờ Vào Ca"] != "--"]["Nhân Sự"].tolist())
@@ -442,6 +444,21 @@ def render_app():
         for s in st.session_state.staff_list:
             if s in checked_in_set:
                 active_staff.append(s)
+            else:
+                inactive_staff.append(s)
+
+        # Hiển thị trực quan theo yêu cầu
+        status_html = "##### 📌 Trạng Thái Nhân Sự Hôm Nay:\n"
+        for s in active_staff:
+            status_html += f"🟢 **{s}** - Đang Làm Việc<br>"
+        for s in inactive_staff:
+            status_html += f"🔴 **{s}** - không hoạt động<br>"
+            
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.7); padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
+            {status_html}
+        </div>
+        """, unsafe_allow_html=True)
 
         if not active_staff:
             st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
