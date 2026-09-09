@@ -330,21 +330,26 @@ def render_app():
             if st.button("1. Nhập Sản Lượng", use_container_width=True):
                 st.session_state.current_menu = "1. Nhập Sản Lượng"
                 save_data()
+                st.rerun()
             if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
                 st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
                 save_data()
+                st.rerun()
             if st.button("3. Quản Lý Định Mức", use_container_width=True):
                 st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
                 save_data()
+                st.rerun()
             if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
                 st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
                 save_data()
+                st.rerun()
 
         st.markdown("---")
         st.markdown("### ⚙️ Cấu Hình Hệ Thống")
         if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
             st.session_state.current_menu = "5. Cài Đặt Giao Diện"
             save_data()
+            st.rerun()
 
     menu = st.session_state.current_menu
 
@@ -447,8 +452,7 @@ def render_app():
             else:
                 inactive_staff.append(s)
 
-        # Hiển thị trực quan theo yêu cầu
-        status_html = "\n"
+        status_html = ""
         for s in active_staff:
             status_html += f"🟢 **{s}** - Đang Làm Việc<br>"
         for s in inactive_staff:
@@ -463,7 +467,7 @@ def render_app():
         if not active_staff:
             st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
         else:
-            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm.")
+            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh thì mới có thể bấm thêm bản ghi.*")
             
             with st.form("entry_form"):
                 col1, col2, col3 = st.columns(3)
@@ -479,17 +483,35 @@ def render_app():
                 with col_img:
                     img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
                     if img_source == "Chụp trực tiếp":
-                        record_image = st.camera_input("Chụp ảnh công việc")
+                        record_image = st.camera_input("Chụp ảnh công việc (Bắt buộc)")
                     else:
-                        record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+                        record_image = st.file_uploader("Tải ảnh đính kèm (Bắt buộc)", type=["png", "jpg", "jpeg"], key="record_img")
                         
                 with col_qty:
                     so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
                 with col_note:
                     ghi_chu = st.text_input("Ghi chú", "")
                     
-                submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
-                if submitted:
+                # Kiểm tra điều kiện dữ liệu bắt buộc (Nhân sự, Hạng mục, Ảnh đính kèm)
+                is_valid = True
+                missing_fields = []
+                if not nhan_su:
+                    is_valid = False
+                    missing_fields.append("Nhân sự thực hiện")
+                if not hang_muc:
+                    is_valid = False
+                    missing_fields.append("Hạng mục công việc")
+                if record_image is None:
+                    is_valid = False
+                    missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
+
+                if not is_valid:
+                    st.warning(f"⚠️ Vui lòng hoàn thành các mục bắt buộc sau trước khi thêm: {', '.join(missing_fields)}")
+                    submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True, disabled=True)
+                else:
+                    submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
+
+                if submitted and is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
                     he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
