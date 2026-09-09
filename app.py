@@ -11,7 +11,6 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 STORAGE_FILE = "app_storage.json"
 
-# Lấy giờ chuẩn Việt Nam (GMT+7) bằng thư viện chuẩn datetime
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
         return datetime.timedelta(hours=7)
@@ -342,41 +341,72 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if menu == "1. Nhập Sản Lượng":
-    # --- MỤC CHẤM CÔNG GIỜ VÀO / RA CA (CHỌN TRỰC QUAN THEO MÚI GIỜ VIỆT NAM) ---
+    # --- MỤC CHẤM CÔNG (CHECK-IN / CHECK-OUT TỰ ĐỘNG) ---
     st.subheader("Chấm Công Ca Làm Việc (Múi giờ VN: GMT+7)")
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     
     with st.form("attendance_form"):
-        att_col1, att_col2, att_col3, att_col4, att_col5 = st.columns(5)
+        att_col1, att_col2, att_col3 = st.columns(3)
         with att_col1:
             att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
         with att_col2:
             att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
         with att_col3:
-            time_in = st.time_input("Giờ vào ca", datetime.time(8, 0), key="att_time_in")
-        with att_col4:
-            time_out = st.time_input("Giờ ra ca", datetime.time(17, 0), key="att_time_out")
-        with att_col5:
             att_note = st.text_input("Ghi chú ca", "", key="att_note")
             
-        att_submitted = st.form_submit_button("⏰ Xác Nhận Chấm Công", use_container_width=True)
-        if att_submitted:
-            time_in_str = time_in.strftime("%H:%M")
-            time_out_str = time_out.strftime("%H:%M")
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca tự động)", use_container_width=True)
+        with col_btn2:
+            check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca tự động)", use_container_width=True)
+            
+        current_time_str = now_vn.strftime("%H:%M:%S")
+        
+        if check_in_clicked:
             new_att_stt = len(st.session_state.attendance_df) + 1
             new_att_row = {
                 "STT": new_att_stt,
                 "Ngày": str(att_date),
                 "Nhân Sự": att_staff,
-                "Giờ Vào Ca": time_in_str,
-                "Giờ Ra Ca": time_out_str,
+                "Giờ Vào Ca": current_time_str,
+                "Giờ Ra Ca": "Chưa kết thúc",
                 "Ghi Chú": att_note
             }
             st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
             st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
             save_data()
-            st.success(f"Đã chấm công thành công cho **{att_staff}** (Vào: {time_in_str} - Ra: {time_out_str})!")
+            st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
             st.rerun()
+            
+        if check_out_clicked:
+            # Tìm bản ghi chưa có giờ ra ca hoặc mới nhất của nhân sự trong ngày đó để cập nhật giờ ra ca
+            if not st.session_state.attendance_df.empty:
+                mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
+                       (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
+                       (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
+                if mask.any():
+                    st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
+                    save_data()
+                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.rerun()
+                else:
+                    # Nếu chưa có bản ghi check-in thì tạo mới dòng check-out luôn
+                    new_att_stt = len(st.session_state.attendance_df) + 1
+                    new_att_row = {
+                        "STT": new_att_stt,
+                        "Ngày": str(att_date),
+                        "Nhân Sự": att_staff,
+                        "Giờ Vào Ca": "--",
+                        "Giờ Ra Ca": current_time_str,
+                        "Ghi Chú": att_note
+                    }
+                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                    save_data()
+                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.rerun()
+            else:
+                st.warning("Chưa có lịch sử chấm công vào ca nào để kết thúc!")
 
     if not st.session_state.attendance_df.empty:
         with st.expander("📋 Xem Lịch Sử Chấm Công", expanded=False):
