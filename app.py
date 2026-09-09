@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -492,6 +491,7 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 save_data()
                 st.success("Đã cập nhật màu sắc biểu đồ!")
 
+        # Cố định kích thước biểu đồ gọn gàng (~12cm)
         fig, ax = plt.subplots(figsize=(5, 5))
         
         current_colors = st.session_state.chart_colors[:len(summary)]
@@ -504,17 +504,18 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 explode_values.append(0.0)
 
-        # Ẩn hoàn toàn nhãn số % trên biểu đồ tròn
-        wedges, texts = ax.pie(
+        wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
-            autopct=None, 
+            autopct='%1.1f%%', 
             startangle=90, 
             colors=current_colors,
             explode=explode_values,
-            shadow=True
+            shadow=True,
+            textprops={'fontsize': 11, 'color': 'white', 'weight': 'bold'}
         )
         
+        plt.setp(autotexts, size=10, weight="bold", color="white")
         ax.axis('equal')
         
         col_chart, col_legend = st.columns([1, 1])
