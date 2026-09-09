@@ -111,7 +111,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS tinh gọn: Biến nút popover thành 3 chấm (⋮) siêu nhỏ gọn
+# CSS toàn cục & tinh gọn 3 chấm (⋮)
 st.markdown(f"""
 <style>
     .stApp {{
@@ -170,7 +170,6 @@ st.markdown(f"""
         margin: 0 auto;
     }}
     
-    /* Tinh chỉnh nút popover thành icon 3 chấm (⋮) tinh tế */
     .avatar-popover-wrapper {{
         position: absolute;
         bottom: 0px;
@@ -261,7 +260,6 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-    # Nút popover 3 chấm tinh gọn để đổi hoặc xóa ảnh đại diện
     st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
     with st.popover(" "):
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
@@ -309,12 +307,11 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-
-    with st.expander("⚙️ Cấu Hình", expanded=True):
-        if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-            st.session_state.current_menu = "5. Cài Đặt Giao Diện"
-            save_data()
-            st.rerun()
+    st.markdown("### ⚙️ Cấu Hình Hệ Thống")
+    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+        st.session_state.current_menu = "5. Cài Đặt Giao Diện"
+        save_data()
+        st.rerun()
             
     st.markdown('</div>', unsafe_allow_html=True)
 
