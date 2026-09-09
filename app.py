@@ -67,6 +67,7 @@ def save_data():
         "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
         "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
         "bg_image_base64": st.session_state.get("bg_image_base64", None),
+        "wallpaper_library": st.session_state.get("wallpaper_library", []),
         "avatar_base64": st.session_state.get("avatar_base64", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
@@ -111,6 +112,7 @@ st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
 st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 st.session_state.text_color = saved_data.get("text_color", "#31333F")
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
+st.session_state.wallpaper_library = saved_data.get("wallpaper_library", [])
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
@@ -170,8 +172,8 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         height: 100vh;
-        overflow-y: auto;
-        padding-bottom: 50px;
+        overflow: hidden !important;
+        padding: 0px !important;
     }}
     
     [data-testid="stSidebar"] * {{
@@ -179,15 +181,23 @@ st.markdown(f"""
     }}
     
     .fixed-avatar-container {{
-        position: sticky;
-        top: 0px;
+        position: relative;
         z-index: 999999;
         background-color: {sidebar_rgba};
         padding-top: 15px;
         padding-bottom: 15px;
         border-bottom: 2px solid {st.session_state.primary_color};
-        margin-bottom: 15px;
+        margin-bottom: 10px;
         text-align: center;
+        flex-shrink: 0;
+    }}
+
+    .sidebar-scrollable-content {{
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-bottom: 50px;
     }}
 
     .avatar-wrapper {{
@@ -309,6 +319,8 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
+
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
         st.session_state.current_menu = "2. Chấm Công Ca Làm Việc"
         save_data()
@@ -345,6 +357,8 @@ with st.sidebar:
         st.session_state.current_menu = "7. Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
 
@@ -900,7 +914,7 @@ elif menu == "5. Thùng Rác / Khôi Phục Sản Lượng":
 # ==================== 6. CÀI ĐẶT GIAO DIỆN ====================
 elif menu == "6. Cài Đặt Giao Diện":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
-    st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và hình nền cho toàn bộ ứng dụng.")
+    st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và kho lưu trữ hình nền cho ứng dụng.")
     
     st.subheader("Quản Lý Danh Sách Nhân Sự")
     with st.form("staff_form"):
@@ -939,22 +953,63 @@ elif menu == "6. Cài Đặt Giao Diện":
     )
 
     st.markdown("---")
-    st.subheader("Tùy Chọn Hình Nền (Wallpaper)")
-    bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
+    st.subheader("🖼️ Kho Lưu Trữ Hình Nền (Tối đa 5 hình)")
     
-    col_b1, col_b2 = st.columns(2)
-    with col_b1:
+    current_count = len(st.session_state.wallpaper_library)
+    st.info(f"Đang lưu trữ: **{current_count} / 5** hình ảnh trong kho.")
+
+    if current_count >= 5:
+        st.warning("⚠️ Kho lưu trữ đã đạt giới hạn tối đa 5 hình nền! Vui lòng xóa bớt hình ảnh cũ bên dưới nếu muốn tải lên hình nền mới.")
+    else:
+        bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền mới (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
         if bg_file is not None:
             bytes_data = bg_file.getvalue()
-            st.session_state.bg_image_base64 = base64.b64encode(bytes_data).decode("utf-8")
+            new_b64 = base64.b64encode(bytes_data).decode("utf-8")
+            
+            st.session_state.wallpaper_library.append(new_b64)
+            st.session_state.bg_image_base64 = new_b64
             save_data()
-            st.success("Đã tải ảnh hình nền thành công!")
-    with col_b2:
-        if st.session_state.bg_image_base64 is not None:
-            if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
-                st.session_state.bg_image_base64 = None
-                save_data()
-                st.success("Đã xóa ảnh hình nền về mặc định!")
+            st.success("Đã tải lên và lưu hình nền mới thành công!")
+            st.rerun()
+
+    if st.session_state.wallpaper_library:
+        st.markdown("#### 📂 Danh Sách Hình Nền Đã Lưu")
+        cols = st.columns(min(len(st.session_state.wallpaper_library), 5))
+        
+        for idx, img_b64 in enumerate(st.session_state.wallpaper_library):
+            col_idx = idx % len(cols)
+            with cols[col_idx]:
+                try:
+                    pure_b64 = img_b64.split(",")[1] if "," in img_b64 else img_b64
+                    img_bytes = base64.b64decode(pure_b64)
+                    st.image(img_bytes, width=120, caption=f"Ảnh #{idx+1}")
+                    
+                    b_col1, b_col2 = st.columns(2)
+                    with b_col1:
+                        if st.button("Chọn", key=f"use_wall_{idx}", use_container_width=True):
+                            st.session_state.bg_image_base64 = img_b64
+                            save_data()
+                            st.success(f"Đã chọn Ảnh #{idx+1} làm hình nền!")
+                            st.rerun()
+                    with b_col2:
+                        if st.button("Xóa", key=f"del_wall_{idx}", use_container_width=True):
+                            if st.session_state.bg_image_base64 == img_b64:
+                                st.session_state.bg_image_base64 = None
+                            st.session_state.wallpaper_library.pop(idx)
+                            save_data()
+                            st.warning(f"Đã xóa Ảnh #{idx+1} khỏi kho lưu trữ!")
+                            st.rerun()
+                except Exception:
+                    pass
+    else:
+        st.text("Chưa có hình nền nào trong kho lưu trữ.")
+
+    if st.session_state.bg_image_base64 is not None and not st.session_state.wallpaper_library:
+        if st.button("🗑️ Xóa Hình Nền Đang Dùng Hiện Tại"):
+            st.session_state.bg_image_base64 = None
+            save_data()
+            st.success("Đã xóa ảnh hình nền về mặc định!")
+            st.rerun()
 
     st.markdown("---")
     if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
