@@ -186,50 +186,51 @@ def render_app():
             color: {st.session_state.text_color} !important;
         }}
         
-        /* Cố định vùng chứa Avatar ở đầu Sidebar */
+        /* Cố định vùng chứa Avatar ở đầu Sidebar kèm thanh ngang phân cách */
         .fixed-avatar-container {{
             position: sticky;
             top: 0px;
             z-index: 999;
             background-color: {sidebar_rgba};
-            padding-top: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            margin-bottom: 15px;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid {st.session_state.primary_color};
+            margin-bottom: 20px;
+            text-align: center;
         }}
 
-        /* Thu nhỏ kích thước khung Avatar tương đương 6cm (~80px) */
+        /* Tăng kích thước ảnh đại diện to lên cân đối (~6cm tương đương 160px) */
         .avatar-wrapper {{
             position: relative;
-            width: 80px;
-            height: 80px;
+            width: 160px;
+            height: 160px;
             margin: 0 auto;
         }}
         
         .avatar-popover-wrapper {{
             position: absolute;
-            bottom: -2px;
-            right: -4px;
+            bottom: 4px;
+            right: 12px;
             z-index: 99;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button {{
             background-color: #ffffff !important;
-            border: 1.5px solid {st.session_state.primary_color} !important;
+            border: 2px solid {st.session_state.primary_color} !important;
             border-radius: 50% !important;
-            width: 18px !important;
-            height: 18px !important;
+            width: 34px !important;
+            height: 34px !important;
             padding: 0px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button p {{
             display: none !important;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
             content: "⋮";
-            font-size: 11px;
+            font-size: 18px;
             font-weight: bold;
             color: #333333;
             line-height: 1;
@@ -264,7 +265,7 @@ def render_app():
 
     # ----------------- THANH BÊN (SIDEBAR) -----------------
     with st.sidebar:
-        # Khung cố định ở trên cùng sidebar chứa avatar
+        # Khung cố định ở trên cùng sidebar chứa avatar & thanh ngang phân cách
         st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
         
         has_custom_avatar = False
@@ -288,12 +289,12 @@ def render_app():
             encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
             st.markdown(f"""
             <div style="cursor: pointer; text-align: center;">
-                <img src="data:image/png;base64,{encoded_img}" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                <img src="data:image/png;base64,{encoded_img}" style="width:160px; height:160px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-            <div style="width:42px; height:42px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:18px; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+            <div style="width:160px; height:160px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:60px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3); margin: 0 auto;">
                 👤
             </div>
             """, unsafe_allow_html=True)
