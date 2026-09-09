@@ -479,7 +479,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
         st.markdown("---")
         st.subheader("Biểu Đồ Tỷ Lệ Đóng Góp Điểm Thi Đua")
         
-        # Tùy chỉnh màu sắc riêng cho từng nhân sự ngay tại đây
         with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ Cho Từng Nhân Sự", expanded=False):
             while len(st.session_state.chart_colors) < len(st.session_state.staff_list):
                 st.session_state.chart_colors.append("#3b82f6")
@@ -492,21 +491,32 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 save_data()
                 st.success("Đã cập nhật màu sắc biểu đồ!")
 
-        # Thanh trượt tùy chỉnh kích thước biểu đồ (mặc định 12cm tương ứng với ~6 inches)
+        # Thanh trượt tùy chỉnh kích thước biểu đồ (mặc định 12cm)
         chart_size_cm = st.slider("Kích thước biểu đồ (cm)", min_value=8, max_value=25, value=12, step=1)
         chart_size_inch = chart_size_cm / 2.54
 
         fig, ax = plt.subplots(figsize=(chart_size_inch, chart_size_inch))
         
-        # Lấy danh sách màu tương ứng với nhân sự
         current_colors = st.session_state.chart_colors[:len(summary)]
         
+        # Tạo hiệu ứng khối: Phần % cao hơn sẽ tự động nhô ra ngoài (explode lớn hơn)
+        max_pts = summary["Tổng_Điểm"].max()
+        explode_values = []
+        for pts in summary["Tổng_Điểm"]:
+            if max_pts > 0:
+                # Tỷ lệ nhô ra từ 0.05 đến 0.2 tùy theo mức điểm cao/thấp
+                explode_values.append(0.02 + 0.18 * (pts / max_pts))
+            else:
+                explode_values.append(0.0)
+
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=summary["Nhân Sự"], 
             autopct='%1.1f%%', 
             startangle=90, 
             colors=current_colors,
+            explode=explode_values,
+            shadow=True, # Thêm bóng đổ 3D tạo hiệu ứng nổi khối
             textprops={'fontsize': 11, 'color': '#333333'}
         )
         
