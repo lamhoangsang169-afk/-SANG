@@ -51,6 +51,7 @@ def save_data():
         "primary_color": st.session_state.primary_color,
         "bg_color": st.session_state.bg_color,
         "sidebar_bg": st.session_state.sidebar_bg,
+        "sidebar_opacity": st.session_state.sidebar_opacity,
         "text_color": st.session_state.text_color,
         "bg_image_base64": st.session_state.bg_image_base64,
         "avatar_base64": st.session_state.avatar_base64,
@@ -88,6 +89,8 @@ if "bg_color" not in st.session_state:
     st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
 if "sidebar_bg" not in st.session_state:
     st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
+if "sidebar_opacity" not in st.session_state:
+    st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 if "text_color" not in st.session_state:
     st.session_state.text_color = saved_data.get("text_color", "#31333F")
 if "bg_image_base64" not in st.session_state:
@@ -106,10 +109,24 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
-# Sử dụng background-size: cover để ảnh phủ kín toàn màn hình giống hình nền Desktop
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
+
+# Hàm chuyển màu HEX sang RGBA để áp dụng độ trong suốt cho sidebar
+def hex_to_rgba(hex_str, opacity):
+    hex_str = hex_str.lstrip('#')
+    if len(hex_str) == 3:
+        hex_str = ''.join([c*2 for c in hex_str])
+    try:
+        r = int(hex_str[0:2], 16)
+        g = int(hex_str[2:4], 16)
+        b = int(hex_str[4:6], 16)
+        return f"rgba({r}, {g}, {b}, {opacity})"
+    except:
+        return f"rgba(240, 242, 246, {opacity})"
+
+sidebar_rgba = hex_to_rgba(st.session_state.sidebar_bg, st.session_state.sidebar_opacity)
 
 st.markdown(f"""
 <style>
@@ -131,8 +148,10 @@ st.markdown(f"""
         color: {st.session_state.primary_color} !important;
     }}
 
+    /* Thanh sidebar tuân theo màu và độ trong suốt riêng biệt */
     [data-testid="stSidebar"] {{
-        background-color: {st.session_state.sidebar_bg};
+        background-color: {sidebar_rgba} !important;
+        backdrop-filter: blur(8px);
         resize: horizontal !important;
     }}
     
@@ -629,6 +648,12 @@ elif menu == "5. Cài Đặt Giao Diện":
         st.session_state.sidebar_bg = st.color_picker("Màu nền thanh bên", st.session_state.sidebar_bg)
         st.session_state.text_color = st.color_picker("Màu chữ", st.session_state.text_color)
         
+    # Thêm thanh trượt tùy chỉnh độ trong suốt của Sidebar để nhìn thấu ảnh nền
+    st.session_state.sidebar_opacity = st.slider(
+        "Độ trong suốt của thanh Sidebar (0.0 = trong suốt hoàn toàn thấy ảnh nền, 1.0 = đặc màu)", 
+        min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05
+    )
+
     st.markdown("---")
     st.subheader("Tùy Chọn Hình Nền (Wallpaper)")
     bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
