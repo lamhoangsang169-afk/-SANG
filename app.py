@@ -47,6 +47,7 @@ def save_data():
     data = {
         "rules_df": st.session_state.rules_df.to_dict(orient="records"),
         "input_df": st.session_state.input_df.to_dict(orient="records"),
+        "attendance_df": st.session_state.attendance_df.to_dict(orient="records"),
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records"),
         "staff_list": st.session_state.staff_list,
         "chart_colors": st.session_state.chart_colors,
@@ -79,6 +80,12 @@ if "input_df" not in st.session_state:
     else:
         st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
+if "attendance_df" not in st.session_state:
+    if "attendance_df" in saved_data and saved_data["attendance_df"]:
+        st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
+    else:
+        st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
+
 if "deleted_input_df" not in st.session_state:
     if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
         st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
@@ -110,6 +117,8 @@ if "current_menu" not in st.session_state:
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+if not st.session_state.attendance_df.empty:
+    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
 if not st.session_state.rules_df.empty:
     st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
 if not st.session_state.deleted_input_df.empty:
@@ -322,6 +331,45 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if menu == "1. Nhập Sản Lượng":
+    # --- MỤC CHẤM CÔNG GIỜ VÀO / RA CA ---
+    st.subheader("Chấm Công Ca Làm Việc")
+    with st.form("attendance_form"):
+        att_col1, att_col2, att_col3, att_col4, att_col5 = st.columns(5)
+        with att_col1:
+            att_date = st.date_input("Ngày chấm công", datetime.date.today(), key="att_date")
+        with att_col2:
+            att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
+        with att_col3:
+            time_in = st.time_input("Giờ vào ca", datetime.time(8, 0), key="att_time_in")
+        with att_col4:
+            time_out = st.time_input("Giờ ra ca", datetime.time(17, 0), key="att_time_out")
+        with att_col5:
+            att_note = st.text_input("Ghi chú ca", "", key="att_note")
+            
+        att_submitted = st.form_submit_button("⏰ Xác Nhận Chấm Công", use_container_width=True)
+        if att_submitted:
+            new_att_stt = len(st.session_state.attendance_df) + 1
+            new_att_row = {
+                "STT": new_att_stt,
+                "Ngày": str(att_date),
+                "Nhân Sự": att_staff,
+                "Giờ Vào Ca": time_in.strftime("%H:%M"),
+                "Giờ Ra Ca": time_out.strftime("%H:%M"),
+                "Ghi Chú": att_note
+            }
+            st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+            save_data()
+            st.success(f"Đã chấm công thành công cho **{att_staff}** (Vào: {time_in.strftime('%H:%M')} - Ra: {time_out.strftime('%H:%M')})!")
+            st.rerun()
+
+    if not st.session_state.attendance_df.empty:
+        with st.expander("📋 Xem Lịch Sử Chấm Công", expanded=False):
+            st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # --- MỤC NHẬP SẢN LƯỢNG ---
     st.subheader("Nhập Sản Lượng Hàng Ngày")
     st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm.")
     
