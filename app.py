@@ -55,20 +55,20 @@ def load_data():
 
 def save_data():
     data = {
-        "rules_df": st.session_state.rules_df.to_dict(orient="records"),
-        "input_df": st.session_state.input_df.to_dict(orient="records"),
-        "attendance_df": st.session_state.attendance_df.to_dict(orient="records"),
-        "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records"),
-        "staff_list": st.session_state.staff_list,
-        "chart_colors": st.session_state.chart_colors,
-        "primary_color": st.session_state.primary_color,
-        "bg_color": st.session_state.bg_color,
-        "sidebar_bg": st.session_state.sidebar_bg,
-        "sidebar_opacity": st.session_state.sidebar_opacity,
-        "text_color": st.session_state.text_color,
-        "bg_image_base64": st.session_state.bg_image_base64,
-        "avatar_base64": st.session_state.avatar_base64,
-        "current_menu": st.session_state.current_menu
+        "rules_df": st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules,
+        "input_df": st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else [],
+        "attendance_df": st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else [],
+        "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else [],
+        "staff_list": st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list,
+        "chart_colors": st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors,
+        "primary_color": st.session_state.primary_color if "primary_color" in st.session_state else "#ff4b4b",
+        "bg_color": st.session_state.bg_color if "bg_color" in st.session_state else "#ffffff",
+        "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
+        "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
+        "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
+        "bg_image_base64": st.session_state.get("bg_image_base64", None),
+        "avatar_base64": st.session_state.get("avatar_base64", None),
+        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     try:
         with open(STORAGE_FILE, "w", encoding="utf-8") as f:
@@ -78,40 +78,54 @@ def save_data():
 
 def sync_from_storage():
     saved_data = load_data()
-    if "rules_df" in saved_data and saved_data["rules_df"]:
-        st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
-    else:
-        if "rules_df" not in st.session_state:
+    
+    if "rules_df" not in st.session_state:
+        if "rules_df" in saved_data and saved_data["rules_df"]:
+            st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
+        else:
             st.session_state.rules_df = pd.DataFrame(master_rules)
 
-    if "input_df" in saved_data:
-        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-    else:
-        if "input_df" not in st.session_state:
+    if "input_df" not in st.session_state:
+        if "input_df" in saved_data:
+            st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
+        else:
             st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
-    if "attendance_df" in saved_data and saved_data["attendance_df"]:
-        st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
-    else:
-        if "attendance_df" not in st.session_state:
+    if "attendance_df" not in st.session_state:
+        if "attendance_df" in saved_data and saved_data["attendance_df"]:
+            st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
+        else:
             st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
 
-    if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
-        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-    else:
-        if "deleted_input_df" not in st.session_state:
+    if "deleted_input_df" not in st.session_state:
+        if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
+            st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
+        else:
             st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
-    st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
-    st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
-    st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
-    st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
-    st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
-    st.session_state.text_color = saved_data.get("text_color", "#31333F")
-    st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
-    st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
-    st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
+    if "staff_list" not in st.session_state:
+        st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
+    if "chart_colors" not in st.session_state:
+        st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
+    if "primary_color" not in st.session_state:
+        st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
+    if "bg_color" not in st.session_state:
+        st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
+    if "sidebar_bg" not in st.session_state:
+        st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
+    if "sidebar_opacity" not in st.session_state:
+        st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
+    if "text_color" not in st.session_state:
+        st.session_state.text_color = saved_data.get("text_color", "#31333F")
+        
+    # Giữ lại giá trị ảnh đại diện và hình nền đã lưu, không bị ghi đè None
+    if "bg_image_base64" not in st.session_state:
+        st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
+    if "avatar_base64" not in st.session_state:
+        st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
+        
+    if "current_menu" not in st.session_state:
+        st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
 if "initialized" not in st.session_state:
     sync_from_storage()
@@ -132,8 +146,6 @@ save_data()
 
 @st.fragment(run_every=3)
 def render_app():
-    sync_from_storage()
-    
     bg_style = f"background-color: {st.session_state.bg_color};"
     if st.session_state.bg_image_base64:
         bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
@@ -330,21 +342,26 @@ def render_app():
             if st.button("1. Nhập Sản Lượng", use_container_width=True):
                 st.session_state.current_menu = "1. Nhập Sản Lượng"
                 save_data()
+                st.rerun()
             if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
                 st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
                 save_data()
+                st.rerun()
             if st.button("3. Quản Lý Định Mức", use_container_width=True):
                 st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
                 save_data()
+                st.rerun()
             if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
                 st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
                 save_data()
+                st.rerun()
 
         st.markdown("---")
         st.markdown("### ⚙️ Cấu Hình Hệ Thống")
         if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
             st.session_state.current_menu = "5. Cài Đặt Giao Diện"
             save_data()
+            st.rerun()
 
     menu = st.session_state.current_menu
 
@@ -431,7 +448,6 @@ def render_app():
 
         st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
         
-        # --- PHÂN LOẠI & HIỂN THỊ TRẠNG THÁI NHÂN SỰ HÔM NAY ---
         active_staff = []
         inactive_staff = []
         
@@ -447,8 +463,7 @@ def render_app():
             else:
                 inactive_staff.append(s)
 
-        # Hiển thị trực quan theo yêu cầu
-        status_html = "\n"
+        status_html = ""
         for s in active_staff:
             status_html += f"🟢 **{s}** - Đang Làm Việc<br>"
         for s in inactive_staff:
@@ -463,7 +478,7 @@ def render_app():
         if not active_staff:
             st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
         else:
-            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm.")
+            st.info("💡 Mẹo: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải file ảnh đính kèm. *Lưu ý: Bắt buộc phải chọn Nhân sự, Hạng mục và tải ảnh đính kèm/chụp ảnh thì mới có thể bấm báo cáo sản lượng.*")
             
             with st.form("entry_form"):
                 col1, col2, col3 = st.columns(3)
@@ -479,17 +494,34 @@ def render_app():
                 with col_img:
                     img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
                     if img_source == "Chụp trực tiếp":
-                        record_image = st.camera_input("Chụp ảnh công việc")
+                        record_image = st.camera_input("Chụp ảnh công việc (Bắt buộc)")
                     else:
-                        record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+                        record_image = st.file_uploader("Tải ảnh đính kèm (Bắt buộc)", type=["png", "jpg", "jpeg"], key="record_img")
                         
                 with col_qty:
                     so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
                 with col_note:
                     ghi_chu = st.text_input("Ghi chú", "")
                     
-                submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
-                if submitted:
+                is_valid = True
+                missing_fields = []
+                if not nhan_su:
+                    is_valid = False
+                    missing_fields.append("Nhân sự thực hiện")
+                if not hang_muc:
+                    is_valid = False
+                    missing_fields.append("Hạng mục công việc")
+                if record_image is None:
+                    is_valid = False
+                    missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
+
+                if not is_valid:
+                    st.warning(f"⚠️ Vui lòng hoàn thành các mục bắt buộc sau trước khi thêm: {', '.join(missing_fields)}")
+                    submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True, disabled=True)
+                else:
+                    submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
+
+                if submitted and is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
                     he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
@@ -516,7 +548,7 @@ def render_app():
                     st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                    st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
 
         st.markdown("---")
