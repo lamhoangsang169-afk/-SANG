@@ -594,8 +594,10 @@ if menu == "1. Nhập Sản Lượng":
                                 pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
-                                # Thu nhỏ kích thước ảnh hiển thị còn 90px để cực kỳ gọn gàng
+                                # Hiển thị ảnh thu nhỏ (90px) và tích hợp popover để bấm xem phóng to ngay lập tức
                                 st.image(img_bytes, width=90)
+                                with st.popover("🔍 Phóng to", use_container_width=True):
+                                    st.image(img_bytes, caption=f"Ảnh chi tiết (STT {row['STT']})", use_container_width=True)
                             except Exception:
                                 st.text("Lỗi ảnh")
                         else:
