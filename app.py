@@ -491,7 +491,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
                 save_data()
                 st.success("Đã cập nhật màu sắc biểu đồ!")
 
-        # Thanh trượt tùy chỉnh kích thước biểu đồ (mặc định 12cm)
         chart_size_cm = st.slider("Kích thước biểu đồ (cm)", min_value=8, max_value=25, value=12, step=1)
         chart_size_inch = chart_size_cm / 2.54
 
@@ -499,33 +498,50 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
         
         current_colors = st.session_state.chart_colors[:len(summary)]
         
-        # Tạo hiệu ứng khối: Phần % cao hơn sẽ tự động nhô ra ngoài (explode lớn hơn)
         max_pts = summary["Tổng_Điểm"].max()
         explode_values = []
         for pts in summary["Tổng_Điểm"]:
             if max_pts > 0:
-                # Tỷ lệ nhô ra từ 0.05 đến 0.2 tùy theo mức điểm cao/thấp
-                explode_values.append(0.02 + 0.18 * (pts / max_pts))
+                explode_values.append(0.01 + 0.12 * (pts / max_pts))
             else:
                 explode_values.append(0.0)
 
+        # Vẽ biểu đồ tròn với tỷ lệ chuẩn (aspect equal) để giữ nguyên hình tròn hoàn hảo, ẩn nhãn trực tiếp trên hình
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
-            labels=summary["Nhân Sự"], 
+            labels=None, 
             autopct='%1.1f%%', 
             startangle=90, 
             colors=current_colors,
             explode=explode_values,
-            shadow=True, # Thêm bóng đổ 3D tạo hiệu ứng nổi khối
-            textprops={'fontsize': 11, 'color': '#333333'}
+            shadow=True,
+            textprops={'fontsize': 11, 'color': 'white', 'weight': 'bold'}
         )
         
         plt.setp(autotexts, size=10, weight="bold", color="white")
         ax.axis('equal')
         
-        col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
-        with col_c2:
+        # Bố cục chia 2 cột: Cột trái chứa biểu đồ tròn cân đối, cột phải chứa bảng chú thích (Legend) tên nhân sự và màu sắc tương ứng
+        col_chart, col_legend = st.columns([1, 1])
+        with col_chart:
             st.pyplot(fig)
+            
+        with col_legend:
+            st.markdown("#### 📌 Chú Thích Nhân Sự")
+            for i, row in summary.iterrows():
+                color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
+                staff_name = row["Nhân Sự"]
+                staff_pts = row["Tổng_Điểm"]
+                staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; margin-bottom: 12px; background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="width: 20px; height: 20px; background-color: {color_box}; border-radius: 4px; margin-right: 12px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.2);"></div>
+                    <div style="font-size: 0.95rem;">
+                        <b>{staff_name}</b><br>
+                        <span style="font-size: 0.85rem; opacity: 0.8;">{staff_pts:,.1f} điểm ({staff_pct:.1f}%)</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
         
     else:
         st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
