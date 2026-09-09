@@ -570,16 +570,26 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            display_df = filtered_df.copy()
-            display_df.insert(0, "Chọn", False)
-            
-            cols_order = ["Chọn", "STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
-            display_df = display_df[[c for c in cols_order if c in display_df.columns]]
-
-            # CHIA BỐ CỤC 2 CỘT: TRÁI LÀ BẢNG SẢN LƯỢNG, PHẢI LÀ KHUNG ĐỐI CHIẾU ẢNH
+            # CHIA BỐ CỤC 2 CỘT SONG SONG ĐỂ DỄ ĐỐI CHIẾU
             col_table, col_preview = st.columns([7, 4])
             
             with col_table:
+                display_df = filtered_df.copy()
+                display_df.insert(0, "Chọn", False)
+                
+                # Thêm cột ảnh trực quan vào bảng danh sách
+                thumb_list = []
+                for idx, row in filtered_df.iterrows():
+                    img_val = row.get("Hình Ảnh", "")
+                    if img_val and isinstance(img_val, str) and len(img_val) > 10:
+                        thumb_list.append("📷 Có ảnh")
+                    else:
+                        thumb_list.append("❌ Không")
+                display_df.insert(4, "Ảnh Báo Cáo", thumb_list)
+                
+                cols_order = ["Chọn", "STT", "Ảnh Báo Cáo", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+                display_df = display_df[[c for c in cols_order if c in display_df.columns]]
+
                 with st.form("input_delete_form"):
                     edited_table = st.data_editor(
                         display_df,
@@ -608,9 +618,9 @@ if menu == "1. Nhập Sản Lượng":
                             st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
             
             with col_preview:
-                st.markdown("#### 🖼️ Đối Chiếu Ảnh Đính Kèm")
+                st.markdown("#### 🖼️ Khung Đối Chiếu Ảnh")
                 img_options = [f"STT {row['STT']} - {row['Ngày']} - {row['Nhân Sự']} - {row['Hạng Mục Công Việc']}" for idx, row in filtered_df.iterrows()]
-                selected_img_label = st.selectbox("Chọn dòng để xem ảnh:", img_options, key="side_img_select")
+                selected_img_label = st.selectbox("Chọn dòng trong danh sách để xem ảnh:", img_options, key="side_img_select")
                 
                 if selected_img_label:
                     selected_stt = int(selected_img_label.split(" - ")[0].replace("STT ", ""))
