@@ -309,7 +309,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Đưa nút Chấm Công ra ngoài, nằm phía trên tiêu đề Chức năng hệ thống
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
         st.session_state.current_menu = "2. Chấm Công Ca Làm Việc"
         save_data()
@@ -323,15 +322,15 @@ with st.sidebar:
             st.session_state.current_menu = "1. Nhập Sản Lượng"
             save_data()
             st.rerun()
-        if st.button("3. Báo Cáo & Biểu Đồ", use_container_width=True):
+        if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
             st.session_state.current_menu = "3. Báo Cáo & Biểu Đồ Tổng Hợp"
             save_data()
             st.rerun()
-        if st.button("4. Quản Lý Định Mức", use_container_width=True):
+        if st.button("3. Quản Lý Định Mức", use_container_width=True):
             st.session_state.current_menu = "4. Quản Lý Định Mức Điểm"
             save_data()
             st.rerun()
-        if st.button("5. Thùng Rác Sản Lượng", use_container_width=True):
+        if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
             st.session_state.current_menu = "5. Thùng Rác / Khôi Phục Sản Lượng"
             save_data()
             st.rerun()
