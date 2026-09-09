@@ -45,7 +45,6 @@ default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh T
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"]
 
 def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
-    """Hàm nén ảnh tự động để giảm dung lượng RAM, chống lỗi Over capacity trên Streamlit Cloud"""
     try:
         if uploaded_file is None:
             return None
