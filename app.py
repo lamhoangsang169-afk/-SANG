@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import datetime
@@ -285,26 +286,21 @@ with st.sidebar:
         if st.button("1. Nhập Sản Lượng", use_container_width=True):
             st.session_state.current_menu = "1. Nhập Sản Lượng"
             save_data()
-            st.rerun()
         if st.button("2. Báo Cáo & Biểu Đồ", use_container_width=True):
             st.session_state.current_menu = "2. Báo Cáo & Biểu Đồ Tổng Hợp"
             save_data()
-            st.rerun()
         if st.button("3. Quản Lý Định Mức", use_container_width=True):
             st.session_state.current_menu = "3. Quản Lý Định Mức Điểm"
             save_data()
-            st.rerun()
         if st.button("4. Thùng Rác Sản Lượng", use_container_width=True):
             st.session_state.current_menu = "4. Thùng Rác / Khôi Phục Sản Lượng"
             save_data()
-            st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
     if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
         st.session_state.current_menu = "5. Cài Đặt Giao Diện"
         save_data()
-        st.rerun()
 
 menu = st.session_state.current_menu
 
@@ -373,7 +369,6 @@ if menu == "1. Nhập Sản Lượng":
             st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
             save_data()
             st.success(f"Đã thêm thành công sản lượng cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
-            st.rerun()
 
     st.markdown("---")
     st.subheader("Danh Sách Sản Lượng")
@@ -430,7 +425,6 @@ if menu == "1. Nhập Sản Lượng":
                         
                     save_data()
                     st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
-                    st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng để xóa!")
         else:
@@ -512,7 +506,6 @@ elif menu == "3. Quản Lý Định Mức Điểm":
                     st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
                     save_data()
                     st.success(f"Đã khôi phục thành công các mục: {', '.join(selected_to_restore)}!")
-                    st.rerun()
                 else:
                     st.warning("Vui lòng chọn ít nhất một mục để khôi phục.")
         with col_r2:
@@ -521,14 +514,12 @@ elif menu == "3. Quản Lý Định Mức Điểm":
                 st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
                 save_data()
                 st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
-                st.rerun()
     else:
         if st.button("🔄 Khôi Phục Toàn Bộ Mặc Định"):
             st.session_state.rules_df = pd.DataFrame(master_rules)
             st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
             save_data()
             st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
-            st.rerun()
 
     st.markdown("---")
     st.markdown("#### Danh Sách Định Mức Hiện Tại")
@@ -546,7 +537,6 @@ elif menu == "3. Quản Lý Định Mức Điểm":
         st.session_state.rules_df = edited_rules
         save_data()
         st.success("Đã cập nhật lại danh mục định mức điểm thành công!")
-        st.rerun()
 
 elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
     st.header("Thùng Rác & Khôi Phục Bản Ghi")
@@ -586,7 +576,6 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
                     st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
-                    st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
 
@@ -603,7 +592,6 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
                     
                     save_data()
                     st.success("Đã xóa vĩnh viễn các dòng đã chọn khỏi thùng rác!")
-                    st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
 
@@ -612,7 +600,6 @@ elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
             st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
             save_data()
             st.success("Đã dọn sạch toàn bộ thùng rác!")
-            st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống.")
 
@@ -635,7 +622,6 @@ elif menu == "5. Cài Đặt Giao Diện":
             st.session_state.staff_list = new_staff_list
             save_data()
             st.success("Đã cập nhật danh sách nhân sự thành công!")
-            st.rerun()
         else:
             st.warning("Danh sách nhân sự không được để trống.")
 
@@ -671,10 +657,8 @@ elif menu == "5. Cài Đặt Giao Diện":
                 st.session_state.bg_image_base64 = None
                 save_data()
                 st.success("Đã xóa ảnh hình nền về mặc định!")
-                st.rerun()
 
     st.markdown("---")
     if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
         save_data()
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
-        st.rerun()
