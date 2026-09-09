@@ -544,7 +544,7 @@ if menu == "1. Nhập Sản Lượng":
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh Trực Tiếp")
+    st.subheader("Danh Sách Sản Lượng & Đối Chiếu Ảnh Thu Nhỏ")
     
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -570,33 +570,62 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # HIỂN THỊ DANH SÁCH DẠNG THẺ (CARD) ĐỂ XEM ẢNH TRỰC TIẾP TỪNG DÒNG
-            for idx, row in filtered_df.iterrows():
-                st.markdown(f"""
-                <div style="background: rgba(255,255,255,0.85); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.15); box-shadow: 0 2px 5px rgba(0,0,0,0.05); backdrop-filter: blur(5px);">
-                    <b>STT: {row['STT']}</b> | 📅 <b>Ngày:</b> {row['Ngày']} | 👤 <b>Nhân sự:</b> {row['Nhân Sự']}<br>
-                    📌 <b>Hạng mục:</b> {row['Hạng Mục Công Việc']} | 📦 <b>Số lượng:</b> {row['Số_Lượng'] if 'Số_Lượng' in row else row['Số Lượng']} {row['Đơn Vị']} | ⭐ <b>Tổng điểm:</b> {row['Tổng Điểm']}<br>
-                    💬 <b>Ghi chú:</b> {row['Ghi Chú'] if row['Ghi Chú'] else 'Không có'}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Cột hiển thị ảnh trực tiếp ngay dưới dòng thông tin
-                img_b64_val = row["Hình Ảnh"]
-                if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
-                    try:
-                        pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
-                        pure_b64 += "=" * (-len(pure_b64) % 4)
-                        img_bytes = base64.b64decode(pure_b64)
+            # Form chứa nút xóa để quản lý các dòng sản lượng
+            with st.form("input_delete_form"):
+                for idx, row in filtered_df.iterrows():
+                    c_check, c_info, c_img = st.columns([1, 6, 3])
+                    
+                    with c_check:
+                        # Thêm checkbox để chọn xóa dòng
+                        is_selected = st.checkbox("Chọn", key=f"chk_{row['STT']}", label_visibility="collapsed")
+                        # Lưu trạng thái chọn tạm vào dòng
+                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
-                        col_space1, col_img_show, col_space2 = st.columns([1, 4, 1])
-                        with col_img_show:
-                            st.image(img_bytes, caption=f"📸 Ảnh thực tế bản ghi STT {row['STT']}", use_container_width=True)
-                    except Exception:
-                        st.info("⚠️ Không thể giải mã hình ảnh.")
-                else:
-                    st.info("ℹ️ Bản ghi này không có ảnh đính kèm.")
-                
-                st.markdown("---")
+                    with c_info:
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.85); padding: 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
+                            <b>STT: {row['STT']}</b> | 📅 {row['Ngày']}<br>
+                            👤 <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']} | 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ {row['Tổng Điểm']} điểm)<br>
+                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with c_img:
+                        img_b64_val = row["Hình Ảnh"]
+                        if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                            try:
+                                pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
+                                pure_b64 += "=" * (-len(pure_b64) % 4)
+                                img_bytes = base64.b64decode(pure_b64)
+                                # Hiển thị ảnh thu nhỏ (thumbnail) kích thước nhỏ gọn
+                                st.image(img_bytes, width=120)
+                            except Exception:
+                                st.text("Lỗi hiển thị ảnh")
+                        else:
+                            st.text("Không có ảnh")
+                            
+                    st.markdown("---")
+                    
+                delete_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
+                if delete_submitted:
+                    selected_rows = filtered_df[filtered_df["Chọn_Xóa"] == True]
+                    if not selected_rows.empty:
+                        stt_to_remove = selected_rows["STT"].tolist()
+                        rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
+                        st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
+                        
+                        st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                        
+                        if not st.session_state.deleted_input_df.empty:
+                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
+                            
+                        save_data()
+                        st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn ít nhất một dòng để xóa!")
         else:
             st.info("Không tìm thấy bản ghi nào khớp với bộ lọc.")
     else:
