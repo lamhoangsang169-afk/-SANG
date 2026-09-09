@@ -6,6 +6,7 @@ import io
 import base64
 import json
 import os
+import time
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
@@ -60,7 +61,7 @@ def save_data():
         "attendance_df": st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else [],
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else [],
         "staff_list": st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list,
-        "chart_colors": st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors,
+        "chart_colors": st.session_state.chart_colors if "session_state" in globals() and "chart_colors" in st.session_state else default_chart_colors,
         "primary_color": st.session_state.primary_color if "primary_color" in st.session_state else "#ff4b4b",
         "bg_color": st.session_state.bg_color if "bg_color" in st.session_state else "#ffffff",
         "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
@@ -76,7 +77,7 @@ def save_data():
     except Exception:
         pass
 
-# Tự động nạp dữ liệu mới nhất từ file JSON mỗi khi chạy lại giao diện
+# Nạp dữ liệu mới nhất từ file JSON
 saved_data = load_data()
 
 if "rules_df" in saved_data and saved_data["rules_df"]:
@@ -254,22 +255,12 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------------
-# TÍNH NĂNG CHẠM/CLICK VÀO BẤT CỨ VỊ TRÍ NÀO TRÊN MÀN HÌNH ĐỂ TỰ ĐỘNG CẬP NHẬT
+# TÍNH NĂNG TỰ ĐỘNG CẬP NHẬT NGẦM (AUTO-REFRESH REAL-TIME)
 # -------------------------------------------------------------------------
+# Đoạn script này sử dụng thư viện streamlit-autorefresh hoặc meta refresh 
+# tự động làm mới trang sau mỗi 4 giây để đồng bộ dữ liệu ngay lập tức mà không cần bấm gì.
 st.markdown("""
-<script>
-    // Lắng nghe mọi sự kiện click hoặc chạm trên toàn bộ tài liệu web
-    window.addEventListener('click', function() {
-        // Tự động gọi fetch lại URL trang web ngầm để ép WebSocket đồng bộ dữ liệu mới nhất
-        fetch(window.location.href, {cache: 'no-store'}).then(response => {
-            // Kích hoạt một sự kiện giả lập để Streamlit render lại state giao diện ngay lập tức
-            const activeElement = document.activeElement;
-            if (activeElement) {
-                activeElement.blur();
-            }
-        }).catch(err => {});
-    }, {passive: true});
-</script>
+<meta http-equiv="refresh" content="4">
 """, unsafe_allow_html=True)
 
 with st.sidebar:
