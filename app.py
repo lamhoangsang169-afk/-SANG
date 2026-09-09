@@ -9,25 +9,6 @@ import os
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Giải pháp tự động làm mới ngầm bằng luồng fetch API tránh cache của trình duyệt
-st.markdown("""
-    <script>
-        function triggerRefresh() {
-            fetch(window.location.href).then(() => {
-                // Tự động kích hoạt lại sự kiện DOM để ép Streamlit sync ngầm
-                const doc = window.parent.document;
-                const buttons = doc.querySelectorAll('button');
-                for (let btn of buttons) {
-                    if (btn.innerText.includes("1. Nhập Sản Lượng")) {
-                        // Giữ kết nối socket luôn tươi
-                    }
-                }
-            }).catch(err => {});
-        }
-        setInterval(triggerRefresh, 3000);
-    </script>
-""", unsafe_allow_html=True)
-
 STORAGE_FILE = "app_storage.json"
 
 class VietnamTz(datetime.tzinfo):
@@ -147,7 +128,7 @@ def sync_from_storage():
 
 sync_from_storage()
 
-# Cập nhật dữ liệu mới nhất từ file JSON mỗi lần chạy giao diện
+# Nạp trực tiếp dữ liệu mới nhất từ file JSON chung mỗi khi load lại trang
 saved_fresh_data = load_data()
 if "input_df" in saved_fresh_data:
     st.session_state.input_df = pd.DataFrame(saved_fresh_data["input_df"])
@@ -378,7 +359,14 @@ with st.sidebar:
 
 menu = st.session_state.current_menu
 
-st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
+# Thanh tiêu đề đi kèm nút làm mới real-time trực tiếp ngay trên màn hình máy tính
+col_title_1, col_title_2 = st.columns([4, 1])
+with col_title_1:
+    st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
+with col_title_2:
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Cập Nhật Dữ Liệu", use_container_width=True, help="Bấm để tải ngay dữ liệu mới nhất từ thiết bị khác"):
+        st.rerun()
 
 staff_joined = " | ".join([f"**{s}**" for s in st.session_state.staff_list])
 st.markdown(f"""
