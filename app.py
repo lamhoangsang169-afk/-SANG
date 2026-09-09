@@ -7,12 +7,6 @@ import base64
 import json
 import os
 
-try:
-    from streamlit_autorefresh import st_autorefresh
-    has_autorefresh = True
-except ImportError:
-    has_autorefresh = False
-
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
 STORAGE_FILE = "app_storage.json"
@@ -82,46 +76,43 @@ def save_data():
     except Exception:
         pass
 
-def sync_from_storage():
-    saved_data = load_data()
-    
-    if "rules_df" in saved_data and saved_data["rules_df"]:
-        st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
-    else:
-        if "rules_df" not in st.session_state:
-            st.session_state.rules_df = pd.DataFrame(master_rules)
+# Ép buộc đồng bộ dữ liệu mới nhất từ file JSON vào mọi session ngay đầu mỗi lượt chạy
+saved_data = load_data()
 
-    if "input_df" in saved_data:
-        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-    else:
-        if "input_df" not in st.session_state:
-            st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+if "rules_df" in saved_data and saved_data["rules_df"]:
+    st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
+else:
+    if "rules_df" not in st.session_state:
+        st.session_state.rules_df = pd.DataFrame(master_rules)
 
-    if "attendance_df" in saved_data:
-        st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
-    else:
-        if "attendance_df" not in st.session_state:
-            st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
+if "input_df" in saved_data:
+    st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
+else:
+    if "input_df" not in st.session_state:
+        st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
-    if "deleted_input_df" in saved_data:
-        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-    else:
-        if "deleted_input_df" not in st.session_state:
-            st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+if "attendance_df" in saved_data:
+    st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
+else:
+    if "attendance_df" not in st.session_state:
+        st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
 
-    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
-    st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
-    st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
-    st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
-    st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
-    st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
-    st.session_state.text_color = saved_data.get("text_color", "#31333F")
-    st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
-    st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
-    if "current_menu" not in st.session_state:
-        st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
+if "deleted_input_df" in saved_data:
+    st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
+else:
+    if "deleted_input_df" not in st.session_state:
+        st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-sync_from_storage()
+st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
+st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
+st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
+st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
+st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
+st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
+st.session_state.text_color = saved_data.get("text_color", "#31333F")
+st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
+st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
+st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -262,7 +253,6 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Xây dựng thanh Sidebar điều hướng hoạt động chuẩn xác
 with st.sidebar:
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
     
@@ -348,12 +338,15 @@ with st.sidebar:
 
 menu = st.session_state.current_menu
 
-# Hiển thị nội dung dựa trên menu đang chọn, kết hợp cơ chế tự động nạp ngầm mượt mà
-sync_from_storage()
+col_title_1, col_title_2 = st.columns([4, 1])
+with col_title_1:
+    st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
+with col_title_2:
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Cập Nhật Dữ Liệu", use_container_width=True, help="Bấm để tải ngay dữ liệu mới nhất từ thiết bị khác"):
+        st.rerun()
 
-st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
-
-staff_joined = " | ".join([f"<b>{s}</b>" for s in st.session_state.staff_list])
+staff_joined = " | ".join([f"**{s}**" for s in st.session_state.staff_list])
 st.markdown(f"""
 <div class="staff-badge-container">
     👥 <b>Nhân sự hệ thống:</b> {staff_joined}
@@ -451,9 +444,9 @@ if menu == "1. Nhập Sản Lượng":
 
     status_html = ""
     for s in active_staff:
-        status_html += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
+        status_html += f"🟢 **{s}** - Đang Làm Việc<br>"
     for s in inactive_staff:
-        status_html += f"🔴 <b>{s}</b> - Không hoạt động<br>"
+        status_html += f"🔴 **{s}** - không hoạt động<br>"
         
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.7); padding: 12px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
@@ -563,6 +556,7 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
+            # THANH TRƯỢT TÙY CHỈNH PHÓNG TO / THU NHỎ ẢNH THỜI GIAN THỰC
             zoom_level = st.slider("🔍 Thanh trượt phóng to / thu nhỏ ảnh toàn bộ danh sách:", min_value=60, max_value=400, value=90, step=10)
             
             with st.form("input_delete_form"):
@@ -590,8 +584,10 @@ if menu == "1. Nhập Sản Lượng":
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
                                 
+                                # Chèn ảnh với kích thước tùy chỉnh từ thanh trượt real-time
                                 st.image(img_bytes, width=zoom_level)
                                 
+                                # Hỗ trợ xem chi tiết lớn hơn nhanh chóng bằng popup tích hợp ngay cạnh
                                 with st.popover("🔎 Xem chi tiết", use_container_width=True):
                                     st.image(img_bytes, caption=f"Ảnh chi tiết bản ghi STT {row['STT']}", use_container_width=True)
                             except Exception:
@@ -922,7 +918,3 @@ elif menu == "5. Cài Đặt Giao Diện":
         save_data()
         st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
         st.rerun()
-
-# Kích hoạt tự động quét ngầm dữ liệu để đồng bộ real-time mà không gây chớp hay kẹt menu
-if has_autorefresh:
-    st_autorefresh(interval=5000, key="datasync_autorefresh")
