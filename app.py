@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -32,6 +31,7 @@ master_rules = [
 ]
 
 default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
+default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"]
 
 def load_data():
     if os.path.exists(STORAGE_FILE):
@@ -49,6 +49,7 @@ def save_data():
         "input_df": st.session_state.input_df.to_dict(orient="records"),
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records"),
         "staff_list": st.session_state.staff_list,
+        "chart_colors": st.session_state.chart_colors,
         "primary_color": st.session_state.primary_color,
         "bg_color": st.session_state.bg_color,
         "sidebar_bg": st.session_state.sidebar_bg,
@@ -86,6 +87,9 @@ if "deleted_input_df" not in st.session_state:
 
 if "staff_list" not in st.session_state:
     st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
+
+if "chart_colors" not in st.session_state:
+    st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
 
 if "primary_color" not in st.session_state:
     st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
@@ -472,11 +476,46 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             with cols[idx % len(cols)]:
                 st.metric(label=f"Nhân sự: {row['Nhân Sự']}", value=f"{row['Tổng_Điểm']:,.1f} điểm", delta=f"{row['Tỷ_Lệ_Đóng_Góp']:.1%} tổng điểm")
                 
+        st.markdown("---")
         st.subheader("Biểu Đồ Tỷ Lệ Đóng Góp Điểm Thi Đua")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.pie(summary["Tổng_Điểm"], labels=summary["Nhân Sự"], autopct='%1.1f%%', startangle=90, textprops={'fontsize': 12})
+        
+        # Tùy chỉnh màu sắc riêng cho từng nhân sự ngay tại đây
+        with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ Cho Từng Nhân Sự", expanded=False):
+            while len(st.session_state.chart_colors) < len(st.session_state.staff_list):
+                st.session_state.chart_colors.append("#3b82f6")
+            
+            color_cols = st.columns(len(st.session_state.staff_list))
+            for i, staff_name in enumerate(st.session_state.staff_list):
+                with color_cols[i]:
+                    st.session_state.chart_colors[i] = st.color_picker(f"Màu: {staff_name}", st.session_state.chart_colors[i], key=f"color_pick_{i}")
+            if st.button("Lưu Màu Biểu Đồ"):
+                save_data()
+                st.success("Đã cập nhật màu sắc biểu đồ!")
+
+        # Thanh trượt tùy chỉnh kích thước biểu đồ (mặc định 12cm tương ứng với ~6 inches)
+        chart_size_cm = st.slider("Kích thước biểu đồ (cm)", min_value=8, max_value=25, value=12, step=1)
+        chart_size_inch = chart_size_cm / 2.54
+
+        fig, ax = plt.subplots(figsize=(chart_size_inch, chart_size_inch))
+        
+        # Lấy danh sách màu tương ứng với nhân sự
+        current_colors = st.session_state.chart_colors[:len(summary)]
+        
+        wedges, texts, autotexts = ax.pie(
+            summary["Tổng_Điểm"], 
+            labels=summary["Nhân Sự"], 
+            autopct='%1.1f%%', 
+            startangle=90, 
+            colors=current_colors,
+            textprops={'fontsize': 11, 'color': '#333333'}
+        )
+        
+        plt.setp(autotexts, size=10, weight="bold", color="white")
         ax.axis('equal')
-        st.pyplot(fig)
+        
+        col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+        with col_c2:
+            st.pyplot(fig)
         
     else:
         st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
