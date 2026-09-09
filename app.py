@@ -379,7 +379,6 @@ if menu == "1. Nhập Sản Lượng":
             st.rerun()
             
         if check_out_clicked:
-            # Tìm bản ghi chưa có giờ ra ca hoặc mới nhất của nhân sự trong ngày đó để cập nhật giờ ra ca
             if not st.session_state.attendance_df.empty:
                 mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
                        (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
@@ -390,7 +389,6 @@ if menu == "1. Nhập Sản Lượng":
                     st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}!")
                     st.rerun()
                 else:
-                    # Nếu chưa có bản ghi check-in thì tạo mới dòng check-out luôn
                     new_att_stt = len(st.session_state.attendance_df) + 1
                     new_att_row = {
                         "STT": new_att_stt,
@@ -410,7 +408,30 @@ if menu == "1. Nhập Sản Lượng":
 
     if not st.session_state.attendance_df.empty:
         with st.expander("📋 Xem Lịch Sử Chấm Công", expanded=False):
-            st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
+            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+            att_display = st.session_state.attendance_df.copy()
+            att_display.insert(0, "Chọn", False)
+            
+            with st.form("attendance_delete_form"):
+                edited_att_table = st.data_editor(
+                    att_display,
+                    hide_index=True,
+                    use_container_width=True,
+                    key="attendance_editor_delete"
+                )
+                delete_att_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Chấm Công Đã Tích Chọn", use_container_width=True)
+                if delete_att_submitted:
+                    selected_att_rows = edited_att_table[edited_att_table["Chọn"] == True]
+                    if not selected_att_rows.empty:
+                        stt_att_to_remove = selected_att_rows["STT"].tolist()
+                        st.session_state.attendance_df = st.session_state.attendance_df[~st.session_state.attendance_df["STT"].isin(stt_att_to_remove)].reset_index(drop=True)
+                        if not st.session_state.attendance_df.empty:
+                            st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                        save_data()
+                        st.success("Đã xóa các dòng lịch sử chấm công đã chọn thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng chấm công để xóa!")
 
     st.markdown("---")
 
