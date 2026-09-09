@@ -76,64 +76,48 @@ def save_data():
     except Exception:
         pass
 
-def init_session_state():
+def sync_from_storage():
     saved_data = load_data()
-    
-    if "rules_df" not in st.session_state:
-        if "rules_df" in saved_data and saved_data["rules_df"]:
-            st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
-        else:
+    if "rules_df" in saved_data and saved_data["rules_df"]:
+        st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
+    else:
+        if "rules_df" not in st.session_state:
             st.session_state.rules_df = pd.DataFrame(master_rules)
 
-    if "input_df" not in st.session_state:
-        if "input_df" in saved_data:
-            st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-        else:
+    if "input_df" in saved_data:
+        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
+    else:
+        if "input_df" not in st.session_state:
             st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
-    if "attendance_df" not in st.session_state:
-        if "attendance_df" in saved_data and saved_data["attendance_df"]:
-            st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
-        else:
+    if "attendance_df" in saved_data and saved_data["attendance_df"]:
+        st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
+    else:
+        if "attendance_df" not in st.session_state:
             st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
 
-    if "deleted_input_df" not in st.session_state:
-        if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
-            st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-        else:
+    if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
+        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
+    else:
+        if "deleted_input_df" not in st.session_state:
             st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
 
-    if "staff_list" not in st.session_state:
-        st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
-        
-    if "chart_colors" not in st.session_state:
-        st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
-        
-    if "primary_color" not in st.session_state:
-        st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
-        
-    if "bg_color" not in st.session_state:
-        st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
-        
-    if "sidebar_bg" not in st.session_state:
-        st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
-        
-    if "sidebar_opacity" not in st.session_state:
-        st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
-        
-    if "text_color" not in st.session_state:
-        st.session_state.text_color = saved_data.get("text_color", "#31333F")
-        
-    if "bg_image_base64" not in st.session_state:
-        st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
-        
-    if "avatar_base64" not in st.session_state:
-        st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
-        
-    if "current_menu" not in st.session_state:
-        st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
+    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
+    st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
+    st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
+    st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
+    st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
+    st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
+    st.session_state.text_color = saved_data.get("text_color", "#31333F")
+    st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
+    st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
+    st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
-init_session_state()
+if "initialized" not in st.session_state:
+    sync_from_storage()
+    st.session_state.initialized = True
+
+sync_from_storage()
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -148,12 +132,7 @@ save_data()
 
 @st.fragment(run_every=3)
 def render_app():
-    saved_data = load_data()
-    if saved_data:
-        if "staff_list" in saved_data and st.session_state.staff_list != saved_data["staff_list"]:
-            st.session_state.staff_list = saved_data["staff_list"]
-        if "current_menu" in saved_data and st.session_state.current_menu != saved_data["current_menu"]:
-            st.session_state.current_menu = saved_data["current_menu"]
+    sync_from_storage()
     
     bg_style = f"background-color: {st.session_state.bg_color};"
     if st.session_state.bg_image_base64:
@@ -452,6 +431,7 @@ def render_app():
 
         st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
         
+        # --- LẤY DANH SÁCH NHÂN SỰ ĐÃ CHECK-IN HÔM NAY ---
         active_staff = []
         if not st.session_state.attendance_df.empty:
             today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
