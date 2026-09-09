@@ -176,32 +176,34 @@ def render_app():
             color: {st.session_state.primary_color} !important;
         }}
 
-        /* Cố định hoàn toàn thanh Sidebar và cấu hình cuộn nội dung bên trong nó */
+        /* Tùy chỉnh thanh Sidebar và tạo vùng chứa cuộn riêng bên trong */
         [data-testid="stSidebar"] {{
             background-color: {sidebar_rgba} !important;
             backdrop-filter: blur(8px);
-            position: fixed !important;
-            height: 100vh !important;
-            top: 0px !important;
-            left: 0px !important;
-            overflow-y: auto !important;
+            position: relative;
         }}
         
-        [data-testid="stSidebar"] * {{
-            color: {st.session_state.text_color} !important;
-        }}
-        
-        /* Ghim cứng khu vực chứa avatar ở trên cùng, không di chuyển khi cuộn */
+        /* Cố định tuyệt đối vùng chứa avatar ở trên cùng sidebar */
         .fixed-avatar-container {{
-            position: sticky;
+            position: absolute;
             top: 0px;
+            left: 0px;
+            width: 100%;
             z-index: 9999;
             background-color: {sidebar_rgba};
             padding-top: 15px;
             padding-bottom: 15px;
             border-bottom: 2px solid {st.session_state.primary_color};
-            margin-bottom: 20px;
             text-align: center;
+        }}
+
+        /* Đẩy phần nội dung menu bên dưới xuống tránh bị che khuất bởi avatar cố định */
+        [data-testid="stSidebar"] > div:first-child {{
+            padding-top: 210px !important;
+        }}
+        
+        [data-testid="stSidebar"] * {{
+            color: {st.session_state.text_color} !important;
         }}
 
         /* Kích thước ảnh đại diện to cân đối (~160px) */
@@ -216,7 +218,7 @@ def render_app():
             position: absolute;
             bottom: 4px;
             right: 12px;
-            z-index: 999;
+            z-index: 99999;
         }}
         .avatar-popover-wrapper [data-testid="stPopover"] button {{
             background-color: #ffffff !important;
@@ -270,7 +272,7 @@ def render_app():
 
     # ----------------- THANH BÊN (SIDEBAR) -----------------
     with st.sidebar:
-        # Khung cố định chứa avatar và thanh ngang phân cách
+        # Khung cố định tuyệt đối chứa avatar và thanh ngang phân cách
         st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
         
         has_custom_avatar = False
@@ -621,233 +623,4 @@ def render_app():
                 autopct='%1.1f%%', 
                 startangle=90, 
                 colors=current_colors,
-                explode=explode_values,
-                shadow=True
-            )
-            
-            plt.setp(autotexts, size=10, weight="bold", color="white")
-            ax.axis('equal')
-            
-            col_chart, col_legend = st.columns([1, 1])
-            with col_chart:
-                st.pyplot(fig)
-                
-            with col_legend:
-                st.markdown("#### 📌 Chú Thích Nhân Sự")
-                for i, row in summary.iterrows():
-                    color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
-                    staff_name = row["Nhân Sự"]
-                    staff_pts = row["Tổng_Điểm"]
-                    staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-                    st.markdown(f"""
-                    <div style="display: flex; align-items: center; margin-bottom: 12px; background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="width: 20px; height: 20px; background-color: {color_box}; border-radius: 4px; margin-right: 12px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.2);"></div>
-                        <div style="font-size: 0.95rem;">
-                            <b>{staff_name}</b><br>
-                            <span style="font-size: 0.85rem; opacity: 0.8;">{staff_pts:,.1f} điểm ({staff_pct:.1f}%)</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-        else:
-            st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
-
-    elif menu == "3. Quản Lý Định Mức Điểm":
-        st.header("Quản Lý Danh Mục & Hệ Số Điểm")
-        st.markdown("Chỉnh sửa trực tiếp tên công việc, hệ số điểm hoặc khôi phục các mục định mức.")
-        
-        if not st.session_state.rules_df.empty:
-            st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-            
-        current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
-        deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
-        
-        if deleted_items_list:
-            st.markdown("#### Khôi Phục Định Mức Đã Xóa")
-            deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
-            selected_to_restore = st.multiselect("Chọn các hạng mục muốn khôi phục lại:", deleted_names)
-            
-            col_r1, col_r2 = st.columns([2, 5])
-            with col_r1:
-                if st.button("📥 Khôi Phục Đã Chọn"):
-                    if selected_to_restore:
-                        items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
-                        restored_df = pd.DataFrame(items_to_add)
-                        st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
-                        st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                        save_data()
-                        st.success(f"Đã khôi phục thành công các mục: {', '.join(selected_to_restore)}!")
-                        st.rerun()
-                    else:
-                        st.warning("Vui lòng chọn ít nhất một mục để khôi phục.")
-            with col_r2:
-                if st.button("🔄 Khôi Phục Toàn Bộ Mặc Định"):
-                    st.session_state.rules_df = pd.DataFrame(master_rules)
-                    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                    save_data()
-                    st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
-                    st.rerun()
-        else:
-            if st.button("🔄 Khôi Phục Toàn Bộ Mặc Định"):
-                st.session_state.rules_df = pd.DataFrame(master_rules)
-                st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                save_data()
-                st.success("Đã khôi phục toàn bộ danh mục mặc định ban đầu thành công!")
-                st.rerun()
-
-        st.markdown("---")
-        st.markdown("#### Danh Sách Định Mức Hiện Tại")
-        
-        with st.form("rules_form"):
-            edited_rules = st.data_editor(
-                st.session_state.rules_df, 
-                num_rows="dynamic", 
-                use_container_width=True, 
-                key="rules_editor",
-                hide_index=True
-            )
-            save_rules_btn = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
-            if save_rules_btn:
-                edited_rules["STT"] = range(1, len(edited_rules) + 1)
-                st.session_state.rules_df = edited_rules
-                save_data()
-                st.success("Đã lưu và cập nhật danh mục định mức điểm thành công!")
-                st.rerun()
-
-    elif menu == "4. Thùng Rác / Khôi Phục Sản Lượng":
-        st.header("Thùng Rác & Khôi Phục Bản Ghi")
-        st.markdown("Quản lý các bản ghi sản lượng đã xóa. Có thể khôi phục hoặc xóa vĩnh viễn.")
-        
-        if not st.session_state.deleted_input_df.empty:
-            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-            trash_display = st.session_state.deleted_input_df.copy()
-            trash_display.insert(0, "Chọn", False)
-            
-            with st.form("trash_form"):
-                edited_trash = st.data_editor(
-                    trash_display.drop(columns=["Hình Ảnh"], errors="ignore"),
-                    hide_index=True,
-                    use_container_width=True,
-                    key="trash_editor"
-                )
-                
-                col_act1, col_act2 = st.columns(2)
-                
-                with col_act1:
-                    restore_btn = st.form_submit_button("📥 Khôi Phục Dòng Đã Chọn", use_container_width=True)
-                with col_act2:
-                    delete_perm_btn = st.form_submit_button("🔥 Xóa Vĩnh Viễn Dòng Đã Chọn", use_container_width=True)
-                    
-                if restore_btn:
-                    selected_rows = edited_trash[edited_trash["Chọn"] == True]
-                    if not selected_rows.empty:
-                        selected_rows = selected_rows.drop(columns=["Chọn"])
-                        stt_to_remove = selected_rows["STT"].tolist()
-                        
-                        st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
-                        if not st.session_state.deleted_input_df.empty:
-                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                        
-                        selected_rows = selected_rows.copy()
-                        for idx, row in selected_rows.iterrows():
-                            new_row = row.copy()
-                            new_row["STT"] = len(st.session_state.input_df) + 1
-                            st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
-                        
-                        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                        save_data()
-                        st.success("Đã khôi phục các dòng đã chọn thành công về danh sách chính!")
-                        st.rerun()
-                    else:
-                        st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
-
-                if delete_perm_btn:
-                    selected_rows = edited_trash[edited_trash["Chọn"] == True]
-                    if not selected_rows.empty:
-                        selected_rows = selected_rows.drop(columns=["Chọn"])
-                        stt_to_remove = selected_rows["STT"].tolist()
-                        
-                        st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
-                        if not st.session_state.deleted_input_df.empty:
-                            st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-                        
-                        save_data()
-                        st.success("Đã xóa vĩnh viễn các dòng đã chọn khỏi thùng rác!")
-                        st.rerun()
-                    else:
-                        st.warning("Vui lòng tích chọn ít nhất một dòng trong bảng!")
-
-            st.markdown("---")
-            if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác"):
-                st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
-                save_data()
-                st.success("Đã dọn sạch toàn bộ thùng rác!")
-                st.rerun()
-        else:
-            st.info("Thùng rác hiện tại đang trống.")
-
-    elif menu == "5. Cài Đặt Giao Diện":
-        st.header("Cài Đặt Giao Diện & Nhân Sự")
-        st.markdown("Tùy chỉnh danh sách nhân sự, màu sắc và hình nền cho toàn bộ ứng dụng.")
-        
-        st.subheader("Quản Lý Danh Sách Nhân Sự")
-        with st.form("staff_form"):
-            staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
-            edited_staff_df = st.data_editor(
-                staff_df,
-                num_rows="dynamic",
-                use_container_width=True,
-                key="staff_editor",
-                hide_index=True
-            )
-            save_staff_btn = st.form_submit_button("💾 Lưu Danh Sách Nhân Sự", use_container_width=True)
-            if save_staff_btn:
-                new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != ""]
-                if new_staff_list:
-                    st.session_state.staff_list = new_staff_list
-                    save_data()
-                    st.success("Đã cập nhật danh sách nhân sự thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Danh sách nhân sự không được để trống.")
-
-        st.markdown("---")
-        st.subheader("Tùy Chỉnh Màu Sắc Giao Diện")
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.session_state.primary_color = st.color_picker("Màu chủ đạo", st.session_state.primary_color)
-            st.session_state.bg_color = st.color_picker("Màu nền trang", st.session_state.bg_color)
-        with col_c2:
-            st.session_state.sidebar_bg = st.color_picker("Màu nền thanh bên", st.session_state.sidebar_bg)
-            st.session_state.text_color = st.color_picker("Màu chữ", st.session_state.text_color)
-            
-        st.session_state.sidebar_opacity = st.slider(
-            "Độ trong suốt của thanh Sidebar (0.0 = trong suốt hoàn toàn thấy ảnh nền, 1.0 = đặc màu)", 
-            min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05
-        )
-
-        st.markdown("---")
-        st.subheader("Tùy Chọn Hình Nền (Wallpaper)")
-        bg_file = st.file_uploader("Kéo thả hoặc tải ảnh hình nền (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="bg_uploader")
-        
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            if bg_file is not None:
-                bytes_data = bg_file.getvalue()
-                st.session_state.bg_image_base64 = base64.b64encode(bytes_data).decode("utf-8")
-                save_data()
-                st.success("Đã tải ảnh hình nền thành công!")
-        with col_b2:
-            if st.session_state.bg_image_base64 is not None:
-                if st.button("🗑️ Xóa Hình Nền Hiện Tại"):
-                    st.session_state.bg_image_base64 = None
-                    save_data()
-                    st.success("Đã xóa ảnh hình nền về mặc định!")
-
-        st.markdown("---")
-        if st.button("💾 Lưu & Áp Dụng Thay Đổi"):
-            save_data()
-            st.success("Đã lưu và cập nhật giao diện thực tế thành công!")
-            st.rerun()
-
-render_app()
+                explode=explode_
