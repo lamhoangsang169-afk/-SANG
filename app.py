@@ -106,10 +106,10 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
-# Tối ưu background: sử dụng contain + no-repeat + center để hình nền hiển thị trọn vẹn trên mọi thiết bị
+# Sử dụng background-size: cover để ảnh phủ kín toàn màn hình giống hình nền Desktop
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
-    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: contain; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
+    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
 
 st.markdown(f"""
 <style>
@@ -177,12 +177,13 @@ st.markdown(f"""
     }}
 
     .staff-badge-container {{
-        background-color: rgba(0, 0, 0, 0.03);
+        background-color: rgba(255, 255, 255, 0.7);
         border-left: 4px solid {st.session_state.primary_color};
         padding: 10px 15px;
         border-radius: 4px;
         margin-bottom: 20px;
         font-size: 0.95rem;
+        backdrop-filter: blur(4px);
     }}
 
     @media (max-width: 768px) {{
