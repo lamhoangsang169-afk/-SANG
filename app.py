@@ -62,7 +62,12 @@ def load_data():
     if os.path.exists(STORAGE_FILE):
         try:
             with open(STORAGE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "attendance_df" in data:
+                    for row in data["attendance_df"]:
+                        if "Ghi Chú" in row:
+                            del row["Ghi Chú"]
+                return data
         except Exception:
             pass
     return {}
@@ -95,7 +100,7 @@ saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 st.session_state.input_df = pd.DataFrame(saved_data["input_df"]) if "input_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
-st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
+st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc"])
 st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"]) if "deleted_input_df" in saved_data else pd.DataFrame(columns=st.session_state.input_df.columns)
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
@@ -113,6 +118,9 @@ st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
 if not st.session_state.attendance_df.empty:
+    # Lọc bỏ cột Ghi Chú nếu có trong dữ liệu cũ
+    if "Ghi Chú" in st.session_state.attendance_df.columns:
+        st.session_state.attendance_df = st.session_state.attendance_df.drop(columns=["Ghi Chú"])
     st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
 
 bg_style = f"background-color: {st.session_state.bg_color};"
@@ -585,7 +593,6 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     with st.form("attendance_form"):
         att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
         att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
-        att_note = st.text_input("Ghi chú ca", "", key="att_note")
             
         check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca)", use_container_width=True)
         check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca)", use_container_width=True)
@@ -593,7 +600,6 @@ elif menu == "2. Chấm Công Ca Làm Việc":
         current_time_str = now_vn.strftime("%H:%M:%S")
         
         if check_in_clicked:
-            # Kiểm tra xem nhân sự này đã check-in mà chưa check-out chưa
             already_active = False
             if not st.session_state.attendance_df.empty:
                 active_check = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
@@ -612,8 +618,7 @@ elif menu == "2. Chấm Công Ca Làm Việc":
                     "Nhân Sự": att_staff,
                     "Giờ Vào Ca": current_time_str,
                     "Giờ Ra Ca": "Chưa kết thúc",
-                    "Số Phút Làm Việc": 0,
-                    "Ghi Chú": att_note
+                    "Số Phút Làm Việc": 0
                 }
                 st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
                 st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
@@ -639,9 +644,6 @@ elif menu == "2. Chấm Công Ca Làm Việc":
 
                     st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
                     st.session_state.attendance_df.loc[mask, "Số Phút Làm Việc"] = diff_minutes
-                    if att_note:
-                        old_note = st.session_state.attendance_df.loc[mask, "Ghi Chú"].values[0]
-                        st.session_state.attendance_df.loc[mask, "Ghi Chú"] = f"{old_note} | {att_note}".strip(" | ")
                         
                     save_data()
                     st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}. Tổng thời gian làm việc: **{diff_minutes} phút**!")
