@@ -6,12 +6,17 @@ import io
 import base64
 import json
 import os
-from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# Tự động làm mới trang mỗi 3 giây để đồng bộ real-time giữa điện thoại và máy tính mà không cần bấm F5
-st_autorefresh(interval=3000, key="realtime_sync_refresh")
+# Tự động làm mới trang mỗi 3 giây bằng JavaScript thuần túy để đồng bộ real-time đa thiết bị
+st.markdown("""
+    <script>
+        setTimeout(function(){
+            window.location.reload();
+        }, 3000);
+    </script>
+""", unsafe_allow_html=True)
 
 STORAGE_FILE = "app_storage.json"
 
@@ -132,7 +137,7 @@ def sync_from_storage():
 
 sync_from_storage()
 
-# Cập nhật dữ liệu mới nhất từ file json chung mỗi chu kỳ làm mới
+# Nạp trực tiếp dữ liệu mới nhất từ file JSON chung để đảm bảo real-time
 saved_fresh_data = load_data()
 if "input_df" in saved_fresh_data:
     st.session_state.input_df = pd.DataFrame(saved_fresh_data["input_df"])
