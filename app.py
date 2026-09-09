@@ -142,12 +142,14 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    p, span, label, div, h2, h3, h4, h5, h6, 
+    /* Ép toàn bộ các thẻ văn bản, bảng, data_editor, dataframe đổi màu chữ đồng bộ */
+    p, span, label, div, h1, h2, h3, h4, h5, h6, 
     .stMarkdown, [data-testid="stMarkdownContainer"] *,
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
     [data-testid="stWidgetLabel"] *, .streamlit-expanderHeader *,
     [data-testid="stDataEditor"] *, [data-testid="stDataFrame"] *, [data-testid="stTable"] *,
-    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput * {{
+    .stSelectbox *, .stDateInput *, .stNumberInput *, .stTextInput *,
+    table, th, td, tr, [class*="css-"] {{
         color: {st.session_state.text_color} !important;
     }}
     
@@ -498,7 +500,6 @@ elif menu == "2. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 explode_values.append(0.0)
 
-        # Hiển thị tỷ lệ phần trăm trực tiếp trên biểu đồ tròn
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
