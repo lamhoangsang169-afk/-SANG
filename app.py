@@ -6,6 +6,7 @@ import io
 import base64
 import json
 import os
+from PIL import Image
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
@@ -42,6 +43,21 @@ master_rules = [
 
 default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"]
+
+def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
+    """Hàm nén ảnh tự động để giảm dung lượng RAM, chống lỗi Over capacity trên Streamlit Cloud"""
+    try:
+        if uploaded_file is None:
+            return None
+        img = Image.open(uploaded_file)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.thumbnail(max_size)
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=quality)
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+    except Exception:
+        return None
 
 def load_data():
     if os.path.exists(STORAGE_FILE):
@@ -102,7 +118,7 @@ if not st.session_state.attendance_df.empty:
 
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
-    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
+    bg_style = f"background-image: url(data:image/jpeg;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
 
 def hex_to_rgba(hex_str, opacity):
     hex_str = hex_str.lstrip('#')
@@ -226,7 +242,6 @@ st.markdown(f"""
         backdrop-filter: blur(4px);
     }}
 
-    /* Tối ưu hóa cho thiết bị di động / màn hình nhỏ */
     @media (max-width: 768px) {{
         .stApp {{
             padding: 2px !important;
@@ -277,7 +292,7 @@ with st.sidebar:
         encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
         st.markdown(f"""
         <div style="cursor: pointer; text-align: center;">
-            <img src="data:image/png;base64,{encoded_img}" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+            <img src="data:image/jpeg;base64,{encoded_img}" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -292,11 +307,12 @@ with st.sidebar:
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
         avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
         if avatar_file is not None:
-            avatar_bytes = avatar_file.getvalue()
-            st.session_state.avatar_base64 = base64.b64encode(avatar_bytes).decode("utf-8")
-            save_data()
-            st.success("Đã cập nhật ảnh đại diện!")
-            st.rerun()
+            compressed_avatar = compress_image_to_base64(avatar_file, max_size=(300, 300), quality=60)
+            if compressed_avatar:
+                st.session_state.avatar_base64 = compressed_avatar
+                save_data()
+                st.success("Đã cập nhật ảnh đại diện!")
+                st.rerun()
             
         if st.session_state.avatar_base64:
             st.markdown("---")
@@ -443,10 +459,7 @@ if menu == "1. Nhập Sản Lượng":
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
                     tong_diem = so_luong * he_so
                     
-                    img_base64 = ""
-                    if record_image is not None:
-                        bytes_data = record_image.getvalue()
-                        img_base64 = base64.b64encode(bytes_data).decode("utf-8")
+                    img_base64 = compress_image_to_base64(record_image, max_size=(800, 800), quality=65) if record_image is not None else ""
                     
                     new_stt = len(st.session_state.input_df) + 1
                     new_row = {
@@ -893,11 +906,11 @@ elif menu == "6. Cài Đặt Giao Diện":
 
             if bg_file is not None:
                 if len(st.session_state.wallpaper_library) < 5:
-                    bytes_data = bg_file.getvalue()
-                    new_b64 = base64.b64encode(bytes_data).decode("utf-8")
-                    st.session_state.wallpaper_library.append(new_b64)
-                    st.session_state.bg_image_base64 = new_b64
-                    st.success("Đã thêm hình nền mới vào kho!")
+                    compressed_bg = compress_image_to_base64(bg_file, max_size=(1024, 1024), quality=70)
+                    if compressed_bg:
+                        st.session_state.wallpaper_library.append(compressed_bg)
+                        st.session_state.bg_image_base64 = compressed_bg
+                        st.success("Đã thêm hình nền mới vào kho!")
                 else:
                     st.error("Kho đã đầy (5/5)!")
             
