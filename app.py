@@ -161,7 +161,6 @@ st.markdown(f"""
         color: {st.session_state.primary_color} !important;
     }}
 
-    /* Tùy chỉnh thanh Sidebar và chia bố cục Flexbox */
     [data-testid="stSidebar"] {{
         background-color: {sidebar_rgba} !important;
         backdrop-filter: blur(8px);
@@ -171,34 +170,24 @@ st.markdown(f"""
         display: flex;
         flex-direction: column;
         height: 100vh;
-        overflow: hidden !important;
-        padding: 0px !important;
+        overflow-y: auto;
+        padding-bottom: 50px;
     }}
     
     [data-testid="stSidebar"] * {{
         color: {st.session_state.text_color} !important;
     }}
     
-    /* Khung avatar cố định ở đỉnh */
     .fixed-avatar-container {{
-        position: relative;
+        position: sticky;
+        top: 0px;
         z-index: 999999;
         background-color: {sidebar_rgba};
         padding-top: 15px;
         padding-bottom: 15px;
         border-bottom: 2px solid {st.session_state.primary_color};
-        margin-bottom: 10px;
+        margin-bottom: 15px;
         text-align: center;
-        flex-shrink: 0;
-    }}
-
-    /* Vùng nội dung menu bên dưới có thanh cuộn riêng */
-    .sidebar-scrollable-content {{
-        flex-grow: 1;
-        overflow-y: auto;
-        padding-left: 1rem;
-        padding-right: 1rem;
-        padding-bottom: 50px;
     }}
 
     .avatar-wrapper {{
@@ -320,9 +309,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Vùng chứa các menu có thanh cuộn riêng biệt
-    st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
-
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
         st.session_state.current_menu = "2. Chấm Công Ca Làm Việc"
         save_data()
@@ -359,8 +345,6 @@ with st.sidebar:
         st.session_state.current_menu = "7. Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
 
