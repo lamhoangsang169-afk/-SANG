@@ -335,7 +335,6 @@ with st.sidebar:
         st.session_state.current_menu = "5. Cài Đặt Giao Diện"
         save_data()
         st.rerun()
-    # Đã đưa nút Làm Sạch & Tối Ưu Dữ Liệu xuống dưới mục Cấu Hình Hệ Thống
     if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
         st.session_state.current_menu = "6. Làm Sạch Dữ Liệu"
         save_data()
@@ -430,8 +429,7 @@ if menu == "1. Nhập Sản Lượng":
 
     st.markdown("---")
 
-    st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
-    
+    # --- ĐÃ DI CHUYỂN PHẦN HIỂN THỊ TRẠNG THÁI NHÂN SỰ LÊN TRƯỚC ---
     active_staff = []
     inactive_staff = []
     
@@ -458,6 +456,9 @@ if menu == "1. Nhập Sản Lượng":
         {status_html}
     </div>
     """, unsafe_allow_html=True)
+    # -------------------------------------------------------------
+
+    st.subheader(f"Nhập Sản Lượng Hàng Ngày (Ngày: {today_str})")
 
     if not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)**. Vui lòng thực hiện Check-in ở phần trên để có thể nhập sản lượng!")
