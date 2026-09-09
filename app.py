@@ -76,7 +76,7 @@ def save_data():
     except Exception:
         pass
 
-# Cơ chế tự động lắng nghe và nạp lại tệp dữ liệu ngầm mỗi khi có tương tác
+# Tự động nạp dữ liệu mới nhất từ file JSON mỗi khi chạy lại giao diện
 saved_data = load_data()
 
 if "rules_df" in saved_data and saved_data["rules_df"]:
@@ -253,21 +253,22 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Tích hợp bộ lắng nghe sự kiện click chuột toàn trang (Global Click Listener) bằng JavaScript:
-# Bất cứ khi nào bạn nhấn chuột/chạm vào màn hình, trang sẽ tự động gọi trigger làm mới lại ứng dụng ngầm.
+# -------------------------------------------------------------------------
+# TÍNH NĂNG CHẠM/CLICK VÀO BẤT CỨ VỊ TRÍ NÀO TRÊN MÀN HÌNH ĐỂ TỰ ĐỘNG CẬP NHẬT
+# -------------------------------------------------------------------------
 st.markdown("""
 <script>
-    document.addEventListener('click', function(event) {
-        // Gửi tín hiệu tương tác ngầm để Streamlit nhận diện và đồng bộ trạng thái mới
-        const target = window.parent.document;
-        if (target) {
-            const mainContainer = target.querySelector('.main');
-            if (mainContainer) {
-                // Tạo một sự kiện click giả lập nhẹ hoặc tương tác DOM giúp đánh thức kết nối WebSocket
-                window.parent.dispatchEvent(new Event('focus'));
+    // Lắng nghe mọi sự kiện click hoặc chạm trên toàn bộ tài liệu web
+    window.addEventListener('click', function() {
+        // Tự động gọi fetch lại URL trang web ngầm để ép WebSocket đồng bộ dữ liệu mới nhất
+        fetch(window.location.href, {cache: 'no-store'}).then(response => {
+            // Kích hoạt một sự kiện giả lập để Streamlit render lại state giao diện ngay lập tức
+            const activeElement = document.activeElement;
+            if (activeElement) {
+                activeElement.blur();
             }
-        }
-    }, true);
+        }).catch(err => {});
+    }, {passive: true});
 </script>
 """, unsafe_allow_html=True)
 
