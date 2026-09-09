@@ -47,8 +47,7 @@ def load_data():
     if os.path.exists(STORAGE_FILE):
         try:
             with open(STORAGE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data
+                return json.load(f)
         except Exception:
             pass
     return {}
@@ -77,32 +76,12 @@ def save_data():
     except Exception:
         pass
 
-# Ép buộc đồng bộ dữ liệu mới nhất từ file JSON vào mọi session ngay đầu mỗi lượt chạy
 saved_data = load_data()
 
-if "rules_df" in saved_data and saved_data["rules_df"]:
-    st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"])
-else:
-    if "rules_df" not in st.session_state:
-        st.session_state.rules_df = pd.DataFrame(master_rules)
-
-if "input_df" in saved_data:
-    st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-else:
-    if "input_df" not in st.session_state:
-        st.session_state.input_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
-
-if "attendance_df" in saved_data:
-    st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
-else:
-    if "attendance_df" not in st.session_state:
-        st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
-
-if "deleted_input_df" in saved_data:
-    st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-else:
-    if "deleted_input_df" not in st.session_state:
-        st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
+st.session_state.input_df = pd.DataFrame(saved_data["input_df"]) if "input_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Ghi Chú"])
+st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"]) if "deleted_input_df" in saved_data else pd.DataFrame(columns=st.session_state.input_df.columns)
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
