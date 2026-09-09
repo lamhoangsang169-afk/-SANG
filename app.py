@@ -106,11 +106,11 @@ if not st.session_state.deleted_input_df.empty:
 
 save_data()
 
+# Tối ưu background: sử dụng contain + no-repeat + center để hình nền hiển thị trọn vẹn trên mọi thiết bị
 bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
-    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
+    bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: contain; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
 
-# CSS tinh gọn: Thu nhỏ avatar (60x60px) và tối ưu khoảng cách sidebar gọn gàng
 st.markdown(f"""
 <style>
     .stApp {{
@@ -140,7 +140,6 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
     }}
     
-    /* Thu nhỏ kích thước avatar xuống 60px gọn gàng */
     .avatar-wrapper {{
         position: relative;
         width: 60px;
