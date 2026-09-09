@@ -873,49 +873,49 @@ elif menu == "6. Cài Đặt Giao Diện":
 
     st.markdown("---")
     
-    with st.form("interface_settings_form"):
-        st.subheader("Màu Sắc Giao Diện")
-        new_primary = st.color_picker("Màu chủ đạo", st.session_state.primary_color)
-        new_bg = st.color_picker("Màu nền trang", st.session_state.bg_color)
-        new_sidebar_bg = st.color_picker("Màu nền thanh bên", st.session_state.sidebar_bg)
-        new_text_color = st.color_picker("Màu chữ", st.session_state.text_color)
-            
-        new_opacity = st.slider("Độ trong suốt thanh Sidebar", min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05)
-
-        st.markdown("---")
-        st.subheader("🖼️ Kho Lưu Trữ Hình Nền (Tối đa 5 hình)")
+    st.subheader("Màu Sắc Giao Diện")
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        new_primary = st.color_picker("Màu chủ đạo", st.session_state.primary_color, key="picker_primary")
+        new_bg = st.color_picker("Màu nền trang", st.session_state.bg_color, key="picker_bg")
+    with col_c2:
+        new_sidebar_bg = st.color_picker("Màu nền thanh bên", st.session_state.sidebar_bg, key="picker_sidebar")
+        new_text_color = st.color_picker("Màu chữ", st.session_state.text_color, key="picker_text")
         
-        current_count = len(st.session_state.wallpaper_library)
-        st.info(f"Đang lưu trữ: **{current_count} / 5** hình ảnh.")
+    new_opacity = st.slider("Độ trong suốt thanh Sidebar", min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05, key="slider_opacity")
 
-        if current_count >= 5:
-            st.warning("⚠️ Kho lưu trữ đã đạt giới hạn 5 hình! Vui lòng xóa bớt ảnh bên dưới trước khi tải thêm.")
-            bg_file = None
-        else:
-            bg_file = st.file_uploader("Tải ảnh hình nền mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="bg_uploader_form")
+    if st.button("💾 Lưu Thay Đổi Màu Sắc", use_container_width=True):
+        st.session_state.primary_color = new_primary
+        st.session_state.bg_color = new_bg
+        st.session_state.sidebar_bg = new_sidebar_bg
+        st.session_state.text_color = new_text_color
+        st.session_state.sidebar_opacity = new_opacity
+        save_data()
+        st.success("Đã lưu và cập nhật màu sắc giao diện thành công!")
+        st.rerun()
 
-        submitted_interface = st.form_submit_button("💾 Lưu & Áp Dụng Thay Đổi", use_container_width=True)
-        
-        if submitted_interface:
-            st.session_state.primary_color = new_primary
-            st.session_state.bg_color = new_bg
-            st.session_state.sidebar_bg = new_sidebar_bg
-            st.session_state.text_color = new_text_color
-            st.session_state.sidebar_opacity = new_opacity
+    st.markdown("---")
+    st.subheader("🖼️ Kho Lưu Trữ Hình Nền (Tối đa 5 hình)")
+    
+    current_count = len(st.session_state.wallpaper_library)
+    st.info(f"Đang lưu trữ: **{current_count} / 5** hình ảnh.")
 
-            if bg_file is not None:
+    if current_count >= 5:
+        st.warning("⚠️ Kho lưu trữ đã đạt giới hạn 5 hình! Vui lòng xóa bớt ảnh bên dưới trước khi tải thêm.")
+    else:
+        bg_file = st.file_uploader("Tải ảnh hình nền mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="bg_uploader_standalone")
+        if bg_file is not None:
+            if st.button("➕ Thêm Ảnh Này Vào Kho Lưu Trữ", use_container_width=True):
                 if len(st.session_state.wallpaper_library) < 5:
                     compressed_bg = compress_image_to_base64(bg_file, max_size=(1024, 1024), quality=70)
                     if compressed_bg:
                         st.session_state.wallpaper_library.append(compressed_bg)
                         st.session_state.bg_image_base64 = compressed_bg
-                        st.success("Đã thêm hình nền mới vào kho!")
+                        save_data()
+                        st.success("Đã thêm hình nền mới vào kho và đặt làm hình nền chính!")
+                        st.rerun()
                 else:
                     st.error("Kho đã đầy (5/5)!")
-            
-            save_data()
-            st.success("Đã lưu và cập nhật giao diện thành công!")
-            st.rerun()
 
     if st.session_state.wallpaper_library:
         st.markdown("---")
