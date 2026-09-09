@@ -97,7 +97,6 @@ if "avatar_base64" not in st.session_state:
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
 
-# Ensure STT is always sequential
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
 if not st.session_state.rules_df.empty:
@@ -111,7 +110,7 @@ bg_style = f"background-color: {st.session_state.bg_color};"
 if st.session_state.bg_image_base64:
     bg_style = f"background-image: url(data:image/png;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;"
 
-# CSS toàn cục & tinh gọn 3 chấm (⋮)
+# CSS tinh gọn: Thu nhỏ avatar (60x60px) và tối ưu khoảng cách sidebar gọn gàng
 st.markdown(f"""
 <style>
     .stApp {{
@@ -135,65 +134,44 @@ st.markdown(f"""
     [data-testid="stSidebar"] {{
         background-color: {st.session_state.sidebar_bg};
         resize: horizontal !important;
-        overflow: hidden !important;
     }}
     
     [data-testid="stSidebar"] * {{
         color: {st.session_state.text_color} !important;
     }}
     
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }}
-
-    .sidebar-fixed-avatar-section {{
-        flex-shrink: 0;
-        background-color: {st.session_state.sidebar_bg};
-        padding-top: 10px;
-        z-index: 99;
-    }}
-
-    .sidebar-scrollable-menu-section {{
-        flex-grow: 1;
-        overflow-y: auto !important;
-        overflow-x: hidden;
-        padding-bottom: 50px;
-    }}
-    
+    /* Thu nhỏ kích thước avatar xuống 60px gọn gàng */
     .avatar-wrapper {{
         position: relative;
-        width: 100px;
-        height: 100px;
+        width: 60px;
+        height: 60px;
         margin: 0 auto;
     }}
     
     .avatar-popover-wrapper {{
         position: absolute;
-        bottom: 0px;
-        right: 0px;
+        bottom: -2px;
+        right: -6px;
         z-index: 99;
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button {{
         background-color: #ffffff !important;
-        border: 2px solid {st.session_state.primary_color} !important;
+        border: 1.5px solid {st.session_state.primary_color} !important;
         border-radius: 50% !important;
-        width: 32px !important;
-        height: 32px !important;
+        width: 24px !important;
+        height: 24px !important;
         padding: 0px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button p {{
         display: none !important;
     }}
     .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
         content: "⋮";
-        font-size: 18px;
+        font-size: 14px;
         font-weight: bold;
         color: #333333;
         line-height: 1;
@@ -227,8 +205,6 @@ st.markdown(f"""
 
 # ----------------- THANH BÊN (SIDEBAR) -----------------
 with st.sidebar:
-    st.markdown('<div class="sidebar-fixed-avatar-section">', unsafe_allow_html=True)
-    
     has_custom_avatar = False
     avatar_bytes_obj = None
     if st.session_state.avatar_base64:
@@ -250,12 +226,12 @@ with st.sidebar:
         encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
         st.markdown(f"""
         <div style="cursor: pointer; text-align: center;">
-            <img src="data:image/png;base64,{encoded_img}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+            <img src="data:image/png;base64,{encoded_img}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div style="width:100px; height:100px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:38px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+        <div style="width:60px; height:60px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:24px; border:2px solid {st.session_state.primary_color}; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
             👤
         </div>
         """, unsafe_allow_html=True)
@@ -282,9 +258,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="sidebar-scrollable-menu-section">', unsafe_allow_html=True)
     
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
@@ -312,8 +285,6 @@ with st.sidebar:
         st.session_state.current_menu = "5. Cài Đặt Giao Diện"
         save_data()
         st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
 
@@ -353,7 +324,7 @@ if menu == "1. Nhập Sản Lượng":
         with col_note:
             ghi_chu = st.text_input("Ghi chú", "")
             
-        submitted = st.form_submit_button(" Đã Hoàn Thành ", use_container_width=True)
+        submitted = st.form_submit_button("➕ Thêm Bản Ghi Sản Lượng", use_container_width=True)
         if submitted:
             row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
             he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
