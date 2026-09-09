@@ -570,22 +570,18 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
-            # Form chứa nút xóa để quản lý các dòng sản lượng
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
-                    c_check, c_info, c_img = st.columns([1, 6, 3])
+                    c_check, c_info, c_img = st.columns([0.6, 7.4, 2])
                     
                     with c_check:
-                        # Thêm checkbox để chọn xóa dòng
                         is_selected = st.checkbox("Chọn", key=f"chk_{row['STT']}", label_visibility="collapsed")
-                        # Lưu trạng thái chọn tạm vào dòng
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with c_info:
                         st.markdown(f"""
-                        <div style="background: rgba(255,255,255,0.85); padding: 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.9rem;">
-                            <b>STT: {row['STT']}</b> | 📅 {row['Ngày']}<br>
-                            👤 <b>{row['Nhân Sự']}</b><br>
+                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); font-size: 0.88rem;">
+                            <b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b><br>
                             📌 {row['Hạng Mục Công Việc']} | 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ {row['Tổng Điểm']} điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
@@ -598,14 +594,14 @@ if menu == "1. Nhập Sản Lượng":
                                 pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
-                                # Hiển thị ảnh thu nhỏ (thumbnail) kích thước nhỏ gọn
-                                st.image(img_bytes, width=120)
+                                # Thu nhỏ kích thước ảnh hiển thị còn 90px để cực kỳ gọn gàng
+                                st.image(img_bytes, width=90)
                             except Exception:
-                                st.text("Lỗi hiển thị ảnh")
+                                st.text("Lỗi ảnh")
                         else:
                             st.text("Không có ảnh")
                             
-                    st.markdown("---")
+                    st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                     
                 delete_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
                 if delete_submitted:
