@@ -688,6 +688,24 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     else:
         st.info("Chưa có dữ liệu lịch sử chấm công.")
 
+    # --- Thêm Bảng Cộng Dồn Tổng Thời Gian Làm Việc Qua Các Ngày ---
+    st.markdown("---")
+    st.subheader("⏱️ Tổng Thời Gian Làm Việc Tích Lũy Theo Nhân Sự")
+    if not st.session_state.attendance_df.empty:
+        # Nhóm theo nhân sự và cộng dồn số phút làm việc (chỉ tính các ca đã kết thúc, số phút > 0)
+        accumulated_df = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
+        accumulated_df.columns = ["Nhân Sự", "Tổng Thời Gian (Phút)"]
+        accumulated_df = accumulated_df.sort_values(by="Tổng Thời Gian (Phút)", ascending=False).reset_index(drop=True)
+        accumulated_df.insert(0, "STT", range(1, len(accumulated_df) + 1))
+        
+        st.dataframe(
+            accumulated_df.style.format({"Tổng Thời Gian (Phút)": "{:,.0f}"}),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("Chưa có dữ liệu tích lũy thời gian.")
+
 # ==================== 3. BÁO CÁO & BIỂU ĐỒ ====================
 elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     st.header("Báo Cáo Tổng Hợp & Đánh Giá")
