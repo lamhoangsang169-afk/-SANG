@@ -513,35 +513,31 @@ if menu == "1. Nhập Sản Lượng":
             
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.85); padding: 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; font-size: 0.9rem;">
-                        <b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b> | 📌 {row['Hạng Mục Công Việc']} | 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    r_col_chk, r_col_img = st.columns([1, 4])
-                    with r_col_chk:
-                        is_selected = st.checkbox(f"Tích chọn xóa STT {row['STT']}", key=f"chk_{row['STT']}")
+                    row_c1, row_c2 = st.columns([3, 1])
+                    with row_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.85); padding: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; font-size: 0.95rem;">
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']}<br>
+                            👤 <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        is_selected = st.checkbox(f"Tích chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
+                    with row_c2:
                         img_b64_val = row["Hình Ảnh"]
                         if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
                             try:
                                 pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
-                                with st.popover(f"🔍 Xem chi tiết ảnh"):
-                                    st.image(img_bytes, use_container_width=True)
-                            except Exception:
-                                pass
-                    with r_col_img:
-                        if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
-                            try:
-                                pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
-                                pure_b64 += "=" * (-len(pure_b64) % 4)
-                                img_bytes = base64.b64decode(pure_b64)
+                                
                                 st.image(img_bytes, width=zoom_level)
+                                with st.popover(f"🔍 Phóng to"):
+                                    st.image(img_bytes, use_container_width=True)
                             except Exception:
                                 st.text("Lỗi hiển thị ảnh")
                     st.markdown("---")
@@ -1048,7 +1044,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
                 else:
                     st.info("Danh sách sản lượng hiện đang trống.")
             else:
-                st.warning("⚠️ Vူp lòng nhập đúng chữ 'XAC NHAN'.")
+                st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
 
     st.markdown("---")
     if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
