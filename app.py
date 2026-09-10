@@ -744,7 +744,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             hide_index=True
         )
         
-        # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Huy hiệu chuẩn theo mẫu huy chương 1, 2, 3) ---
+        # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Bộ huy hiệu cao cấp mới) ---
         st.markdown("---")
         st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
         
@@ -759,15 +759,15 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         # Sắp xếp theo Tỷ Lệ Đóng Góp giảm dần
         comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
         
-        # Gán biểu tượng huy hiệu đúng chuẩn mẫu 1 (đỏ), 2 (xanh dương), 3 (xanh lá)
+        # Gán biểu tượng huy hiệu vinh danh cao cấp
         rank_badges = []
         for idx in range(len(comparison_df)):
             if idx == 0:
-                rank_badges.append("🔴 [Huy Chương 1]")
+                rank_badges.append("🏆 Quán Quân")
             elif idx == 1:
-                rank_badges.append("🔵 [Huy Chương 2]")
+                rank_badges.append("🎖️ Á Quân")
             elif idx == 2:
-                rank_badges.append("🟢 [Huy Chương 3]")
+                rank_badges.append("🏅 Quý Quân")
             else:
                 rank_badges.append(f"Top {idx + 1}")
                 
@@ -791,7 +791,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             use_container_width=True,
             hide_index=True
         )
-        st.info("💡 **Gợi ý:** Cột **Xếp Hạng** đã được cập nhật chính xác theo mẫu huy chương số 1 (Nền đỏ rực rỡ), số 2 (Nền xanh dương) và số 3 (Nền xanh lá) dựa vào tỷ lệ sản lượng đóng góp.")
+        st.info("💡 **Gợi ý:** Cột **Xếp Hạng** sử dụng biểu tượng 🏆 Quán Quân, 🎖️ Á Quân, 🏅 Quý Quân để tôn vinh sự đóng góp của nhân sự.")
 
         st.markdown("---")
         st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
