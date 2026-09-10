@@ -730,7 +730,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         )
         
         st.markdown("---")
-        st.subheader("Biểu Đồ Tỷ Lệ Đóng Góp")
+        st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
         
         with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ", expanded=False):
             while len(st.session_state.chart_colors) < len(st.session_state.staff_list):
@@ -746,9 +746,12 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.success("Đã cập nhật màu sắc biểu đồ!")
                 st.rerun()
 
-        col_chart_left, col_chart_center, col_chart_right = st.columns([1, 2, 1])
-        with col_chart_center:
-            fig, ax = plt.subplots(figsize=(5, 5))
+        chart_size = st.slider("📐 Kích thước biểu đồ:", min_value=2.0, max_value=6.0, value=3.5, step=0.2)
+
+        col_pie, col_details = st.columns([1, 1])
+        
+        with col_pie:
+            fig, ax = plt.subplots(figsize=(chart_size, chart_size))
             current_colors = st.session_state.chart_colors[:len(summary)]
             
             max_pts = summary["Tổng_Điểm"].max()
@@ -764,25 +767,27 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 shadow=True
             )
             
-            plt.setp(autotexts, size=9, weight="bold", color="white")
+            plt.setp(autotexts, size=8, weight="bold", color="white")
             ax.axis('equal')
             
             st.pyplot(fig)
             
-        st.markdown("#### 📌 Chi Tiết Điểm Số")
-        for i, row in summary.iterrows():
-            color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
-            staff_name = row["Nhân Sự"]
-            staff_pts = row["Tổng_Điểm"]
-            staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-            st.markdown(f"""
-            <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
-                <div style="width: 18px; height: 18px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
-                <div style="font-size: 0.9rem;">
-                    <b>{staff_name}</b>: {staff_pts:,.1f} điểm ({staff_pct:.1f}%)
+        with col_details:
+            st.markdown("#### 📌 Chi Tiết Điểm Số")
+            current_colors = st.session_state.chart_colors[:len(summary)]
+            for i, row in summary.iterrows():
+                color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
+                staff_name = row["Nhân Sự"]
+                staff_pts = row["Tổng_Điểm"]
+                staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
+                    <div style="width: 16px; height: 16px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
+                    <div style="font-size: 0.9rem;">
+                        <b>{staff_name}</b>: {staff_pts:,.1f} điểm ({staff_pct:.1f}%)
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
     else:
         st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
 
@@ -1010,12 +1015,12 @@ elif menu == "7. Làm Sạch Dữ Liệu":
         clean_date = st.date_input("Xóa tất cả dữ liệu sản lượng trước ngày:")
         confirm_text = st.text_input("Nhập chữ 'XAC NHAN':", "")
         
-        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_keyword=True, use_container_width=True)
+        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
         if clean_btn:
             if confirm_text == "XAC NHAN":
                 if not st.session_state.input_df.empty:
                     st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
-                    target_dt = pd.to_datetime(clean_date)
+                    target_dt = pd.Tox_datetime(clean_date) if hasattr(pd, "Tox_datetime") else pd.to_datetime(clean_date)
                     
                     keep_df = st.session_state.input_df[st.session_state.input_df["_dt"] >= target_dt].drop(columns=["_dt"])
                     removed_count = len(st.session_state.input_df) - len(keep_df)
