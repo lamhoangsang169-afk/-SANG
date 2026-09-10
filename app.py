@@ -688,17 +688,12 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     else:
         st.info("Chưa có dữ liệu lịch sử chấm công.")
 
-    # --- Thêm Mục Số Ngày Làm Việc (8 tiếng = 1 ngày) & Tổng Thời Gian Tích Lũy ---
     st.markdown("---")
     st.subheader("⏱️ Tổng Thời Gian & Số Ngày Làm Việc Tích Lũy Theo Nhân Sự")
     if not st.session_state.attendance_df.empty:
-        # Nhóm theo nhân sự và cộng dồn tổng phút làm việc
         accumulated_df = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
         accumulated_df.columns = ["Nhân Sự", "Tổng Thời Gian (Phút)"]
-        
-        # 8 tiếng = 8 * 60 = 480 phút = 1 ngày công
         accumulated_df["Số Ngày Làm Việc"] = (accumulated_df["Tổng Thời Gian (Phút)"] / 480.0).round(2)
-        
         accumulated_df = accumulated_df.sort_values(by="Tổng Thời Gian (Phút)", ascending=False).reset_index(drop=True)
         accumulated_df.insert(0, "STT", range(1, len(accumulated_df) + 1))
         
@@ -749,6 +744,37 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             hide_index=True
         )
         
+        # --- Mục Mới: Bảng Đối Chiếu Thời Gian Làm Việc và Sản Lượng ---
+        st.markdown("---")
+        st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
+        
+        if not st.session_state.attendance_df.empty:
+            att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
+            att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
+        else:
+            att_summary = pd.DataFrame({"Nhân Sự": st.session_state.staff_list, "Tổng Phút Làm Việc": 0})
+            
+        comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
+        total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
+        comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
+        comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
+        
+        comparison_table = comparison_df[["Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+        comparison_table.columns = ["Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
+        
+        st.dataframe(
+            comparison_table.style.format({
+                "Tổng Thời Gian (Phút)": "{:,.0f}",
+                "Tỷ Lệ Thời Gian (%)": "{:.2%}",
+                "Tổng Điểm": "{:,.1f}",
+                "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
+                "Chênh Lệch (Sản Lượng - Thời Gian)": "{:+.2%}"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+        st.info("💡 **Gợi ý:** Nếu chênh lệch mang dấu dương (+), nghĩa là nhân sự đó tạo ra tỷ lệ sản lượng cao hơn tỷ lệ thời gian họ bỏ ra (hiệu suất tốt). Nếu dấu âm (-), hiệu suất có thể cần được cải thiện.")
+
         st.markdown("---")
         st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
         
