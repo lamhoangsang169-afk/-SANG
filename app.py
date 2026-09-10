@@ -1009,7 +1009,7 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Bạn có thể đổi tên thư mục, đổi tên các mục bên trong hoặc xóa mục trực tiếp tại đây.")
+    st.markdown("Bạn có thể chỉnh sửa, thay đổi tên thư mục hoặc tên các mục bên trong trực tiếp tại đây.")
 
     with st.form("manage_folders_form"):
         updated_folders = []
@@ -1020,18 +1020,11 @@ elif feature == "manage_folders":
             updated_items = []
             st.markdown("Các mục con trong thư mục này:")
             for i_idx, item in enumerate(folder["items"]):
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    i_name = st.text_input(f"Tên mục", value=item["name"], key=f"item_name_{f_idx}_{i_idx}", label_visibility="collapsed")
-                with c2:
-                    i_del = st.checkbox("Xóa mục này", key=f"item_del_{f_idx}_{i_idx}")
-                
-                if not i_del and i_name.strip():
+                i_name = st.text_input(f"Tên mục #{i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
+                if i_name.strip():
                     updated_items.append({"id": item["id"], "name": i_name.strip()})
 
-            f_del = st.checkbox(f"🗑️ Xóa toàn bộ Thư Mục #{f_idx + 1}", key=f"folder_del_{f_idx}")
-            
-            if not f_del and f_name.strip():
+            if f_name.strip():
                 updated_folders.append({
                     "folder_name": f_name.strip(),
                     "items": updated_items
@@ -1177,7 +1170,7 @@ elif feature == "clean_data":
                 st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
 
     st.markdown("---")
-    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
+    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_content_width=True):
         st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns if not st.session_state.input_df.empty else ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
         save_data()
         st.success("Đã làm sạch hoàn toàn thùng rác!")
