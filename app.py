@@ -744,7 +744,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             hide_index=True
         )
         
-        # --- Mục Mới: Bảng Đối Chiếu Thời Gian Làm Việc và Sản Lượng ---
+        # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Có cột Xếp Hạng dựa theo tỷ lệ sản lượng đóng góp) ---
         st.markdown("---")
         st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
         
@@ -755,15 +755,21 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             att_summary = pd.DataFrame({"Nhân Sự": st.session_state.staff_list, "Tổng Phút Làm Việc": 0})
             
         comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
+        
+        # Sắp xếp theo Tỷ Lệ Đóng Góp giảm dần để tính Xếp Hạng (1, 2, 3...)
+        comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
+        comparison_df.insert(0, "Xếp Hạng", range(1, len(comparison_df) + 1))
+        
         total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
         comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
         comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
         
-        comparison_table = comparison_df[["Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
-        comparison_table.columns = ["Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
+        comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+        comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
         
         st.dataframe(
             comparison_table.style.format({
+                "Xếp Hạng": "{:,.0f}",
                 "Tổng Thời Gian (Phút)": "{:,.0f}",
                 "Tỷ Lệ Thời Gian (%)": "{:.2%}",
                 "Tổng Điểm": "{:,.1f}",
@@ -773,7 +779,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             use_container_width=True,
             hide_index=True
         )
-        st.info("💡 **Gợi ý:** Nếu chênh lệch mang dấu dương (+), nghĩa là nhân sự đó tạo ra tỷ lệ sản lượng cao hơn tỷ lệ thời gian họ bỏ ra (hiệu suất tốt). Nếu dấu âm (-), hiệu suất có thể cần được cải thiện.")
+        st.info("💡 **Gợi ý:** Cột **Xếp Hạng** được sắp xếp tự động dựa theo tỷ lệ sản lượng đóng góp cao nhất xuống thấp nhất. Nếu chênh lệch mang dấu dương (+), nghĩa là nhân sự đó tạo ra tỷ lệ sản lượng cao hơn tỷ lệ thời gian họ bỏ ra (hiệu suất tốt).")
 
         st.markdown("---")
         st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
