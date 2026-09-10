@@ -520,22 +520,30 @@ if menu == "1. Nhập Sản Lượng":
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    is_selected = st.checkbox(f"Tích chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
-                    filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
-                    
-                    img_b64_val = row["Hình Ảnh"]
-                    if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
-                        try:
-                            pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
-                            pure_b64 += "=" * (-len(pure_b64) % 4)
-                            img_bytes = base64.b64decode(pure_b64)
-                            
-                            with st.popover(f"🔍 Xem chi tiết ảnh STT {row['STT']}"):
-                                st.image(img_bytes, use_container_width=True)
-                                
-                            st.image(img_bytes, width=zoom_level)
-                        except Exception:
-                            st.text("Lỗi hiển thị ảnh")
+                    r_col_chk, r_col_img = st.columns([1, 4])
+                    with r_col_chk:
+                        is_selected = st.checkbox(f"Tích chọn xóa STT {row['STT']}", key=f"chk_{row['STT']}")
+                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
+                        
+                        img_b64_val = row["Hình Ảnh"]
+                        if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                            try:
+                                pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
+                                pure_b64 += "=" * (-len(pure_b64) % 4)
+                                img_bytes = base64.b64decode(pure_b64)
+                                with st.popover(f"🔍 Xem chi tiết ảnh"):
+                                    st.image(img_bytes, use_container_width=True)
+                            except Exception:
+                                pass
+                    with r_col_img:
+                        if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                            try:
+                                pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
+                                pure_b64 += "=" * (-len(pure_b64) % 4)
+                                img_bytes = base64.b64decode(pure_b64)
+                                st.image(img_bytes, width=zoom_level)
+                            except Exception:
+                                st.text("Lỗi hiển thị ảnh")
                     st.markdown("---")
                     
                 delete_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
@@ -1040,7 +1048,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
                 else:
                     st.info("Danh sách sản lượng hiện đang trống.")
             else:
-                st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
+                st.warning("⚠️ Vူp lòng nhập đúng chữ 'XAC NHAN'.")
 
     st.markdown("---")
     if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
