@@ -121,7 +121,6 @@ st.session_state.text_color = saved_data.get("text_color", "#31333F")
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 
-# Lấy tên mặc định đầu tiên nếu chưa có
 first_item_name = "1. Nhập Sản Lượng"
 if st.session_state.folders and st.session_state.folders[0]["items"]:
     first_item_name = st.session_state.folders[0]["items"][0]["name"]
@@ -340,7 +339,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
-    # Render danh sách thư mục động từ session_state
     for f_idx, folder in enumerate(st.session_state.folders):
         with st.expander(folder["folder_name"], expanded=True):
             for item in folder["items"]:
@@ -368,7 +366,6 @@ with st.sidebar:
 
 menu = st.session_state.current_menu
 
-# Tìm xem menu hiện tại tương ứng với tính năng cốt lõi nào dựa theo tên hoặc ID
 def get_feature_type(menu_name):
     if menu_name == "⏱️ Chấm Công Ca Làm Việc":
         return "attendance"
@@ -387,7 +384,6 @@ def get_feature_type(menu_name):
                 if item_id == "menu_2": return "report"
                 if item_id == "menu_3": return "rules"
                 if item_id == "menu_4": return "trash"
-                # Các menu tạo mới sẽ mặc định trỏ về trang Nhập Sản Lượng hoặc tùy chỉnh
                 return "input_production"
     return "input_production"
 
@@ -1013,7 +1009,7 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Bạn có thể đổi tên thư mục, đổi tên các mục bên trong, xóa mục hoặc **tạo thêm thư mục / mục mới** ngay tại đây mà không cần sửa code!")
+    st.markdown("Bạn có thể đổi tên thư mục, đổi tên các mục bên trong hoặc xóa mục trực tiếp tại đây.")
 
     with st.form("manage_folders_form"):
         updated_folders = []
@@ -1032,12 +1028,6 @@ elif feature == "manage_folders":
                 
                 if not i_del and i_name.strip():
                     updated_items.append({"id": item["id"], "name": i_name.strip()})
-            
-            # Thêm mục con mới vào thư mục này
-            new_item_name = st.text_input(f"➕ Thêm mục mới vào thư mục #{f_idx + 1} (nhập tên và lưu)", value="", key=f"new_item_{f_idx}")
-            if new_item_name.strip():
-                new_id = f"custom_{f_idx}_{len(updated_items)}_{int(datetime.datetime.now().timestamp())}"
-                updated_items.append({"id": new_id, "name": new_item_name.strip()})
 
             f_del = st.checkbox(f"🗑️ Xóa toàn bộ Thư Mục #{f_idx + 1}", key=f"folder_del_{f_idx}")
             
@@ -1048,20 +1038,8 @@ elif feature == "manage_folders":
                 })
             st.markdown("---")
 
-        st.markdown("### ➕ Tạo Thư Mục Mới Hoàn Toàn")
-        new_f_name = st.text_input("Tên Thư Mục Mới", value="", key="new_folder_name_input")
-        new_f_first_item = st.text_input("Tên Mục Đầu Tiên Trong Thư Mục Mới", value="", key="new_folder_first_item_input")
-
-        save_folders_btn = st.form_submit_button("💾 Lưu Lại Toàn Bộ Cấu Húc Thư Mục", use_container_width=True)
+        save_folders_btn = st.form_submit_button("💾 Lưu Lại Cấu Húc Thư Mục", use_container_width=True)
         if save_folders_btn:
-            if new_f_name.strip() and new_f_first_item.strip():
-                new_f_id = f"folder_custom_{int(datetime.datetime.now().timestamp())}"
-                new_item_id = f"custom_item_{int(datetime.datetime.now().timestamp())}"
-                updated_folders.append({
-                    "folder_name": new_f_name.strip(),
-                    "items": [{"id": new_item_id, "name": new_f_first_item.strip()}]
-                })
-            
             if not updated_folders:
                 st.error("Cần phải giữ lại ít nhất một thư mục và một mục!")
             else:
