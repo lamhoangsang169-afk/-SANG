@@ -751,7 +751,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         hide_index=True
     )
     
-    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng với Huy Chương tinh gọn sang trọng ---
+    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Hỗ trợ đồng hạng khi tỷ lệ sản lượng bằng nhau) ---
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -764,16 +764,23 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
     comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
     
+    # Gán xếp hạng có hỗ trợ đồng hạng khi tỷ lệ sản lượng (Tổng_Điểm) bằng nhau
     rank_badges = []
+    current_rank_num = 1
     for idx in range(len(comparison_df)):
-        if idx == 0:
-            rank_badges.append("🥇 Hạng 1")
-        elif idx == 1:
-            rank_badges.append("🥈 Hạng 2")
-        elif idx == 2:
-            rank_badges.append("🥉 Hạng 3")
+        if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
+            # Nếu điểm số/tỷ lệ giống người trước -> Dùng chung nhãn hạng với người trước (đồng hạng)
+            rank_badges.append(rank_badges[-1])
         else:
-            rank_badges.append(f"Top {idx + 1}")
+            current_rank_num = idx + 1
+            if current_rank_num == 1:
+                rank_badges.append("🥇 Hạng 1")
+            elif current_rank_num == 2:
+                rank_badges.append("🥈 Hạng 2")
+            elif current_rank_num == 3:
+                rank_badges.append("🥉 Hạng 3")
+            else:
+                rank_badges.append(f"Top {current_rank_num}")
             
     comparison_df.insert(0, "Xếp Hạng", rank_badges)
     
@@ -795,7 +802,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         use_container_width=True,
         hide_index=True
     )
-    st.info("💡 **Gợi ý:** Cột **Xếp Hạng** đã được thu gọn thành các biểu tượng huy chương 🥇, 🥈, 🥉 và Top kèm theo số thứ hạng, giúp bảng đối chiếu trở nên sang trọng và tối ưu không gian hiển thị.")
+    st.info("💡 **Gợi ý:** Hệ thống đã tự động gán **đồng hạng** (ví dụ cùng là `🥇 Hạng 1`) khi các nhân sự đạt cùng một tỷ lệ sản lượng hoặc số điểm đóng góp.")
 
     st.markdown("---")
     st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
