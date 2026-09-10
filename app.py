@@ -42,7 +42,7 @@ master_rules = [
 ]
 
 default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
-default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"]
+default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
 def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     try:
@@ -712,149 +712,156 @@ elif menu == "2. Chấm Công Ca Làm Việc":
 elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     st.header("Báo Cáo Tổng Hợp & Đánh Giá")
     
+    # Đảm bảo lấy toàn bộ danh sách nhân sự hiện có để biểu đồ luôn chia đúng theo số nhân sự
+    all_staff_current = st.session_state.staff_list
+    
     if not st.session_state.input_df.empty:
         df_in = st.session_state.input_df
         
         summary = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
-        ).reindex(st.session_state.staff_list).fillna(0).reset_index()
-        
-        total_all_points = summary["Tổng_Điểm"].sum()
-        summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
-        
-        def rank_func(pts):
-            if pts >= 700:
-                return "Xuất Sắc"
-            elif pts >= 400:
-                return "Đạt"
-            else:
-                return "Cần Cố Gắn"
-                
-        summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
-        
-        st.subheader("Bảng Tổng Kết Theo Nhân Sự")
-        st.dataframe(
-            summary.style.format({
-                "Tổng_Số_Lượng": "{:,.0f}",
-                "Tổng_Điểm": "{:,.1f}",
-                "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
-        
-        # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Bộ huy hiệu cao cấp mới) ---
-        st.markdown("---")
-        st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
-        
-        if not st.session_state.attendance_df.empty:
-            att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
-            att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
-        else:
-            att_summary = pd.DataFrame({"Nhân Sự": st.session_state.staff_list, "Tổng Phút Làm Việc": 0})
-            
-        comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
-        
-        # Sắp xếp theo Tỷ Lệ Đóng Góp giảm dần
-        comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
-        
-        # Gán biểu tượng huy hiệu vinh danh cao cấp
-        rank_badges = []
-        for idx in range(len(comparison_df)):
-            if idx == 0:
-                rank_badges.append("🏆 Quán Quân")
-            elif idx == 1:
-                rank_badges.append("🎖️ Á Quân")
-            elif idx == 2:
-                rank_badges.append("🏅 Quý Quân")
-            else:
-                rank_badges.append(f"Top {idx + 1}")
-                
-        comparison_df.insert(0, "Xếp Hạng", rank_badges)
-        
-        total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
-        comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
-        comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
-        
-        comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
-        comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
-        
-        st.dataframe(
-            comparison_table.style.format({
-                "Tổng Thời Gian (Phút)": "{:,.0f}",
-                "Tỷ Lệ Thời Gian (%)": "{:.2%}",
-                "Tổng Điểm": "{:,.1f}",
-                "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
-                "Chênh Lệch (Sản Lượng - Thời Gian)": "{:+.2%}"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
-        st.info("💡 **Gợi ý:** Cột **Xếp Hạng** sử dụng biểu tượng 🏆 Quán Quân, 🎖️ Á Quân, 🏅 Quý Quân để tôn vinh sự đóng góp của nhân sự.")
-
-        st.markdown("---")
-        st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
-        
-        with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ", expanded=False):
-            while len(st.session_state.chart_colors) < len(st.session_state.staff_list):
-                st.session_state.chart_colors.append("#3b82f6")
-            
-            color_cols = st.columns(min(len(st.session_state.staff_list), 4))
-            for i, staff_name in enumerate(st.session_state.staff_list):
-                col_idx = i % len(color_cols)
-                with color_cols[col_idx]:
-                    st.session_state.chart_colors[i] = st.color_picker(f"Màu: {staff_name}", st.session_state.chart_colors[i], key=f"color_pick_{i}")
-            if st.button("Lưu Màu Biểu Đồ", use_container_width=True):
-                save_data()
-                st.success("Đã cập nhật màu sắc biểu đồ!")
-                st.rerun()
-
-        chart_size = 2.6
-
-        col_pie, col_details = st.columns([1, 1])
-        
-        with col_pie:
-            fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
-            current_colors = st.session_state.chart_colors[:len(summary)]
-            
-            max_pts = summary["Tổng_Điểm"].max()
-            explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
-
-            wedges, texts, autotexts = ax.pie(
-                summary["Tổng_Điểm"], 
-                labels=None, 
-                autopct='%1.1f%%', 
-                startangle=90, 
-                colors=current_colors,
-                explode=explode_values,
-                shadow=False,
-                pctdistance=0.55
-            )
-            
-            plt.setp(autotexts, size=8, weight="bold", color="white")
-            ax.axis('equal')
-            
-            st.pyplot(fig)
-            
-        with col_details:
-            st.markdown("#### 📌 Chi Tiết Điểm Số")
-            current_colors = st.session_state.chart_colors[:len(summary)]
-            for i, row in summary.iterrows():
-                color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
-                staff_name = row["Nhân Sự"]
-                staff_pts = row["Tổng_Điểm"]
-                staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
-                    <div style="width: 16px; height: 16px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
-                    <div style="font-size: 0.9rem;">
-                        <b>{staff_name}</b>: {staff_pts:,.1f} điểm ({staff_pct:.1f}%)
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+        ).reindex(all_staff_current).fillna(0).reset_index()
     else:
-        st.warning("Chưa có dữ liệu để tổng hợp báo cáo.")
+        summary = pd.DataFrame({
+            "Nhân Sự": all_staff_current,
+            "Tổng_Số_Lượng": [0.0] * len(all_staff_current),
+            "Tổng_Điểm": [0.0] * len(all_staff_current)
+        })
+        
+    total_all_points = summary["Tổng_Điểm"].sum()
+    summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
+    
+    def rank_func(pts):
+        if pts >= 700:
+            return "Xuất Sắc"
+        elif pts >= 400:
+            return "Đạt"
+        else:
+            return "Cần Cố Gắn"
+            
+    summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
+    
+    st.subheader("Bảng Tổng Kết Theo Nhân Sự")
+    st.dataframe(
+        summary.style.format({
+            "Tổng_Số_Lượng": "{:,.0f}",
+            "Tổng_Điểm": "{:,.1f}",
+            "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng ---
+    st.markdown("---")
+    st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
+    
+    if not st.session_state.attendance_df.empty:
+        att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
+        att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
+    else:
+        att_summary = pd.DataFrame({"Nhân Sự": all_staff_current, "Tổng Phút Làm Việc": 0})
+        
+    comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
+    
+    # Sắp xếp theo Tỷ Lệ Đóng Góp giảm dần
+    comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
+    
+    # Gán biểu tượng huy hiệu theo đúng chuẩn mẫu 1 (đỏ), 2 (xanh dương), 3 (xanh lá)
+    rank_badges = []
+    for idx in range(len(comparison_df)):
+        if idx == 0:
+            rank_badges.append("🔴 [Huy Chương 1]")
+        elif idx == 1:
+            rank_badges.append("🔵 [Huy Chương 2]")
+        elif idx == 2:
+            rank_badges.append("🟢 [Huy Chương 3]")
+        else:
+            rank_badges.append(f"Top {idx + 1}")
+            
+    comparison_df.insert(0, "Xếp Hạng", rank_badges)
+    
+    total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
+    comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
+    comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
+    
+    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+    comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
+    
+    st.dataframe(
+        comparison_table.style.format({
+            "Tổng Thời Gian (Phút)": "{:,.0f}",
+            "Tỷ Lệ Thời Gian (%)": "{:.2%}",
+            "Tổng Điểm": "{:,.1f}",
+            "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
+            "Chênh Lệch (Sản Lượng - Thời Gian)": "{:+.2%}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+    st.info("💡 **Gợi ý:** Cột **Xếp Hạng** đã được cập nhật chính xác theo mẫu huy chương số 1, số 2, số 3 dựa vào tỷ lệ sản lượng đóng góp.")
+
+    st.markdown("---")
+    st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
+    
+    with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ", expanded=False):
+        while len(st.session_state.chart_colors) < len(all_staff_current):
+            st.session_state.chart_colors.append("#3b82f6")
+        
+        color_cols = st.columns(min(len(all_staff_current), 4))
+        for i, staff_name in enumerate(all_staff_current):
+            col_idx = i % len(color_cols)
+            with color_cols[col_idx]:
+                st.session_state.chart_colors[i] = st.color_picker(f"Màu: {staff_name}", st.session_state.chart_colors[i], key=f"color_pick_{i}")
+        if st.button("Lưu Màu Biểu Đồ", use_container_width=True):
+            save_data()
+            st.success("Đã cập nhật màu sắc biểu đồ!")
+            st.rerun()
+
+    chart_size = 2.6
+
+    col_pie, col_details = st.columns([1, 1])
+    
+    with col_pie:
+        fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
+        current_colors = st.session_state.chart_colors[:len(summary)]
+        
+        max_pts = summary["Tổng_Điểm"].max()
+        explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
+
+        wedges, texts, autotexts = ax.pie(
+            summary["Tổng_Điểm"], 
+            labels=None, 
+            autopct='%1.1f%%', 
+            startangle=90, 
+            colors=current_colors,
+            explode=explode_values,
+            shadow=False,
+            pctdistance=0.55
+        )
+        
+        plt.setp(autotexts, size=8, weight="bold", color="white")
+        ax.axis('equal')
+        
+        st.pyplot(fig)
+        
+    with col_details:
+        st.markdown("#### 📌 Chi Tiết Điểm Số")
+        current_colors = st.session_state.chart_colors[:len(summary)]
+        for i, row in summary.iterrows():
+            color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
+            staff_name = row["Nhân Sự"]
+            staff_pts = row["Tổng_Điểm"]
+            staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+            st.markdown(f"""
+            <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
+                <div style="width: 16px; height: 16px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
+                <div style="font-size: 0.9rem;">
+                    <b>{staff_name}</b>: {staff_pts:,.1f} điểm ({staff_pct:.1f}%)
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ==================== 4. QUẢN LÝ ĐỊNH MỨC ====================
 elif menu == "4. Quản Lý Định Mức Điểm":
