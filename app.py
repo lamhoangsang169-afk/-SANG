@@ -12,9 +12,8 @@ from supabase import create_client, Client
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
-# Thay thế thông tin dưới đây bằng URL và Anon Key thực tế từ dự án Supabase của bạn
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"
+SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # Thay khóa anon public chính xác của bạn vào đây
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -83,6 +82,16 @@ def load_data():
             return json.loads(response.data[0]["data"])
     except Exception:
         pass
+    
+    # Tự động khôi phục từ tệp JSON cục bộ cũ nếu Supabase chưa có dữ liệu
+    if os.path.exists("app_storage.json"):
+        try:
+            with open("app_storage.json", "r", encoding="utf-8") as f:
+                local_data = json.load(f)
+                return local_data
+        except Exception:
+            pass
+            
     return {}
 
 def save_data():
@@ -354,6 +363,7 @@ with st.sidebar:
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
     if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
+        save_data()
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
@@ -847,7 +857,6 @@ elif feature == "report":
         hide_index=True
     )
 
-    # ==================== TÍNH NĂNG XUẤT BÁO CÁO CSV (KHÔNG CẦN CÀI THƯ VIỆN) ====================
     st.markdown("---")
     st.subheader("📥 Xuất Dữ Liệu Báo Cáo")
     
