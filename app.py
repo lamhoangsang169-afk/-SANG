@@ -118,7 +118,6 @@ st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
 if not st.session_state.attendance_df.empty:
-    # Lọc bỏ cột Ghi Chú nếu có trong dữ liệu cũ
     if "Ghi Chú" in st.session_state.attendance_df.columns:
         st.session_state.attendance_df = st.session_state.attendance_df.drop(columns=["Ghi Chú"])
     st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
@@ -656,7 +655,30 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     st.markdown("---")
     st.subheader("📋 Lịch Sử Chấm Công & Số Phút Làm Việc")
     if not st.session_state.attendance_df.empty:
-        st.dataframe(st.session_state.attendance_df, use_container_width=True, hide_index=True)
+        st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+        att_display = st.session_state.attendance_df.copy()
+        att_display.insert(0, "Chọn", False)
+        
+        with st.form("att_delete_form"):
+            edited_att = st.data_editor(
+                att_display,
+                hide_index=True,
+                use_container_width=True,
+                key="att_editor"
+            )
+            delete_att_btn = st.form_submit_button("🗑️ Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True)
+            if delete_att_btn:
+                selected_att = edited_att[edited_att["Chọn"] == True]
+                if not selected_att.empty:
+                    stt_to_remove = selected_att["STT"].tolist()
+                    st.session_state.attendance_df = st.session_state.attendance_df[~st.session_state.attendance_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                    if not st.session_state.attendance_df.empty:
+                        st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                    save_data()
+                    st.success("Đã xóa các dòng lịch sử chấm công được chọn!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn ít nhất một dòng để xóa!")
     else:
         st.info("Chưa có dữ liệu lịch sử chấm công.")
 
