@@ -44,13 +44,17 @@ master_rules = [
 default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
-default_menu_names = {
-    "menu_1": "1. Nhập Sản Lượng",
-    "menu_2": "2. Báo Cáo & Biểu Đồ",
-    "menu_3": "3. Tham Chiếu Công Việc",
-    "menu_4": "4. Thùng Rác Sản Lượng",
-    "menu_5": "⏱️ Chấm Công Ca Làm Việc"
-}
+default_folders = [
+    {
+        "folder_name": "📌 Quản Lý Nghiệp Vụ",
+        "items": [
+            {"id": "menu_1", "name": "1. Nhập Sản Lượng"},
+            {"id": "menu_2", "name": "2. Báo Cáo & Biểu Đồ"},
+            {"id": "menu_3", "name": "3. Tham Chiếu Công Việc"},
+            {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"}
+        ]
+    }
+]
 
 def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     try:
@@ -83,7 +87,7 @@ def save_data():
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else [],
         "staff_list": st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list,
         "chart_colors": st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors,
-        "menu_names": st.session_state.menu_names if "menu_names" in st.session_state else default_menu_names,
+        "folders": st.session_state.folders if "folders" in st.session_state else default_folders,
         "primary_color": st.session_state.primary_color if "primary_color" in st.session_state else "#ff4b4b",
         "bg_color": st.session_state.bg_color if "bg_color" in st.session_state else "#ffffff",
         "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
@@ -108,7 +112,7 @@ st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
-st.session_state.menu_names = saved_data.get("menu_names", default_menu_names)
+st.session_state.folders = saved_data.get("folders", default_folders)
 st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
 st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
 st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
@@ -116,7 +120,12 @@ st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 st.session_state.text_color = saved_data.get("text_color", "#31333F")
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
-st.session_state.current_menu = saved_data.get("current_menu", st.session_state.menu_names.get("menu_1", "1. Nhập Sản Lượng"))
+
+# Lấy tên mặc định đầu tiên nếu chưa có
+first_item_name = "1. Nhập Sản Lượng"
+if st.session_state.folders and st.session_state.folders[0]["items"]:
+    first_item_name = st.session_state.folders[0]["items"][0]["name"]
+st.session_state.current_menu = saved_data.get("current_menu", first_item_name)
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -241,28 +250,12 @@ st.markdown(f"""
         line-height: 1;
     }}
 
-    .staff-badge-container {{
-        background-color: rgba(255, 255, 255, 0.7);
-        border-left: 4px solid {st.session_state.primary_color};
-        padding: 10px 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-        font-size: 0.95rem;
-        backdrop-filter: blur(4px);
-    }}
-
     @media (max-width: 768px) {{
         .stApp {{
             padding: 2px !important;
         }}
         h1 {{
             font-size: 1.3rem !important;
-        }}
-        h2 {{
-            font-size: 1.1rem !important;
-        }}
-        h3 {{
-            font-size: 1.0rem !important;
         }}
         [data-testid="column"] {{
             width: 100% !important;
@@ -339,42 +332,35 @@ with st.sidebar:
     if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
         st.rerun()
 
-    m_names = st.session_state.menu_names
-
-    if st.button(m_names.get("menu_5", "⏱️ Chấm Công Ca Làm Việc"), use_container_width=True):
-        st.session_state.current_menu = m_names.get("menu_5", "⏱️ Chấm Công Ca Làm Việc")
+    if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
+        st.session_state.current_menu = "⏱️ Chấm Công Ca Làm Việc"
         save_data()
         st.rerun()
 
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
-    with st.expander("📌 Quản Lý Nghiệp Vụ", expanded=True):
-        if st.button(m_names.get("menu_1", "1. Nhập Sản Lượng"), use_container_width=True):
-            st.session_state.current_menu = m_names.get("menu_1", "1. Nhập Sản Lượng")
-            save_data()
-            st.rerun()
-        if st.button(m_names.get("menu_2", "2. Báo Cáo & Biểu Đồ"), use_container_width=True):
-            st.session_state.current_menu = m_names.get("menu_2", "2. Báo Cáo & Biểu Đồ")
-            save_data()
-            st.rerun()
-        if st.button(m_names.get("menu_3", "3. Tham Chiếu Công Việc"), use_container_width=True):
-            st.session_state.current_menu = m_names.get("menu_3", "3. Tham Chiếu Công Việc")
-            save_data()
-            st.rerun()
-        if st.button(m_names.get("menu_4", "4. Thùng Rác Sản Lượng"), use_container_width=True):
-            st.session_state.current_menu = m_names.get("menu_4", "4. Thùng Rác Sản Lượng")
-            save_data()
-            st.rerun()
+    # Render danh sách thư mục động từ session_state
+    for f_idx, folder in enumerate(st.session_state.folders):
+        with st.expander(folder["folder_name"], expanded=True):
+            for item in folder["items"]:
+                if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
+                    st.session_state.current_menu = item["name"]
+                    save_data()
+                    st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
+    if st.button("📁 Quản Lý Thư Mục & Menu", use_container_width=True):
+        st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
+        save_data()
+        st.rerun()
     if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-        st.session_state.current_menu = "6. Cài Đặt Giao Diện"
+        st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
         save_data()
         st.rerun()
     if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
-        st.session_state.current_menu = "7. Làm Sạch Dữ Liệu"
+        st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
 
@@ -382,10 +368,33 @@ with st.sidebar:
 
 menu = st.session_state.current_menu
 
-staff_joined = " | ".join([f"<b>{s}</b>" for s in st.session_state.staff_list])
+# Tìm xem menu hiện tại tương ứng với tính năng cốt lõi nào dựa theo tên hoặc ID
+def get_feature_type(menu_name):
+    if menu_name == "⏱️ Chấm Công Ca Làm Việc":
+        return "attendance"
+    if menu_name == "📁 Quản Lý Thư Mục & Menu":
+        return "manage_folders"
+    if menu_name == "🎨 Cài Đặt Giao Diện":
+        return "settings_ui"
+    if menu_name == "🧹 Làm Sạch Dữ Liệu":
+        return "clean_data"
+        
+    for folder in st.session_state.folders:
+        for item in folder["items"]:
+            if item["name"] == menu_name:
+                item_id = item["id"]
+                if item_id == "menu_1": return "input_production"
+                if item_id == "menu_2": return "report"
+                if item_id == "menu_3": return "rules"
+                if item_id == "menu_4": return "trash"
+                # Các menu tạo mới sẽ mặc định trỏ về trang Nhập Sản Lượng hoặc tùy chỉnh
+                return "input_production"
+    return "input_production"
+
+feature = get_feature_type(menu)
 
 # ==================== 1. NHẬP SẢN LƯỢNG ====================
-if menu == st.session_state.menu_names.get("menu_1", "1. Nhập Sản Lượng"):
+if feature == "input_production":
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
     
@@ -403,10 +412,10 @@ if menu == st.session_state.menu_names.get("menu_1", "1. Nhập Sản Lượng")
         else:
             inactive_staff.append(s)
 
-    st.subheader(f"Nhập Sản Lượng Hàng Ngày ({today_str})")
+    st.subheader(f"{menu} ({today_str})")
 
     if not active_staff:
-        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng bấm vào nút **Chấm Công Ca Làm Việc** ở thanh bên trái để thực hiện Check-in trước khi nhập sản lượng!")
+        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
         st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
         
@@ -500,8 +509,6 @@ if menu == st.session_state.menu_names.get("menu_1", "1. Nhập Sản Lượng")
             
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
-            
-            # Đảo ngược thứ tự để bản ghi mới báo cáo hiển thị lên trên cùng
             filtered_df = filtered_df.iloc[::-1].reset_index(drop=True)
             
             with st.form("input_delete_form"):
@@ -558,9 +565,9 @@ if menu == st.session_state.menu_names.get("menu_1", "1. Nhập Sản Lượng")
     else:
         st.info("Chưa có dữ liệu sản lượng nào.")
 
-# ==================== 2. CHẤM CÔNG CA LÀM VIỆC ====================
-elif menu == st.session_state.menu_names.get("menu_5", "⏱️ Chấm Công Ca Làm Việc"):
-    st.header("Quản Lý Chấm Công Ca Làm Việc")
+# ==================== CHẤM CÔNG CA LÀM VIỆC ====================
+elif feature == "attendance":
+    st.header(menu)
     st.markdown("Thực hiện Check-in và Check-out theo múi giờ Việt Nam (GMT+7). Hệ thống sẽ tự động tính số phút làm việc từ lúc Check-in đến khi Check-out.")
     
     now_vn = datetime.datetime.now(VN_TIMEZONE)
@@ -723,9 +730,9 @@ elif menu == st.session_state.menu_names.get("menu_5", "⏱️ Chấm Công Ca L
     else:
         st.info("Chưa có dữ liệu tích lũy thời gian.")
 
-# ==================== 3. BÁO CÁO & BIỂU ĐỒ ====================
-elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đồ"):
-    st.header("Báo Cáo Tổng Hợp & Đánh Giá")
+# ==================== BÁO CÁO & BIỂU ĐỒ ====================
+elif feature == "report":
+    st.header(menu)
     
     all_staff_current = st.session_state.staff_list
     
@@ -766,7 +773,6 @@ elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đ
         hide_index=True
     )
     
-    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng ---
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -819,7 +825,6 @@ elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đ
         use_container_width=True,
         hide_index=True
     )
-    st.info("💡 **Gợi ý:** Hệ thống hiển thị đồng hạng chính xác và liền mạch dựa trên điểm số đóng góp thực tế.")
 
     st.markdown("---")
     st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
@@ -839,7 +844,6 @@ elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đ
             st.rerun()
 
     chart_size = 2.6
-
     col_pie, col_details = st.columns([1, 1])
     
     with col_pie:
@@ -869,7 +873,6 @@ elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đ
                 autotext.set_color("black")
                 
         ax.axis('equal')
-        
         st.pyplot(fig)
         
     with col_details:
@@ -889,9 +892,9 @@ elif menu == st.session_state.menu_names.get("menu_2", "2. Báo Cáo & Biểu Đ
             </div>
             """, unsafe_allow_html=True)
 
-# ==================== 4. THAM CHIẾU CÔNG VIỆC ====================
-elif menu == st.session_state.menu_names.get("menu_3", "3. Tham Chiếu Công Việc"):
-    st.header("Tham Chiếu Công Việc")
+# ==================== THAM CHIẾU CÔNG VIỆC ====================
+elif feature == "rules":
+    st.header(menu)
     st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây.")
     
     if not st.session_state.rules_df.empty:
@@ -937,9 +940,9 @@ elif menu == st.session_state.menu_names.get("menu_3", "3. Tham Chiếu Công Vi
             st.success("Đã lưu danh mục tham chiếu công việc thành công!")
             st.rerun()
 
-# ==================== 5. THÙNG RÁC SẢN LƯỢNG ====================
-elif menu == st.session_state.menu_names.get("menu_4", "4. Thùng Rác Sản Lượng"):
-    st.header("Thùng Rác & Khôi Phục Bản Ghi")
+# ==================== THÙNG RÁC SẢN LƯỢNG ====================
+elif feature == "trash":
+    st.header(menu)
     
     if not st.session_state.deleted_input_df.empty:
         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
@@ -1007,35 +1010,70 @@ elif menu == st.session_state.menu_names.get("menu_4", "4. Thùng Rác Sản Lư
     else:
         st.info("Thùng rác hiện tại đang trống.")
 
-# ==================== 6. CÀI ĐẶT GIAO DIỆN ====================
-elif menu == "6. Cài Đặt Giao Diện":
-    st.header("Cài Đặt Giao Diện & Danh Mục Hệ Thống")
-    
-    st.subheader("✏️ Đổi Tên Các Mục Menu (Chức Năng Hệ Thống)")
-    st.markdown("Bạn có thể đổi tên hiển thị của các nút chức năng trong menu bên trái trực tiếp tại đây:")
-    
-    with st.form("menu_names_form"):
-        mn = st.session_state.menu_names
-        new_m1 = st.text_input("Tên Mục 1 (Nhập Sản Lượng)", value=mn.get("menu_1", "1. Nhập Sản Lượng"))
-        new_m2 = st.text_input("Tên Mục 2 (Báo Cáo & Biểu Đồ)", value=mn.get("menu_2", "2. Báo Cáo & Biểu Đồ"))
-        new_m3 = st.text_input("Tên Mục 3 (Tham Chiếu Công Việc)", value=mn.get("menu_3", "3. Tham Chiếu Công Việc"))
-        new_m4 = st.text_input("Tên Mục 4 (Thùng Rác Sản Lượng)", value=mn.get("menu_4", "4. Thùng Rác Sản Lượng"))
-        new_m5 = st.text_input("Tên Nút (Chấm Công Ca Làm Việc)", value=mn.get("menu_5", "⏱️ Chấm Công Ca Làm Việc"))
-        
-        save_menu_names_btn = st.form_submit_button("💾 Lưu Tên Menu Mới", use_container_width=True)
-        if save_menu_names_btn:
-            st.session_state.menu_names = {
-                "menu_1": new_m1.strip(),
-                "menu_2": new_m2.strip(),
-                "menu_3": new_m3.strip(),
-                "menu_4": new_m4.strip(),
-                "menu_5": new_m5.strip()
-            }
-            save_data()
-            st.success("Đã cập nhật tên các danh mục menu thành công!")
-            st.rerun()
+# ==================== QUẢN LÝ THƯ MỤC & MENU ====================
+elif feature == "manage_folders":
+    st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
+    st.markdown("Bạn có thể đổi tên thư mục, đổi tên các mục bên trong, xóa mục hoặc **tạo thêm thư mục / mục mới** ngay tại đây mà không cần sửa code!")
 
-    st.markdown("---")
+    with st.form("manage_folders_form"):
+        updated_folders = []
+        for f_idx, folder in enumerate(st.session_state.folders):
+            st.markdown(f"### Thư mục #{f_idx + 1}")
+            f_name = st.text_input(f"Tên Thư Mục #{f_idx + 1}", value=folder["folder_name"], key=f"fname_{f_idx}")
+            
+            updated_items = []
+            st.markdown("Các mục con trong thư mục này:")
+            for i_idx, item in enumerate(folder["items"]):
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    i_name = st.text_input(f"Tên mục", value=item["name"], key=f"item_name_{f_idx}_{i_idx}", label_visibility="collapsed")
+                with c2:
+                    i_del = st.checkbox("Xóa mục này", key=f"item_del_{f_idx}_{i_idx}")
+                
+                if not i_del and i_name.strip():
+                    updated_items.append({"id": item["id"], "name": i_name.strip()})
+            
+            # Thêm mục con mới vào thư mục này
+            new_item_name = st.text_input(f"➕ Thêm mục mới vào thư mục #{f_idx + 1} (nhập tên và lưu)", value="", key=f"new_item_{f_idx}")
+            if new_item_name.strip():
+                new_id = f"custom_{f_idx}_{len(updated_items)}_{int(datetime.datetime.now().timestamp())}"
+                updated_items.append({"id": new_id, "name": new_item_name.strip()})
+
+            f_del = st.checkbox(f"🗑️ Xóa toàn bộ Thư Mục #{f_idx + 1}", key=f"folder_del_{f_idx}")
+            
+            if not f_del and f_name.strip():
+                updated_folders.append({
+                    "folder_name": f_name.strip(),
+                    "items": updated_items
+                })
+            st.markdown("---")
+
+        st.markdown("### ➕ Tạo Thư Mục Mới Hoàn Toàn")
+        new_f_name = st.text_input("Tên Thư Mục Mới", value="", key="new_folder_name_input")
+        new_f_first_item = st.text_input("Tên Mục Đầu Tiên Trong Thư Mục Mới", value="", key="new_folder_first_item_input")
+
+        save_folders_btn = st.form_submit_button("💾 Lưu Lại Toàn Bộ Cấu Húc Thư Mục", use_container_width=True)
+        if save_folders_btn:
+            if new_f_name.strip() and new_f_first_item.strip():
+                new_f_id = f"folder_custom_{int(datetime.datetime.now().timestamp())}"
+                new_item_id = f"custom_item_{int(datetime.datetime.now().timestamp())}"
+                updated_folders.append({
+                    "folder_name": new_f_name.strip(),
+                    "items": [{"id": new_item_id, "name": new_f_first_item.strip()}]
+                })
+            
+            if not updated_folders:
+                st.error("Cần phải giữ lại ít nhất một thư mục và một mục!")
+            else:
+                st.session_state.folders = updated_folders
+                save_data()
+                st.success("Đã cập nhật cấu trúc thư mục thành công!")
+                st.rerun()
+
+# ==================== CÀI ĐẶT GIAO DIỆN ====================
+elif feature == "settings_ui":
+    st.header("Cài Đặt Giao Diện & Nhân Sự")
+    
     st.subheader("Quản Lý Nhân Sự")
     with st.form("staff_form"):
         staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
@@ -1116,8 +1154,8 @@ elif menu == "6. Cài Đặt Giao Diện":
     else:
         st.text("Chưa có hình nền nào được chọn.")
 
-# ==================== 7. LÀM SẠCH DỮ LIỆU ====================
-elif menu == "7. Làm Sạch Dữ Liệu":
+# ==================== LÀM SẠCH DỮ LIỆU ====================
+elif feature == "clean_data":
     st.header("Làm Sạch & Tối Ưu Dữ Liệu")
     
     file_size_kb = 0
