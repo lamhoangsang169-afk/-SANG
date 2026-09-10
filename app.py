@@ -1038,7 +1038,7 @@ elif feature == "manage_folders":
                 })
             st.markdown("---")
 
-        save_folders_btn = st.form_submit_button("💾 Lưu Lại Cấu Húc Thư Mục", use_container_width=True)
+        save_folders_btn = st.form_submit_button("💾 Xác Nhận Lưu Thay Đổi", use_container_width=True)
         if save_folders_btn:
             if not updated_folders:
                 st.error("Cần phải giữ lại ít nhất một thư mục và một mục!")
