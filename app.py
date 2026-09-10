@@ -746,7 +746,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.success("Đã cập nhật màu sắc biểu đồ!")
                 st.rerun()
 
-        chart_size = 3.5
+        chart_size = 2.6
 
         col_pie, col_details = st.columns([1, 1])
         
@@ -765,10 +765,10 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 colors=current_colors,
                 explode=explode_values,
                 shadow=False,
-                pctdistance=0.6
+                pctdistance=0.55
             )
             
-            plt.setp(autotexts, size=9, weight="bold", color="white")
+            plt.setp(autotexts, size=8, weight="bold", color="white")
             ax.axis('equal')
             
             st.pyplot(fig)
@@ -1019,7 +1019,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
         clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
         if clean_btn:
             if confirm_text == "XAC NHAN":
-                if not st.session_state.input_df.end(): if not st.session_state.input_df.empty:
+                if not st.session_state.input_df.empty:
                     st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
                     target_dt = pd.to_datetime(clean_date)
                     
@@ -1028,7 +1028,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
                     
                     st.session_state.input_df = keep_df
                     if not st.session_state.input_df.empty:
-                        st.session_state.input_df["STT"]  = range(1, len(st.session_state.input_df) + 1)
+                        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                         
                     save_data()
                     st.success(f"Đã xóa {removed_count} bản ghi cũ trước ngày {clean_date}.")
