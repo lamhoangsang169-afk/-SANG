@@ -751,7 +751,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         hide_index=True
     )
     
-    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng với Huy Chương vinh danh ---
+    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng với Huy Chương tinh gọn sang trọng ---
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -767,11 +767,11 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     rank_badges = []
     for idx in range(len(comparison_df)):
         if idx == 0:
-            rank_badges.append("🥇 Huy Chương Vàng (Hạng 1)")
+            rank_badges.append("🥇 Hạng 1")
         elif idx == 1:
-            rank_badges.append("🥈 Huy Chương Bạc (Hạng 2)")
+            rank_badges.append("🥈 Hạng 2")
         elif idx == 2:
-            rank_badges.append("🥉 Huy Chương Đồng (Hạng 3)")
+            rank_badges.append("🥉 Hạng 3")
         else:
             rank_badges.append(f"Top {idx + 1}")
             
@@ -795,7 +795,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         use_container_width=True,
         hide_index=True
     )
-    st.info("💡 **Gợi ý:** Cột **Xếp Hạng** đã được thay thế bằng hình ảnh biểu tượng Huy Chương Vàng (🥇), Bạc (🥈), Đồng (🥉) nhằm vinh danh nhân sự xuất sắc nhất.")
+    st.info("💡 **Gợi ý:** Cột **Xếp Hạng** đã được thu gọn thành các biểu tượng huy chương 🥇, 🥈, 🥉 và Top kèm theo số thứ hạng, giúp bảng đối chiếu trở nên sang trọng và tối ưu không gian hiển thị.")
 
     st.markdown("---")
     st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
