@@ -83,7 +83,6 @@ def load_data():
     except Exception:
         pass
     
-    # Tự động khôi phục từ tệp JSON cục bộ cũ nếu Supabase chưa có dữ liệu
     if os.path.exists("app_storage.json"):
         try:
             with open("app_storage.json", "r", encoding="utf-8") as f:
@@ -363,7 +362,6 @@ with st.sidebar:
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
     if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
-        save_data()
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
