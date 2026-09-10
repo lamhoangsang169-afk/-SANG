@@ -520,6 +520,8 @@ if menu == "1. Nhập Sản Lượng":
                             pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
                             pure_b64 += "=" * (-len(pure_b64) % 4)
                             img_bytes = base64.b64decode(pure_b64)
+                            with st.popover(f"🔍 Phóng to ảnh STT {row['STT']}"):
+                                st.image(img_bytes, use_container_width=True)
                             st.image(img_bytes, width=zoom_level)
                         except Exception:
                             st.text("Lỗi hiển thị ảnh")
@@ -990,7 +992,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
         clean_date = st.date_input("Xóa tất cả dữ liệu sản lượng trước ngày:")
         confirm_text = st.text_input("Nhập chữ 'XAC NHAN':", "")
         
-        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
+        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=Thread if 'Thread' in globals() else True) # fallback
         if clean_btn:
             if confirm_text == "XAC NHAN":
                 if not st.session_state.input_df.empty:
