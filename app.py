@@ -500,7 +500,7 @@ if menu == "1. Nhập Sản Lượng":
             all_staff = ["Tất cả"] + sorted(st.session_state.input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
         with s_col3:
-            zoom_level = st.slider("🔍 Kích thước ảnh:", min_value=60, max_value=300, value=100, step=10)
+            zoom_level = st.slider("🔍 Kích thước ảnh:", min_value=50, max_value=200, value=80, step=10)
         
         filtered_df = st.session_state.input_df.copy()
         if filter_date != "Tất cả":
@@ -513,18 +513,17 @@ if menu == "1. Nhập Sản Lượng":
             
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
-                    row_c1, row_c2 = st.columns([3, 1])
+                    row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
                         st.markdown(f"""
-                        <div style="background: rgba(255,255,255,0.85); padding: 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; font-size: 0.95rem;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']}<br>
-                            👤 <b>{row['Nhân Sự']}</b><br>
+                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
                             📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        is_selected = st.checkbox(f"Tích chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
@@ -536,7 +535,7 @@ if menu == "1. Nhập Sản Lượng":
                                 img_bytes = base64.b64decode(pure_b64)
                                 
                                 st.image(img_bytes, width=zoom_level)
-                                with st.popover(f"🔍 Phóng to"):
+                                with st.popover("🔍 Phóng to"):
                                     st.image(img_bytes, use_container_width=True)
                             except Exception:
                                 st.text("Lỗi hiển thị ảnh")
