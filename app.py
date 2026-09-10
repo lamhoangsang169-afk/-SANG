@@ -746,7 +746,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.success("Đã cập nhật màu sắc biểu đồ!")
                 st.rerun()
 
-        chart_size = st.slider("📐 Kích thước biểu đồ:", min_value=2.0, max_value=6.0, value=3.5, step=0.2)
+        chart_size = st.slider("📐 Kích thước biểu đồ (inch):", min_value=1.0, max_value=6.0, value=1.5, step=0.1)
 
         col_pie, col_details = st.columns([1, 1])
         
@@ -1020,7 +1020,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
             if confirm_text == "XAC NHAN":
                 if not st.session_state.input_df.empty:
                     st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
-                    target_dt = pd.Tox_datetime(clean_date) if hasattr(pd, "Tox_datetime") else pd.to_datetime(clean_date)
+                    target_dt = pd.to_datetime(clean_date)
                     
                     keep_df = st.session_state.input_df[st.session_state.input_df["_dt"] >= target_dt].drop(columns=["_dt"])
                     removed_count = len(st.session_state.input_df) - len(keep_df)
