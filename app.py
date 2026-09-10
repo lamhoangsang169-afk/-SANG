@@ -106,9 +106,28 @@ def save_data():
 saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
-st.session_state.input_df = pd.DataFrame(saved_data["input_df"]) if "input_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+
+# Khởi tạo input_df và đảm bảo luôn có cột "Hình Ảnh"
+default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+if "input_df" in saved_data and saved_data["input_df"]:
+    st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
+else:
+    st.session_state.input_df = pd.DataFrame(columns=default_input_columns)
+
+for col in default_input_columns:
+    if col not in st.session_state.input_df.columns:
+        st.session_state.input_df[col] = ""
+
 st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
-st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"]) if "deleted_input_df" in saved_data else pd.DataFrame(columns=st.session_state.input_df.columns)
+
+if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
+    st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
+else:
+    st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
+
+for col in default_input_columns:
+    if col not in st.session_state.deleted_input_df.columns:
+        st.session_state.deleted_input_df[col] = ""
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
@@ -523,7 +542,7 @@ if feature == "input_production":
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
-                        img_b64_val = row["Hình Ảnh"]
+                        img_b64_val = row.get("Hình Ảnh", "")
                         if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
                             try:
                                 pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
@@ -999,7 +1018,7 @@ elif feature == "trash":
 
         st.markdown("---")
         if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác", use_container_width=True):
-            st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns)
+            st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
             save_data()
             st.success("Đã dọn sạch thùng rác!")
             st.rerun()
@@ -1009,7 +1028,7 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Bạn có thể đổi tên thư mục hoặc thay đổi tên các mục bên trong trực tiếp tại đây.")
+    st.markdown("Bạn có thể chỉnh sửa, thay đổi tên thư mục hoặc tên các mục bên trong trực tiếp tại đây.")
 
     with st.form("manage_folders_form"):
         updated_folders = []
@@ -1171,7 +1190,7 @@ elif feature == "clean_data":
 
     st.markdown("---")
     if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
-        st.session_state.deleted_input_df = pd.DataFrame(columns=st.session_state.input_df.columns if not st.session_state.input_df.empty else ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+        st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
         save_data()
         st.success("Đã làm sạch hoàn toàn thùng rác!")
         st.rerun()
