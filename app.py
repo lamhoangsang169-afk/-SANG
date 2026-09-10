@@ -326,6 +326,9 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
+    if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
+        st.rerun()
+
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
         st.session_state.current_menu = "2. Chấm Công Ca Làm Việc"
         save_data()
@@ -366,14 +369,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
-
-col_title_1, col_title_2 = st.columns([3, 1])
-with col_title_1:
-    st.markdown("")
-with col_title_2:
-    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
-        st.rerun()
 
 staff_joined = " | ".join([f"<b>{s}</b>" for s in st.session_state.staff_list])
 
