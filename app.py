@@ -13,7 +13,7 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 # ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
 # Thay thế thông tin dưới đây bằng URL và Anon Key thực tế từ dự án Supabase của bạn
-SUPABASE_URL = ""https://xbozutjkiwnaoiluahq.supabase.co""
+SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
 SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
