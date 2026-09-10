@@ -375,22 +375,10 @@ with col_title_2:
     if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
         st.rerun()
 
-staff_joined = ""
-for s in st.session_state.staff_list:
-    if not st.session_state.attendance_df.empty:
-        today_att_check = st.session_state.attendance_df[(st.session_state.attendance_df["Ngày"] == str(datetime.datetime.now(VN_TIMEZONE).date())) & (st.session_state.attendance_df["Nhân Sự"] == s)]
-        is_working = not today_att_check.empty and (today_att_check.iloc[-1]["Giờ Ra Ca"] == "Chưa kết thúc")
-    else:
-        is_working = False
-    
-    if is_working:
-        staff_joined += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
-    else:
-        staff_joined += f"🔴 <b>{s}</b> - Không hoạt động<br>"
-
+staff_joined = " | ".join([f"<b>{s}</b>" for s in st.session_state.staff_list])
 st.markdown(f"""
 <div class="staff-badge-container">
-    👥 <b>Trạng thái nhân sự hệ thống:</b><br>{staff_joined}
+    👥 <b>Nhân sự hệ thống:</b> {staff_joined}
 </div>
 """, unsafe_allow_html=True)
 
@@ -412,18 +400,6 @@ if menu == "1. Nhập Sản Lượng":
             active_staff.append(s)
         else:
             inactive_staff.append(s)
-
-    status_html = ""
-    for s in active_staff:
-        status_html += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
-    for s in inactive_staff:
-        status_html += f"🔴 <b>{s}</b> - Không hoạt động<br>"
-        
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.7); padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
-        {status_html}
-    </div>
-    """, unsafe_allow_html=True)
 
     st.subheader(f"Nhập Sản Lượng Hàng Ngày ({today_str})")
 
@@ -599,16 +575,17 @@ elif menu == "2. Chấm Công Ca Làm Việc":
         else:
             inactive_staff.append(s)
 
-    status_html = ""
-    for s in active_staff:
-        status_html += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
-    for s in inactive_staff:
-        status_html += f"🔴 <b>{s}</b> - Không hoạt động<br>"
+    staff_status_lines = ""
+    for s in st.session_state.staff_list:
+        if s in checked_in_set:
+            staff_status_lines += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
+        else:
+            staff_status_lines += f"🔴 <b>{s}</b> - Không hoạt động<br>"
         
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.7); padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
         <h4 style="margin-top:0; margin-bottom:8px;">📌 Trạng Thái Hôm Nay ({today_str})</h4>
-        {status_html}
+        {staff_status_lines}
     </div>
     """, unsafe_allow_html=True)
 
