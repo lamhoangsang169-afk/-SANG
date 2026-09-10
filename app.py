@@ -834,10 +834,13 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         max_pts = summary["Tổng_Điểm"].max()
         explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
 
+        # Chỉ hiển thị % nếu điểm số > 0, ngược lại để chuỗi rỗng để không bị che chữ
+        pie_labels = [f'{val*100:.1f}%' if pts > 0 else '' for val, pts in zip(summary["Tỷ_Lệ_Đóng_Góp"], summary["Tổng_Điểm"])]
+
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
-            autopct='%1.1f%%', 
+            autopct=lambda pct: f"{pct:.1f}%" if pct > 0 else "", 
             startangle=90, 
             colors=current_colors,
             explode=explode_values,
@@ -845,7 +848,15 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             pctdistance=0.55
         )
         
-        plt.setp(autotexts, size=8, weight="bold", color="white")
+        # Ẩn các nhãn tự động cho những lát cắt có điểm số bằng 0
+        for autotext, pts in zip(autotexts, summary["Tổng_Điểm"]):
+            if pts <= 0:
+                autotext.set_text('')
+            else:
+                autotext.set_fontsize(8)
+                autotext.set_weight("bold")
+                autotext.set_color("white")
+                
         ax.axis('equal')
         
         st.pyplot(fig)
@@ -1071,7 +1082,7 @@ elif menu == "6. Cài Đặt Giao Diện":
 
 # ==================== 7. LÀM SẠCH DỮ LIỆU ====================
 elif menu == "7. Làm Sạch Dữ Liệu":
-    st.header("Làm Sạch & Tối Ưu Dữ LIệu")
+    st.header("Làm Sạch & Tối Ưu Dữ Liệu")
     
     file_size_kb = 0
     if os.path.exists(STORAGE_FILE):
