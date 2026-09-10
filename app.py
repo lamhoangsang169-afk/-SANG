@@ -489,6 +489,9 @@ if menu == "1. Nhập Sản Lượng":
         if not filtered_df.empty:
             filtered_df["STT"] = range(1, len(filtered_df) + 1)
             
+            # Đảo ngược thứ tự để bản ghi mới báo cáo hiển thị lên trên cùng
+            filtered_df = filtered_df.iloc[::-1].reset_index(drop=True)
+            
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
@@ -834,9 +837,6 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         max_pts = summary["Tổng_Điểm"].max()
         explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
 
-        # Chỉ hiển thị % nếu điểm số > 0, ngược lại để chuỗi rỗng để không bị che chữ
-        pie_labels = [f'{val*100:.1f}%' if pts > 0 else '' for val, pts in zip(summary["Tỷ_Lệ_Đóng_Góp"], summary["Tổng_Điểm"])]
-
         wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
@@ -848,7 +848,6 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             pctdistance=0.55
         )
         
-        # Ẩn các nhãn tự động cho những lát cắt có điểm số bằng 0
         for autotext, pts in zip(autotexts, summary["Tổng_Điểm"]):
             if pts <= 0:
                 autotext.set_text('')
