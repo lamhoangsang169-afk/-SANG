@@ -7,10 +7,16 @@ import base64
 import json
 import os
 from PIL import Image
+from supabase import create_client, Client
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-STORAGE_FILE = "app_storage.json"
+# ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
+# Thay thế thông tin dưới đây bằng URL và Anon Key thực tế từ dự án Supabase của bạn
+SUPABASE_URL = "xbozutjkiywnaoiluahq"
+SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -71,12 +77,12 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    if os.path.exists(STORAGE_FILE):
-        try:
-            with open(STORAGE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+    try:
+        response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
+        if response.data and len(response.data) > 0:
+            return json.loads(response.data[0]["data"])
+    except Exception:
+        pass
     return {}
 
 def save_data():
@@ -98,8 +104,9 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     try:
-        with open(STORAGE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, default=str)
+        json_str = json.dumps(data, ensure_ascii=False, default=str)
+        payload = {"id": "main_config", "data": json_str}
+        supabase.table("app_storage_table").upsert(payload).execute()
     except Exception:
         pass
 
@@ -1191,17 +1198,11 @@ elif feature == "settings_ui":
 elif feature == "clean_data":
     st.header("Làm Sạch & Tối Ưu Dữ Liệu")
     
-    file_size_kb = 0
-    if os.path.exists(STORAGE_FILE):
-        file_size_kb = os.path.getsize(STORAGE_FILE) / 1024
-
-    m_col1, m_col2, m_col3 = st.columns(3)
+    m_col1, m_col2 = st.columns(2)
     with m_col1:
         st.metric("📦 Tổng bản ghi sản lượng", len(st.session_state.input_df))
     with m_col2:
         st.metric("🗑️ Bản ghi trong thùng rác", len(st.session_state.deleted_input_df))
-    with m_col3:
-        st.metric("💾 Dung lượng tệp lưu trữ", f"{file_size_kb:.2f} KB")
 
     st.markdown("---")
     
