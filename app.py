@@ -7,15 +7,8 @@ import base64
 import json
 import os
 from PIL import Image
-from supabase import create_client, Client
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
-
-# ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
-SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # Thay khóa anon public chính xác của bạn vào đây
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -49,6 +42,20 @@ master_rules = [
 default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
+default_folders = [
+    {
+        "folder_name": "📌 Quản Lý Nghiệp Vụ",
+        "items": [
+            {"id": "menu_1", "name": "1. Nhập Sản Lượng"},
+            {"id": "menu_2", "name": "2. Báo Cáo & Biểu Đồ"},
+            {"id": "menu_3", "name": "3. Tham Chiếu Công Việc"},
+            {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"}
+        ]
+    }
+]
+
+DATA_FILE = "app_storage.json"
+
 def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     try:
         if uploaded_file is None:
@@ -64,21 +71,12 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    try:
-        response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
-        if response.data and len(response.data) > 0:
-            return json.loads(response.data[0]["data"])
-    except Exception:
-        pass
-    
-    if os.path.exists("app_storage.json"):
+    if os.path.exists(DATA_FILE):
         try:
-            with open("app_storage.json", "r", encoding="utf-8") as f:
-                local_data = json.load(f)
-                return local_data
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
         except Exception:
             pass
-            
     return {}
 
 def save_data():
@@ -89,6 +87,7 @@ def save_data():
         "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else [],
         "staff_list": st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list,
         "chart_colors": st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors,
+        "folders": st.session_state.folders if "folders" in st.session_state else default_folders,
         "primary_color": st.session_state.primary_color if "primary_color" in st.session_state else "#ff4b4b",
         "bg_color": st.session_state.bg_color if "bg_color" in st.session_state else "#ffffff",
         "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
@@ -99,9 +98,8 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     try:
-        json_str = json.dumps(data, ensure_ascii=False, default=str)
-        payload = {"id": "main_config", "data": json_str}
-        supabase.table("app_storage_table").upsert(payload).execute()
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
@@ -132,6 +130,7 @@ for col in default_input_columns:
 
 st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
+st.session_state.folders = saved_data.get("folders", default_folders)
 st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
 st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
 st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
@@ -140,7 +139,10 @@ st.session_state.text_color = saved_data.get("text_color", "#31333F")
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 
-st.session_state.current_menu = saved_data.get("current_menu", "1. Nhập Sản Lượng")
+first_item_name = "1. Nhập Sản Lượng"
+if st.session_state.folders and st.session_state.folders[0]["items"]:
+    first_item_name = st.session_state.folders[0]["items"][0]["name"]
+st.session_state.current_menu = saved_data.get("current_menu", first_item_name)
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -344,29 +346,37 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
-    if st.button("🔄 Đồng Bộ & Cập Nhật", use_container_width=True):
+    if st.button("🔄 Cập Nhật", use_container_width=True):
+        st.rerun()
+
+    if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
+        st.session_state.current_menu = "⏱️ Chấm Công Ca Làm Việc"
+        save_data()
         st.rerun()
 
     st.markdown("---")
-    st.markdown("### 📂 ĐIỀU HƯỚNG HỆ THỐNG")
+    st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
-    menu_options = [
-        "1. Nhập Sản Lượng",
-        "⏱️ Chấm Công Ca Làm Việc",
-        "2. Báo Cáo & Biểu Đồ",
-        "3. Tham Chiếu Công Việc",
-        "4. Thùng Rác Sản Lượng",
-        "📁 Quản Lý Thư Mục & Menu",
-        "🎨 Cài Đặt Giao Diện",
-        "🧹 Làm Sạch Dữ Liệu"
-    ]
+    for f_idx, folder in enumerate(st.session_state.folders):
+        with st.expander(folder["folder_name"], expanded=True):
+            for item in folder["items"]:
+                if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
+                    st.session_state.current_menu = item["name"]
+                    save_data()
+                    st.rerun()
 
-    current_val = st.session_state.current_menu if st.session_state.current_menu in menu_options else "1. Nhập Sản Lượng"
-    
-    selected_menu = st.radio("Chọn chức năng:", menu_options, index=menu_options.index(current_val), label_visibility="collapsed")
-    
-    if selected_menu != st.session_state.current_menu:
-        st.session_state.current_menu = selected_menu
+    st.markdown("---")
+    st.markdown("### ⚙️ Cấu Hình Hệ Thống")
+    if st.button("📁 Quản Lý Thư Mục & Menu", use_container_width=True):
+        st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
+        save_data()
+        st.rerun()
+    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+        st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
+        save_data()
+        st.rerun()
+    if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
+        st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
         save_data()
         st.rerun()
 
@@ -383,12 +393,16 @@ def get_feature_type(menu_name):
         return "settings_ui"
     if menu_name == "🧹 Làm Sạch Dữ Liệu":
         return "clean_data"
-    if menu_name == "2. Báo Cáo & Biểu Đồ":
-        return "report"
-    if menu_name == "3. Tham Chiếu Công Việc":
-        return "rules"
-    if menu_name == "4. Thùng Rác Sản Lượng":
-        return "trash"
+        
+    for folder in st.session_state.folders:
+        for item in folder["items"]:
+            if item["name"] == menu_name:
+                item_id = item["id"]
+                if item_id == "menu_1": return "input_production"
+                if item_id == "menu_2": return "report"
+                if item_id == "menu_3": return "rules"
+                if item_id == "menu_4": return "trash"
+                return "input_production"
     return "input_production"
 
 feature = get_feature_type(menu)
@@ -1056,8 +1070,37 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Cấu hình trực tiếp các mục trên hệ thống.")
-    st.info("Hệ thống đang sử dụng menu điều hướng trực quan ở thanh bên.")
+    st.markdown("Bạn có thể chỉnh sửa, thay đổi tên thư mục hoặc tên các mục bên trong trực tiếp tại đây.")
+
+    with st.form("manage_folders_form"):
+        updated_folders = []
+        for f_idx, folder in enumerate(st.session_state.folders):
+            st.markdown(f"### Thư mục #{f_idx + 1}")
+            f_name = st.text_input(f"Tên Thư Mục #{f_idx + 1}", value=folder["folder_name"], key=f"fname_{f_idx}")
+            
+            updated_items = []
+            st.markdown("Các mục con trong thư mục này:")
+            for i_idx, item in enumerate(folder["items"]):
+                i_name = st.text_input(f"Tên mục #{i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
+                if i_name.strip():
+                    updated_items.append({"id": item["id"], "name": i_name.strip()})
+
+            if f_name.strip():
+                updated_folders.append({
+                    "folder_name": f_name.strip(),
+                    "items": updated_items
+                })
+            st.markdown("---")
+
+        save_folders_btn = st.form_submit_button("💾 Xác Nhận Lưu Thay Đổi", use_container_width=True)
+        if save_folders_btn:
+            if not updated_folders:
+                st.error("Cần phải giữ lại ít nhất một thư mục và một mục!")
+            else:
+                st.session_state.folders = updated_folders
+                save_data()
+                st.success("Đã cập nhật cấu trúc thư mục thành công!")
+                st.rerun()
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
