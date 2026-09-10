@@ -857,7 +857,7 @@ elif feature == "report":
             st.success("Đã cập nhật màu sắc biểu đồ!")
             st.rerun()
 
-    chart_size = 3.0
+    chart_size = 3.2
     col_pie, col_details = st.columns([1, 1])
     
     with col_pie:
@@ -867,16 +867,22 @@ elif feature == "report":
         max_pts = summary["Tổng_Điểm"].max()
         explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
 
-        wedges, texts = ax.pie(
+        wedges, texts, autotexts = ax.pie(
             summary["Tổng_Điểm"], 
             labels=None, 
-            autopct=None, 
+            autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
             startangle=90, 
             colors=current_colors,
             explode=explode_values,
-            shadow=False
+            shadow=False,
+            pctdistance=0.6
         )
         
+        for autotext in autotexts:
+            autotext.set_fontsize(8)
+            autotext.set_weight("bold")
+            autotext.set_color("black")
+                
         ax.axis('equal')
         st.pyplot(fig)
         
