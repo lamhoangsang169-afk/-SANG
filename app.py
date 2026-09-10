@@ -751,7 +751,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         col_pie, col_details = st.columns([1, 1])
         
         with col_pie:
-            fig, ax = plt.subplots(figsize=(chart_size, chart_size))
+            fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
             current_colors = st.session_state.chart_colors[:len(summary)]
             
             max_pts = summary["Tổng_Điểm"].max()
@@ -767,7 +767,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 shadow=True
             )
             
-            plt.setp(autotexts, size=7, weight="bold", color="white")
+            plt.setp(autotexts, size=6, weight="bold", color="white")
             ax.axis('equal')
             
             st.pyplot(fig)
