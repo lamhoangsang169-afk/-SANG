@@ -854,7 +854,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
             else:
                 autotext.set_fontsize(8)
                 autotext.set_weight("bold")
-                autotext.set_color("white")
+                autotext.set_color("black")  # Đổi màu chữ phần trăm thành màu đen
                 
         ax.axis('equal')
         
