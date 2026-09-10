@@ -575,8 +575,9 @@ elif menu == "2. Chấm Công Ca Làm Việc":
         else:
             inactive_staff.append(s)
 
+    sorted_staff_status = active_staff + inactive_staff
     staff_status_lines = ""
-    for s in st.session_state.staff_list:
+    for s in sorted_staff_status:
         if s in checked_in_set:
             staff_status_lines += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
         else:
