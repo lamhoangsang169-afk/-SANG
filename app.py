@@ -746,7 +746,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.success("Đã cập nhật màu sắc biểu đồ!")
                 st.rerun()
 
-        chart_size = st.slider("📐 Kích thước biểu đồ (inch):", min_value=1.0, max_value=6.0, value=1.5, step=0.1)
+        chart_size = 1.3
 
         col_pie, col_details = st.columns([1, 1])
         
@@ -767,7 +767,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 shadow=True
             )
             
-            plt.setp(autotexts, size=8, weight="bold", color="white")
+            plt.setp(autotexts, size=7, weight="bold", color="white")
             ax.axis('equal')
             
             st.pyplot(fig)
