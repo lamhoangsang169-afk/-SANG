@@ -746,26 +746,28 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
                 st.success("Đã cập nhật màu sắc biểu đồ!")
                 st.rerun()
 
-        fig, ax = plt.subplots(figsize=(5, 5))
-        current_colors = st.session_state.chart_colors[:len(summary)]
-        
-        max_pts = summary["Tổng_Điểm"].max()
-        explode_values = [0.01 + 0.12 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
+        col_chart_left, col_chart_center, col_chart_right = st.columns([1, 2, 1])
+        with col_chart_center:
+            fig, ax = plt.subplots(figsize=(5, 5))
+            current_colors = st.session_state.chart_colors[:len(summary)]
+            
+            max_pts = summary["Tổng_Điểm"].max()
+            explode_values = [0.01 + 0.12 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
 
-        wedges, texts, autotexts = ax.pie(
-            summary["Tổng_Điểm"], 
-            labels=None, 
-            autopct='%1.1f%%', 
-            startangle=90, 
-            colors=current_colors,
-            explode=explode_values,
-            shadow=True
-        )
-        
-        plt.setp(autotexts, size=9, weight="bold", color="white")
-        ax.axis('equal')
-        
-        st.pyplot(fig)
+            wedges, texts, autotexts = ax.pie(
+                summary["Tổng_Điểm"], 
+                labels=None, 
+                autopct='%1.1f%%', 
+                startangle=90, 
+                colors=current_colors,
+                explode=explode_values,
+                shadow=True
+            )
+            
+            plt.setp(autotexts, size=9, weight="bold", color="white")
+            ax.axis('equal')
+            
+            st.pyplot(fig)
             
         st.markdown("#### 📌 Chi Tiết Điểm Số")
         for i, row in summary.iterrows():
@@ -1008,7 +1010,7 @@ elif menu == "7. Làm Sạch Dữ Liệu":
         clean_date = st.date_input("Xóa tất cả dữ liệu sản lượng trước ngày:")
         confirm_text = st.text_input("Nhập chữ 'XAC NHAN':", "")
         
-        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
+        clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_keyword=True, use_container_width=True)
         if clean_btn:
             if confirm_text == "XAC NHAN":
                 if not st.session_state.input_df.empty:
