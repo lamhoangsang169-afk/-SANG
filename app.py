@@ -712,12 +712,10 @@ elif menu == "2. Chấm Công Ca Làm Việc":
 elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     st.header("Báo Cáo Tổng Hợp & Đánh Giá")
     
-    # Đảm bảo lấy toàn bộ danh sách nhân sự hiện có để biểu đồ luôn chia đúng theo số nhân sự
     all_staff_current = st.session_state.staff_list
     
     if not st.session_state.input_df.empty:
         df_in = st.session_state.input_df
-        
         summary = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
@@ -764,11 +762,8 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         att_summary = pd.DataFrame({"Nhân Sự": all_staff_current, "Tổng Phút Làm Việc": 0})
         
     comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
-    
-    # Sắp xếp theo Tỷ Lệ Đóng Góp giảm dần
     comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
     
-    # Gán biểu tượng huy hiệu theo đúng chuẩn mẫu 1 (đỏ), 2 (xanh dương), 3 (xanh lá)
     rank_badges = []
     for idx in range(len(comparison_df)):
         if idx == 0:
