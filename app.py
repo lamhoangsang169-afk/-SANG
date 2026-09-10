@@ -107,7 +107,6 @@ saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 
-# Khởi tạo input_df và đảm bảo luôn có cột "Hình Ảnh"
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" in saved_data and saved_data["input_df"]:
     st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
@@ -958,19 +957,42 @@ elif feature == "rules":
 # ==================== THÙNG RÁC SẢN LƯỢNG ====================
 elif feature == "trash":
     st.header(menu)
+    st.markdown("Các bản ghi sản lượng đã xóa sẽ được lưu ở đây kèm theo ảnh đính kèm. Bạn có thể khôi phục lại (giữ nguyên ảnh) hoặc xóa vĩnh viễn.")
     
     if not st.session_state.deleted_input_df.empty:
         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
-        trash_display = st.session_state.deleted_input_df.copy()
-        trash_display.insert(0, "Chọn", False)
+        
+        trash_zoom = st.slider("🔍 Kích thước ảnh trong thùng rác:", min_value=50, max_value=200, value=80, step=10, key="trash_zoom")
         
         with st.form("trash_form"):
-            edited_trash = st.data_editor(
-                trash_display.drop(columns=["Hình Ảnh"], errors="ignore"),
-                hide_index=True,
-                use_container_width=True,
-                key="trash_editor"
-            )
+            for idx, row in st.session_state.deleted_input_df.iterrows():
+                row_c1, row_c2 = st.columns([4, 1])
+                with row_c1:
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
+                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    is_selected = st.checkbox(f"Chọn bản ghi STT {row['STT']}", key=f"trash_chk_{row['STT']}")
+                    st.session_state.deleted_input_df.loc[idx, "Chọn_Xóa"] = is_selected
+                    
+                with row_c2:
+                    img_b64_val = row.get("Hình Ảnh", "")
+                    if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                        try:
+                            pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
+                            pure_b64 += "=" * (-len(pure_b64) % 4)
+                            img_bytes = base64.b64decode(pure_b64)
+                            
+                            st.image(img_bytes, width=trash_zoom)
+                            with st.popover("🔍 Phóng to"):
+                                st.image(img_bytes, use_container_width=True)
+                        except Exception:
+                            st.text("Lỗi hiển thị ảnh")
+                st.markdown("---")
             
             t_col1, t_col2 = st.columns(2)
             with t_col1:
@@ -979,9 +1001,8 @@ elif feature == "trash":
                 delete_perm_btn = st.form_submit_button("🔥 Xóa Vĩnh Viễn Dòng Đã Chọn", use_container_width=True)
                 
             if restore_btn:
-                selected_rows = edited_trash[edited_trash["Chọn"] == True]
+                selected_rows = st.session_state.deleted_input_df[st.session_state.deleted_input_df["Chọn_Xóa"] == True]
                 if not selected_rows.empty:
-                    selected_rows = selected_rows.drop(columns=["Chọn"])
                     stt_to_remove = selected_rows["STT"].tolist()
                     
                     st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
@@ -989,21 +1010,20 @@ elif feature == "trash":
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
                     for idx, row in selected_rows.iterrows():
-                        new_row = row.copy()
+                        new_row = row.drop(labels=["Chọn_Xóa"], errors="ignore").copy()
                         new_row["STT"] = len(st.session_state.input_df) + 1
                         st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    st.success("Đã khôi phục các dòng đã chọn thành công!")
+                    st.success("Đã khôi phục các dòng đã chọn (kèm theo hình ảnh) thành công!")
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng!")
 
             if delete_perm_btn:
-                selected_rows = edited_trash[edited_trash["Chọn"] == True]
+                selected_rows = st.session_state.deleted_input_df[st.session_state.deleted_input_df["Chọn_Xóa"] == True]
                 if not selected_rows.empty:
-                    selected_rows = selected_rows.drop(columns=["Chọn"])
                     stt_to_remove = selected_rows["STT"].tolist()
                     
                     st.session_state.deleted_input_df = st.session_state.deleted_input_df[~st.session_state.deleted_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
@@ -1011,16 +1031,16 @@ elif feature == "trash":
                         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                     
                     save_data()
-                    st.success("Đã xóa vĩnh viễn!")
+                    st.success("Đã xóa vĩnh viễn các dòng đã chọn!")
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng!")
 
         st.markdown("---")
-        if st.button("🧹 Dọn Sạch Toàn Bộ Thùng Rác", use_container_width=True):
+        if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
             st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
             save_data()
-            st.success("Đã dọn sạch thùng rác!")
+            st.success("Đã làm sạch hoàn toàn thùng rác và xóa bỏ toàn bộ hình ảnh lưu trữ!")
             st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống.")
@@ -1168,7 +1188,7 @@ elif feature == "clean_data":
         
         clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
         if clean_btn:
-            if confirm_text == "XAC NHAN":
+            if confirm_text == "XOS NHAN" or confirm_text == "XAC NHAN":
                 if not st.session_state.input_df.empty:
                     st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
                     target_dt = pd.to_datetime(clean_date)
