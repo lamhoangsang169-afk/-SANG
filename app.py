@@ -840,28 +840,31 @@ elif feature == "report":
         hide_index=True
     )
 
-    # ==================== TÍNH NĂNG XUẤT BÁO CÁO EXCEL ====================
+    # ==================== TÍNH NĂNG XUẤT BÁO CÁO CSV (KHÔNG CẦN CÀI THƯ VIỆN) ====================
     st.markdown("---")
     st.subheader("📥 Xuất Dữ Liệu Báo Cáo")
     
-    excel_output = io.BytesIO()
-    with pd.ExcelWriter(excel_output, engine='openpyxl') as writer:
-        summary.to_excel(writer, sheet_name='Tong_Ket_Nhan_Su', index=False)
-        comparison_table.to_excel(writer, sheet_name='Doi_Chieu_Thoi_Gian', index=False)
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        csv_summary = summary.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 Tải Bảng Tổng Kết (CSV)",
+            data=csv_summary,
+            file_name=f"Tong_Ket_Nhan_Su_{datetime.date.today()}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+        
+    with col_dl2:
         if not st.session_state.input_df.empty:
-            export_input_df = st.session_state.input_df.drop(columns=["Hình Ảnh"], errors="ignore")
-            export_input_df.to_excel(writer, sheet_name='Chi_Tiet_San_Luong', index=False)
-        if not st.session_state.attendance_df.empty:
-            st.session_state.attendance_df.to_excel(writer, sheet_name='Lich_Su_Cham_Cong', index=False)
-    excel_data = excel_output.getvalue()
-
-    st.download_button(
-        label="📥 Tải Xuống Báo Cáo Excel Tổng Hợp (.xlsx)",
-        data=excel_data,
-        file_name=f"Bao_Cao_San_Luong_{datetime.date.today()}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
+            csv_detail = st.session_state.input_df.drop(columns=["Hình Ảnh"], errors="ignore").to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 Tải Chi Tiết Sản Lượng (CSV)",
+                data=csv_detail,
+                file_name=f"Chi_Tiet_San_Luong_{datetime.date.today()}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
     st.markdown("---")
     st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
