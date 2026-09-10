@@ -369,18 +369,13 @@ menu = st.session_state.current_menu
 
 col_title_1, col_title_2 = st.columns([3, 1])
 with col_title_1:
-    st.title("QUẢN LÝ & CHẤM ĐIỂM SẢN LƯỢNG")
+    st.markdown("")
 with col_title_2:
     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Cập Nhật", use_container_width=True, help="Bấm để đồng bộ dữ liệu mới nhất"):
         st.rerun()
 
 staff_joined = " | ".join([f"<b>{s}</b>" for s in st.session_state.staff_list])
-st.markdown(f"""
-<div class="staff-badge-container">
-    👥 <b>Nhân sự hệ thống:</b> {staff_joined}
-</div>
-""", unsafe_allow_html=True)
 
 # ==================== 1. NHẬP SẢN LƯỢNG ====================
 if menu == "1. Nhập Sản Lượng":
