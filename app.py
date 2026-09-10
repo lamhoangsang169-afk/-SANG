@@ -688,18 +688,25 @@ elif menu == "2. Chấm Công Ca Làm Việc":
     else:
         st.info("Chưa có dữ liệu lịch sử chấm công.")
 
-    # --- Thêm Bảng Cộng Dồn Tổng Thời Gian Làm Việc Qua Các Ngày ---
+    # --- Thêm Mục Số Ngày Làm Việc (8 tiếng = 1 ngày) & Tổng Thời Gian Tích Lũy ---
     st.markdown("---")
-    st.subheader("⏱️ Tổng Thời Gian Làm Việc Tích Lũy Theo Nhân Sự")
+    st.subheader("⏱️ Tổng Thời Gian & Số Ngày Làm Việc Tích Lũy Theo Nhân Sự")
     if not st.session_state.attendance_df.empty:
-        # Nhóm theo nhân sự và cộng dồn số phút làm việc (chỉ tính các ca đã kết thúc, số phút > 0)
+        # Nhóm theo nhân sự và cộng dồn tổng phút làm việc
         accumulated_df = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
         accumulated_df.columns = ["Nhân Sự", "Tổng Thời Gian (Phút)"]
+        
+        # 8 tiếng = 8 * 60 = 480 phút = 1 ngày công
+        accumulated_df["Số Ngày Làm Việc"] = (accumulated_df["Tổng Thời Gian (Phút)"] / 480.0).round(2)
+        
         accumulated_df = accumulated_df.sort_values(by="Tổng Thời Gian (Phút)", ascending=False).reset_index(drop=True)
         accumulated_df.insert(0, "STT", range(1, len(accumulated_df) + 1))
         
         st.dataframe(
-            accumulated_df.style.format({"Tổng Thời Gian (Phút)": "{:,.0f}"}),
+            accumulated_df.style.format({
+                "Tổng Thời Gian (Phút)": "{:,.0f}",
+                "Số Ngày Làm Việc": "{:,.2f}"
+            }),
             use_container_width=True,
             hide_index=True
         )
