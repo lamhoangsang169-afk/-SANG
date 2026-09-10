@@ -751,7 +751,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         hide_index=True
     )
     
-    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng (Hỗ trợ xếp hạng thông minh liên tục 1, 1, 2, 3) ---
+    # --- Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng ---
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -764,15 +764,12 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
     comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
     
-    # Gán xếp hạng liên tiếp mượt mà (Dense Ranking / Standard Ranking tùy chỉnh)
     rank_badges = []
     current_rank_num = 1
     for idx in range(len(comparison_df)):
         if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
-            # Nếu điểm số giống người trước -> Dùng chung nhãn hạng (Đồng hạng)
             rank_badges.append(rank_badges[-1])
         else:
-            # Nếu điểm khác người trước -> Tăng bậc xếp hạng lên 1 đơn vị kế tiếp (Hạng 1, Hạng 2, Hạng 3...)
             if idx > 0:
                 current_rank_num += 1
             else:
@@ -793,7 +790,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
     comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
     comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
     
-    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]].copy()
+    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
     comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
     
     st.dataframe(
@@ -807,7 +804,7 @@ elif menu == "3. Báo Cáo & Biểu Đồ Tổng Hợp":
         use_container_width=True,
         hide_index=True
     )
-    st.info("💡 **Gợi ý:** Khi có nhân sự đồng hạng ở Hạng 1, các vị trí tiếp theo sẽ được đếm nối tiếp mượt mà (Hạng 1, Hạng 1, Hạng 2, Hạng 3) để hiển thị trực quan và hợp lý nhất.")
+    st.info("💡 **Gợi ý:** Hệ thống hiển thị đồng hạng chính xác và liền mạch dựa trên điểm số đóng góp thực tế.")
 
     st.markdown("---")
     st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
@@ -1074,7 +1071,7 @@ elif menu == "6. Cài Đặt Giao Diện":
 
 # ==================== 7. LÀM SẠCH DỮ LIỆU ====================
 elif menu == "7. Làm Sạch Dữ Liệu":
-    st.header("Làm Sạch & Tối Ưu Dữ Liệu")
+    st.header("Làm Sạch & Tối Ưu Dữ LIệu")
     
     file_size_kb = 0
     if os.path.exists(STORAGE_FILE):
