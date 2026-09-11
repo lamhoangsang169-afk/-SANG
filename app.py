@@ -89,7 +89,6 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    # 1. Thử tải dữ liệu từ Supabase Cloud trước
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
@@ -102,7 +101,6 @@ def load_data():
         except Exception:
             pass
     
-    # 2. Fallback sang file cục bộ nếu Supabase chưa sẵn sàng hoặc lỗi kết nối
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -128,17 +126,16 @@ def save_data():
         "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
         "bg_image_base64": st.session_state.get("bg_image_base64", None),
         "avatar_base64": st.session_state.get("avatar_base64", None),
-        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
+        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng"),
+        "accounts": st.session_state.get("accounts", {"admin": "123456"})
     }
     
-    # 1. Luôn lưu dự phòng xuống file cục bộ trước để đảm bảo ứng dụng không bao giờ bị đứng thao tác
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
-    # 2. Đồng thời đẩy lên Supabase Cloud Database nếu đã kết nối thành công
     if supabase is not None:
         try:
             json_str = json.dumps(data, ensure_ascii=False, default=str)
@@ -149,6 +146,62 @@ def save_data():
 
 saved_data = load_data()
 
+# ==================== KIỂM TRA ĐĂNG NHẬP (AUTHENTICATION) ====================
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "accounts" not in st.session_state:
+    st.session_state.accounts = saved_data.get("accounts", {"admin": "123456"})
+
+if not st.session_state.logged_in:
+    st.markdown("""
+        <div style="text-align: center; padding: 20px;">
+            <h1>📊 Phần Mềm Chấm Điểm Sản Lượng</h1>
+            <p>Vui lòng đăng nhập hoặc tạo tài khoản để tiếp tục sử dụng hệ thống.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col_center1, col_center2, col_center3 = st.columns([1, 2, 1])
+    with col_center2:
+        tab_login, tab_register = st.tabs(["🔐 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
+        
+        with tab_login:
+            with st.form("login_form"):
+                lg_user = st.text_input("Tên đăng nhập")
+                lg_pass = st.text_input("Mật khẩu", type="password")
+                submit_lg = st.form_submit_button("Đăng Nhập", use_container_width=True)
+                
+                if submit_lg:
+                    if lg_user in st.session_state.accounts and st.session_state.accounts[lg_user] == lg_pass:
+                        st.session_state.logged_in = True
+                        st.session_state.username = lg_user
+                        st.success("Đăng nhập thành công!")
+                        st.rerun()
+                    else:
+                        st.error("Sai tên đăng nhập hoặc mật khẩu!")
+                        
+        with tab_register:
+            with st.form("register_form"):
+                rg_user = st.text_input("Tên đăng nhập mới")
+                rg_pass = st.text_input("Mật khẩu mới", type="password")
+                rg_pass_confirm = st.text_input("Xác nhận lại mật khẩu", type="password")
+                submit_rg = st.form_submit_button("Đăng Ký", use_container_width=True)
+                
+                if submit_rg:
+                    if not rg_user or not rg_pass:
+                        st.warning("Vui lòng điền đầy đủ thông tin!")
+                    elif rg_pass != rg_pass_confirm:
+                        st.error("Mật khẩu xác nhận không khớp!")
+                    elif rg_user in st.session_state.accounts:
+                        st.error("Tên đăng nhập này đã tồn tại!")
+                    else:
+                        st.session_state.accounts[rg_user] = rg_pass
+                        save_data()
+                        st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
+    st.stop()
+
+# ==================== KHỞI TẠO DỮ LIỆU SAU KHI ĐĂNG NHẬP ====================
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
@@ -332,6 +385,18 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
+    # Hiển thị thông tin người dùng đang đăng nhập và nút Đăng xuất
+    st.markdown(f"""
+    <div style="background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+        <span style="font-size: 0.9rem;">👤 Xin chào: <b>{st.session_state.username}</b></span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🚪 Đăng Xuất", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.rerun()
+
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
     
     has_custom_avatar = False
@@ -424,7 +489,6 @@ with st.sidebar:
         save_data()
         st.rerun()
 
-    # ==================== TÍCH HỢP KIỂM TRA SỨC KHỎE (UPTIME MONITOR) ====================
     st.markdown("---")
     st.markdown("### 🟢 Trạng Thái Hệ Thống")
     db_status = "🟢 Supabase Đã Kết Nối" if supabase is not None else "🟡 Dùng Bộ Nhớ Cục Bộ"
