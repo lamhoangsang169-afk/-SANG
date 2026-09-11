@@ -74,7 +74,6 @@ default_folders = [
 ]
 
 def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
-    """Tải ảnh trực tiếp lên Supabase Storage và trả về Public URL"""
     if uploaded_file is None or supabase is None:
         return None
     try:
@@ -87,22 +86,23 @@ def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
         img.save(buffered, format="JPEG", quality=70)
         file_bytes = buffered.getvalue()
         
-        file_ext = "jpg"
-        file_name = f"{folder_prefix}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.{file_ext}"
+        file_name = f"{folder_prefix}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.jpg"
         
-        # Upload lên bucket Supabase Storage
         supabase.storage.from_(BUCKET_NAME).upload(
             path=file_name,
             file=file_bytes,
             file_options={"content-type": "image/jpeg", "upsert": "true"}
         )
         
-        # Lấy Public URL của ảnh
         public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(file_name)
         return public_url
     except Exception as e:
-        st.error(f"Lỗi tải ảnh lên Supabase Storage: {e}")
-        return None
+        st.warning(f"Không thể kết nối Supabase Storage ({e}). Đang dùng ảnh dự phòng cục bộ.")
+        # Dự phòng chuyển thành base64 nếu lỗi kết nối mạng
+        buffered_fb = io.BytesIO()
+        img.save(buffered_fb, format="JPEG", quality=60)
+        encoded = base64.b64encode(buffered_fb.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{encoded}"
 
 @st.cache_data(ttl=2)
 def load_data():
@@ -766,7 +766,7 @@ elif feature == "input_production":
                         
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
-                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                        if img_url_val and isinstance(img_url_val, str):
                             try:
                                 st.image(img_url_val, width=zoom_level)
                                 with st.popover("🔍 Phóng to"):
@@ -1227,7 +1227,7 @@ elif feature == "trash":
                     
                 with row_c2:
                     img_url_val = row.get("Hình Ảnh", "")
-                    if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                    if img_url_val and isinstance(img_url_val, str):
                         try:
                             st.image(img_url_val, width=trash_zoom)
                             with st.popover("🔍 Phóng to"):
