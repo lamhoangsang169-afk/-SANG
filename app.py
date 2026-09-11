@@ -104,31 +104,31 @@ def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
         encoded = base64.b64encode(buffered_fb.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{encoded}"
 
-@st.cache_data(ttl=2)
 def load_data():
+    data = {}
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
             if response.data and len(response.data) > 0:
                 raw_data = response.data[0]["data"]
                 if isinstance(raw_data, str):
-                    return json.loads(raw_data)
+                    data = json.loads(raw_data)
                 elif isinstance(raw_data, dict):
-                    return raw_data
+                    data = raw_data
         except Exception:
             pass
     
-    if os.path.exists(DATA_FILE):
+    if not data and os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
         except Exception:
             pass
             
-    return {}
+    return data
 
 def save_data():
-    data = {
+    current_data = {
         "rules_df": st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules,
         "input_df": st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else [],
         "attendance_df": st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else [],
@@ -149,18 +149,17 @@ def save_data():
     
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, default=str, indent=4)
+            json.dump(current_data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
     if supabase is not None:
         try:
-            json_str = json.dumps(data, ensure_ascii=False, default=str)
+            json_str = json.dumps(current_data, ensure_ascii=False, default=str)
             payload = {"id": "main_config", "data": json_str}
             supabase.table("app_storage_table").upsert(payload).execute()
         except Exception:
             pass
-    st.cache_data.clear()
 
 saved_data = load_data()
 
@@ -229,29 +228,27 @@ if not st.session_state.logged_in:
                         st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
-# ==================== KHỞI TẠO DỮ LIỆU ỨNG DỤNG ====================
+# ==================== KHỞI TẠO DỮ LIỆU AN TOÀN TRONG SESSION ====================
 if "rules_df" not in st.session_state:
-    st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
+    r_data = saved_data.get("rules_df")
+    st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
-    if "input_df" in saved_data and saved_data["input_df"]:
-        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-    else:
-        st.session_state.input_df = pd.DataFrame(columns=default_input_columns)
+    in_data = saved_data.get("input_df")
+    st.session_state.input_df = pd.DataFrame(in_data) if in_data else pd.DataFrame(columns=default_input_columns)
 
 for col in default_input_columns:
     if col not in st.session_state.input_df.columns:
         st.session_state.input_df[col] = ""
 
 if "attendance_df" not in st.session_state:
-    st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
+    att_data = saved_data.get("attendance_df")
+    st.session_state.attendance_df = pd.DataFrame(att_data) if att_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
 
 if "deleted_input_df" not in st.session_state:
-    if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
-        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-    else:
-        st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
+    del_data = saved_data.get("deleted_input_df")
+    st.session_state.deleted_input_df = pd.DataFrame(del_data) if del_data else pd.DataFrame(columns=default_input_columns)
 
 for col in default_input_columns:
     if col not in st.session_state.deleted_input_df.columns:
@@ -491,7 +488,9 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
-    if st.button("🔄 Cập Nhật", use_container_width=True):
+    if st.button("🔄 Khởi Động Lại / Làm Mượt (Reboot)", use_container_width=True):
+        st.cache_data.clear()
+        st.success("Đã tải lại hệ thống thành công!")
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
