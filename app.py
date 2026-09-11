@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import io
 import json
 import os
+import base64
 from PIL import Image
 
 try:
@@ -98,7 +99,6 @@ def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
         return public_url
     except Exception as e:
         st.warning(f"Không thể kết nối Supabase Storage ({e}). Đang dùng ảnh dự phòng cục bộ.")
-        # Dự phòng chuyển thành base64 nếu lỗi kết nối mạng
         buffered_fb = io.BytesIO()
         img.save(buffered_fb, format="JPEG", quality=60)
         encoded = base64.b64encode(buffered_fb.getvalue()).decode("utf-8")
