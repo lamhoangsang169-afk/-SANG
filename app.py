@@ -28,7 +28,7 @@ if HAS_SUPABASE_LIB and SUPABASE_KEY:
         supabase = None
 
 DATA_FILE = "app_storage.json"
-BUCKET_NAME = "app_images"
+BUCKET_NAME = "APP_IMAGES"
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
