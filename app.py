@@ -488,9 +488,9 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
-    if st.button("🔄 Khởi Động Lại / Làm Mượt (Reboot)", use_container_width=True):
+    if st.button("🔄 Cập Nhật", use_container_width=True):
         st.cache_data.clear()
-        st.success("Đã tải lại hệ thống thành công!")
+        st.success("Đã cập nhật hệ thống thành công!")
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
