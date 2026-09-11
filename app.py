@@ -98,7 +98,6 @@ def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
         public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(file_name)
         return public_url
     except Exception as e:
-        st.warning(f"Không thể kết nối Supabase Storage ({e}). Đang dùng ảnh dự phòng cục bộ.")
         buffered_fb = io.BytesIO()
         img.save(buffered_fb, format="JPEG", quality=60)
         encoded = base64.b64encode(buffered_fb.getvalue()).decode("utf-8")
@@ -231,7 +230,11 @@ if not st.session_state.logged_in:
 # ==================== KHỞI TẠO DỮ LIỆU AN TOÀN TRONG SESSION ====================
 if "rules_df" not in st.session_state:
     r_data = saved_data.get("rules_df")
-    st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(master_rules)
+    if r_data:
+        st.session_state.rules_df = pd.DataFrame(r_data)
+    else:
+        # Hợp nhất toàn bộ master_rules làm dữ liệu khởi tạo linh hoạt (không cố định cứng)
+        st.session_state.rules_df = pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
@@ -1165,26 +1168,10 @@ elif feature == "report":
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
     st.header(menu)
-    st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây.")
+    st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây. Bạn có thể tự do thêm, sửa, xóa các mục mà không bị cố định cứng.")
     
     if not st.session_state.rules_df.empty:
         st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-        
-    current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
-    deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
-    
-    if deleted_items_list:
-        deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
-        selected_to_restore = st.multiselect("Khôi phục hạng mục đã xóa:", deleted_names)
-        if st.button("📥 Khôi Phục Đã Chọn", use_container_width=True):
-            if selected_to_restore:
-                items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
-                restored_df = pd.DataFrame(items_to_add)
-                st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
-                st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                save_data()
-                st.success("Đã khôi phục thành công!")
-                st.rerun()
 
     if st.button("🔄 Khôi Phục Toàn Bộ Mặc Định", use_container_width=True):
         st.session_state.rules_df = pd.DataFrame(master_rules)
