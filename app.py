@@ -59,7 +59,7 @@ master_rules = [
     {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
 ]
 
-default_staff_list = ["Nguyễn Hữu Khang Tôn Đức", "Nguyễn Đức Anh Tiến", "Trần Gia Bảo"]
+default_staff_list = []
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
 default_folders = [
@@ -651,7 +651,9 @@ elif feature == "input_production":
 
     st.subheader(f"{menu} ({today_str})")
 
-    if not active_staff:
+    if not st.session_state.staff_list:
+        st.warning("⚠️ Danh sách nhân sự hiện đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự vào hệ thống trước khi chấm điểm sản lượng!")
+    elif not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
         st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
@@ -832,87 +834,90 @@ elif feature == "attendance":
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.7); padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); backdrop-filter: blur(4px);">
         <h4 style="margin-top:0; margin-bottom:8px;">📌 Trạng Thái Hôm Nay ({today_str})</h4>
-        {staff_status_lines}
+        {staff_status_lines if staff_status_lines else 'Chưa có nhân sự nào trong hệ thống.'}
     </div>
     """, unsafe_allow_html=True)
 
-    with st.form("attendance_form"):
-        f_att1, f_att2, f_att3 = st.columns(3)
-        with f_att1:
-            att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
-        with f_att2:
-            att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
-        with f_att3:
-            att_note = st.text_input("Ghi chú ca", "", key="att_note")
+    if not st.session_state.staff_list:
+        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự.")
+    else:
+        with st.form("attendance_form"):
+            f_att1, f_att2, f_att3 = st.columns(3)
+            with f_att1:
+                att_date = st.date_input("Ngày chấm công", now_vn.date(), key="att_date")
+            with f_att2:
+                att_staff = st.selectbox("Nhân sự", st.session_state.staff_list, key="att_staff")
+            with f_att3:
+                att_note = st.text_input("Ghi chú ca", "", key="att_note")
+                
+            b_att1, b_att2 = st.columns(2)
+            with b_att1:
+                check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca)", use_container_width=True)
+            with b_att2:
+                check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca)", use_container_width=True)
+                
+            current_time_str = now_vn.strftime("%H:%M:%S")
             
-        b_att1, b_att2 = st.columns(2)
-        with b_att1:
-            check_in_clicked = st.form_submit_button("🟢 Check-in (Vào ca)", use_container_width=True)
-        with b_att2:
-            check_out_clicked = st.form_submit_button("🔴 Check-out (Kết thúc ca)", use_container_width=True)
-            
-        current_time_str = now_vn.strftime("%H:%M:%S")
-        
-        if check_in_clicked:
-            already_active = False
-            if not st.session_state.attendance_df.empty:
-                active_check = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
-                               (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
-                               (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
-                if active_check.any():
-                    already_active = True
+            if check_in_clicked:
+                already_active = False
+                if not st.session_state.attendance_df.empty:
+                    active_check = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
+                                   (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
+                                   (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
+                    if active_check.any():
+                        already_active = True
 
-            if already_active:
-                st.warning(f"⚠️ Nhân sự **{att_staff}** đang trong ca làm việc, không thể Check-in lại khi chưa Check-out!")
-            else:
-                new_att_stt = len(st.session_state.attendance_df) + 1
-                new_att_row = {
-                    "STT": new_att_stt,
-                    "Ngày": str(att_date),
-                    "Nhân Sự": att_staff,
-                    "Giờ Vào Ca": current_time_str,
-                    "Giờ Ra Ca": "Chưa kết thúc",
-                    "Số Phút Làm Việc": 0,
-                    "Ghi Chú": att_note
-                }
-                st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-                st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-                save_data()
-                st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
-                st.rerun()
-            
-        if check_out_clicked:
-            if not st.session_state.attendance_df.empty:
-                mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
-                       (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
-                       (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
-                if mask.any():
-                    in_time_str = st.session_state.attendance_df.loc[mask, "Giờ Vào Ca"].values[0]
-                    try:
-                        t_in = datetime.datetime.strptime(in_time_str, "%H:%M:%S")
-                        t_out = datetime.datetime.strptime(current_time_str, "%H:%M:%S")
-                        diff_minutes = int((t_out - t_in).total_seconds() / 60)
-                        if diff_minutes < 0:
-                            diff_minutes = 0
-                    except Exception:
-                        diff_minutes = 0
-
-                    st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
-                    st.session_state.attendance_df.loc[mask, "Số Phút Làm Việc"] = diff_minutes
-                    if att_note:
-                        old_note = str(st.session_state.attendance_df.loc[mask, "Ghi Chú"].values[0])
-                        if old_note and old_note != "nan":
-                            st.session_state.attendance_df.loc[mask, "Ghi Chú"] = f"{old_note} | {att_note}"
-                        else:
-                            st.session_state.attendance_df.loc[mask, "Ghi Chú"] = att_note
-                        
-                    save_data()
-                    st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}. Tổng thời gian làm việc: **{diff_minutes} phút**!")
-                    st.rerun()
+                if already_active:
+                    st.warning(f"⚠️ Nhân sự **{att_staff}** đang trong ca làm việc, không thể Check-in lại khi chưa Check-out!")
                 else:
-                    st.warning(f"⚠️ Nhân sự **{att_staff}** chưa được Check-in trong ngày hôm nay để có thể Check-out!")
-            else:
-                st.warning("Chưa có lịch sử chấm công nào trong hệ thống!")
+                    new_att_stt = len(st.session_state.attendance_df) + 1
+                    new_att_row = {
+                        "STT": new_att_stt,
+                        "Ngày": str(att_date),
+                        "Nhân Sự": att_staff,
+                        "Giờ Vào Ca": current_time_str,
+                        "Giờ Ra Ca": "Chưa kết thúc",
+                        "Số Phút Làm Việc": 0,
+                        "Ghi Chú": att_note
+                    }
+                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
+                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+                    save_data()
+                    st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
+                    st.rerun()
+                
+            if check_out_clicked:
+                if not st.session_state.attendance_df.empty:
+                    mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
+                           (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
+                           (st.session_state.attendance_df["Giờ Ra Ca"] == "Chưa kết thúc")
+                    if mask.any():
+                        in_time_str = st.session_state.attendance_df.loc[mask, "Giờ Vào Ca"].values[0]
+                        try:
+                            t_in = datetime.datetime.strptime(in_time_str, "%H:%M:%S")
+                            t_out = datetime.datetime.strptime(current_time_str, "%H:%M:%S")
+                            diff_minutes = int((t_out - t_in).total_seconds() / 60)
+                            if diff_minutes < 0:
+                                diff_minutes = 0
+                        except Exception:
+                            diff_minutes = 0
+
+                        st.session_state.attendance_df.loc[mask, "Giờ Ra Ca"] = current_time_str
+                        st.session_state.attendance_df.loc[mask, "Số Phút Làm Việc"] = diff_minutes
+                        if att_note:
+                            old_note = str(st.session_state.attendance_df.loc[mask, "Ghi Chú"].values[0])
+                            if old_note and old_note != "nan":
+                                st.session_state.attendance_df.loc[mask, "Ghi Chú"] = f"{old_note} | {att_note}"
+                            else:
+                                st.session_state.attendance_df.loc[mask, "Ghi Chú"] = att_note
+                            
+                        save_data()
+                        st.success(f"Đã ghi nhận **Kết thúc ca** cho **{att_staff}** lúc {current_time_str}. Tổng thời gian làm việc: **{diff_minutes} phút**!")
+                        st.rerun()
+                    else:
+                        st.warning(f"⚠️ Nhân sự **{att_staff}** chưa được Check-in trong ngày hôm nay để có thể Check-out!")
+                else:
+                    st.warning("Chưa có lịch sử chấm công nào trong hệ thống!")
 
     st.markdown("---")
     st.subheader("📋 Lịch Sử Chấm Công & Số Phút Làm Việc")
@@ -970,190 +975,193 @@ elif feature == "report":
     
     all_staff_current = st.session_state.staff_list
     
-    if not st.session_state.input_df.empty:
-        df_in = st.session_state.input_df.copy()
-        df_in["Tổng Điểm"] = pd.to_numeric(df_in["Tổng Điểm"], errors="coerce").fillna(0)
-        summary = df_in.groupby("Nhân Sự").agg(
-            Tổng_Số_Lượng=("Số Lượng", "sum"),
-            Tổng_Điểm=("Tổng Điểm", "sum")
-        ).reindex(all_staff_current).fillna(0).reset_index()
+    if not all_staff_current:
+        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự hiển thị báo cáo.")
     else:
-        summary = pd.DataFrame({
-            "Nhân Sự": all_staff_current,
-            "Tổng_Số_Lượng": [0.0] * len(all_staff_current),
-            "Tổng_Điểm": [0.0] * len(all_staff_current)
-        })
-        
-    summary["Tổng_Điểm"] = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0)
-    total_all_points = summary["Tổng_Điểm"].sum()
-    summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
-    
-    def rank_func(pts):
-        if pts >= 700:
-            return "Xuất Sắc"
-        elif pts >= 400:
-            return "Đạt"
+        if not st.session_state.input_df.empty:
+            df_in = st.session_state.input_df.copy()
+            df_in["Tổng Điểm"] = pd.to_numeric(df_in["Tổng Điểm"], errors="coerce").fillna(0)
+            summary = df_in.groupby("Nhân Sự").agg(
+                Tổng_Số_Lượng=("Số Lượng", "sum"),
+                Tổng_Điểm=("Tổng Điểm", "sum")
+            ).reindex(all_staff_current).fillna(0).reset_index()
         else:
-            return "Cần Cố Gắn"
+            summary = pd.DataFrame({
+                "Nhân Sự": all_staff_current,
+                "Tổng_Số_Lượng": [0.0] * len(all_staff_current),
+                "Tổng_Điểm": [0.0] * len(all_staff_current)
+            })
             
-    summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
-    
-    st.subheader("Bảng Tổng Kết Theo Nhân Sự")
-    st.dataframe(
-        summary.style.format({
-            "Tổng_Số_Lượng": "{:,.0f}",
-            "Tổng_Điểm": "{:,.1f}",
-            "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    st.markdown("---")
-    st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
-    
-    if not st.session_state.attendance_df.empty:
-        att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
-        att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
-    else:
-        att_summary = pd.DataFrame({"Nhân Sự": all_staff_current, "Tổng Phút Làm Việc": 0})
+        summary["Tổng_Điểm"] = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0)
+        total_all_points = summary["Tổng_Điểm"].sum()
+        summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
         
-    comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
-    comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
-    
-    rank_badges = []
-    current_rank_num = 1
-    for idx in range(len(comparison_df)):
-        if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
-            rank_badges.append(rank_badges[-1])
-        else:
-            if idx > 0:
-                current_rank_num += 1
+        def rank_func(pts):
+            if pts >= 700:
+                return "Xuất Sắc"
+            elif pts >= 400:
+                return "Đạt"
             else:
-                current_rank_num = 1
+                return "Cần Cố Gắn"
                 
-            if current_rank_num == 1:
-                rank_badges.append("🥇 Hạng 1")
-            elif current_rank_num == 2:
-                rank_badges.append("🥈 Hạng 2")
-            elif current_rank_num == 3:
-                rank_badges.append("🥉 Hạng 3")
-            else:
-                rank_badges.append(f"Top {current_rank_num}")
-            
-    comparison_df.insert(0, "Xếp Hạng", rank_badges)
-    
-    total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
-    comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
-    comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
-    
-    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
-    comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
-    
-    st.dataframe(
-        comparison_table.style.format({
-            "Tổng Thời Gian (Phút)": "{:,.0f}",
-            "Tỷ Lệ Thời Gian (%)": "{:.2%}",
-            "Tổng Điểm": "{:,.1f}",
-            "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
-            "Chênh Lệch (Sản Lượng - Thời Gian)": "{:+.2%}"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.markdown("---")
-    st.subheader("📥 Xuất Dữ Liệu Báo Cáo")
-    
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        csv_summary = summary.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 Tải Bảng Tổng Kết (CSV)",
-            data=csv_summary,
-            file_name=f"Tong_Ket_Nhan_Su_{datetime.date.today()}.csv",
-            mime="text/csv",
-            use_container_width=True
+        summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
+        
+        st.subheader("Bảng Tổng Kết Theo Nhân Sự")
+        st.dataframe(
+            summary.style.format({
+                "Tổng_Số_Lượng": "{:,.0f}",
+                "Tổng_Điểm": "{:,.1f}",
+                "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
+            }),
+            use_container_width=True,
+            hide_index=True
         )
         
-    with col_dl2:
-        if not st.session_state.input_df.empty:
-            csv_detail = st.session_state.input_df.drop(columns=["Hình Ảnh"], errors="ignore").to_csv(index=False).encode('utf-8-sig')
+        st.markdown("---")
+        st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
+        
+        if not st.session_state.attendance_df.empty:
+            att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
+            att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
+        else:
+            att_summary = pd.DataFrame({"Nhân Sự": all_staff_current, "Tổng Phút Làm Việc": 0})
+            
+        comparison_df = pd.merge(summary[["Nhân Sự", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp"]], att_summary, on="Nhân Sự", how="outer").fillna(0)
+        comparison_df = comparison_df.sort_values(by="Tỷ_Lệ_Đóng_Góp", ascending=False).reset_index(drop=True)
+        
+        rank_badges = []
+        current_rank_num = 1
+        for idx in range(len(comparison_df)):
+            if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
+                rank_badges.append(rank_badges[-1])
+            else:
+                if idx > 0:
+                    current_rank_num += 1
+                else:
+                    current_rank_num = 1
+                    
+                if current_rank_num == 1:
+                    rank_badges.append("🥇 Hạng 1")
+                elif current_rank_num == 2:
+                    rank_badges.append("🥈 Hạng 2")
+                elif current_rank_num == 3:
+                    rank_badges.append("🥉 Hạng 3")
+                else:
+                    rank_badges.append(f"Top {current_rank_num}")
+                
+        comparison_df.insert(0, "Xếp Hạng", rank_badges)
+        
+        total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
+        comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
+        comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
+        
+        comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+        comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
+        
+        st.dataframe(
+            comparison_table.style.format({
+                "Tổng Thời Gian (Phút)": "{:,.0f}",
+                "Tỷ Lệ Thời Gian (%)": "{:.2%}",
+                "Tổng Điểm": "{:,.1f}",
+                "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
+                "Chênh Lệch (Sản Lượng - Thời Gian)": "{:+.2%}"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.markdown("---")
+        st.subheader("📥 Xuất Dữ Liệu Báo Cáo")
+        
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            csv_summary = summary.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
-                label="📥 Tải Chi Tiết Sản Lượng (CSV)",
-                data=csv_detail,
-                file_name=f"Chi_Tiet_San_Luong_{datetime.date.today()}.csv",
+                label="📥 Tải Bảng Tổng Kết (CSV)",
+                data=csv_summary,
+                file_name=f"Tong_Ket_Nhan_Su_{datetime.date.today()}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
+            
+        with col_dl2:
+            if not st.session_state.input_df.empty:
+                csv_detail = st.session_state.input_df.drop(columns=["Hình Ảnh"], errors="ignore").to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    label="📥 Tải Chi Tiết Sản Lượng (CSV)",
+                    data=csv_detail,
+                    file_name=f"Chi_Tiet_San_Luong_{datetime.date.today()}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
 
-    st.markdown("---")
-    st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
-    
-    with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ", expanded=False):
-        while len(st.session_state.chart_colors) < len(all_staff_current):
-            st.session_state.chart_colors.append("#3b82f6")
+        st.markdown("---")
+        st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
         
-        color_cols = st.columns(min(len(all_staff_current), 4))
-        for i, staff_name in enumerate(all_staff_current):
-            col_idx = i % len(color_cols)
-            with color_cols[col_idx]:
-                st.session_state.chart_colors[i] = st.color_picker(f"Màu: {staff_name}", st.session_state.chart_colors[i], key=f"color_pick_{i}")
-        if st.button("Lưu Màu Biểu Đồ", use_container_width=True):
-            save_data()
-            st.success("Đã cập nhật màu sắc biểu đồ!")
-            st.rerun()
+        with st.expander("🎨 Tùy Chỉnh Màu Sắc Biểu Đồ", expanded=False):
+            while len(st.session_state.chart_colors) < len(all_staff_current):
+                st.session_state.chart_colors.append("#3b82f6")
+            
+            color_cols = st.columns(min(len(all_staff_current), 4) if len(all_staff_current) > 0 else 1)
+            for i, staff_name in enumerate(all_staff_current):
+                col_idx = i % len(color_cols)
+                with color_cols[col_idx]:
+                    st.session_state.chart_colors[i] = st.color_picker(f"Màu: {staff_name}", st.session_state.chart_colors[i], key=f"color_pick_{i}")
+            if st.button("Lưu Màu Biểu Đồ", use_container_width=True):
+                save_data()
+                st.success("Đã cập nhật màu sắc biểu đồ!")
+                st.rerun()
 
-    chart_size = 3.2
-    col_pie, col_details = st.columns([1, 1])
-    
-    with col_pie:
-        total_pts_check = summary["Tổng_Điểm"].sum()
-        if total_pts_check > 0:
-            fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
+        chart_size = 3.2
+        col_pie, col_details = st.columns([1, 1])
+        
+        with col_pie:
+            total_pts_check = summary["Tổng_Điểm"].sum()
+            if total_pts_check > 0:
+                fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
+                current_colors = st.session_state.chart_colors[:len(summary)]
+                
+                chart_values = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0).tolist()
+                max_pts = max(chart_values) if chart_values else 0
+                explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in chart_values]
+
+                wedges, texts, autotexts = ax.pie(
+                    chart_values, 
+                    labels=None, 
+                    autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
+                    startangle=90, 
+                    colors=current_colors,
+                    explode=explode_values,
+                    shadow=False,
+                    pctdistance=0.6
+                )
+                
+                for autotext in autotexts:
+                    autotext.set_fontsize(8)
+                    autotext.set_weight("bold")
+                    autotext.set_color("black")
+                        
+                ax.axis('equal')
+                st.pyplot(fig)
+            else:
+                st.info("ℹ️ Chưa có dữ liệu sản lượng hoặc tổng điểm bằng 0, chưa thể hiển thị biểu đồ tỷ lệ.")
+            
+        with col_details:
+            st.markdown("#### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
             current_colors = st.session_state.chart_colors[:len(summary)]
-            
-            chart_values = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0).tolist()
-            max_pts = max(chart_values) if chart_values else 0
-            explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in chart_values]
-
-            wedges, texts, autotexts = ax.pie(
-                chart_values, 
-                labels=None, 
-                autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
-                startangle=90, 
-                colors=current_colors,
-                explode=explode_values,
-                shadow=False,
-                pctdistance=0.6
-            )
-            
-            for autotext in autotexts:
-                autotext.set_fontsize(8)
-                autotext.set_weight("bold")
-                autotext.set_color("black")
-                    
-            ax.axis('equal')
-            st.pyplot(fig)
-        else:
-            st.info("ℹ️ Chưa có dữ liệu sản lượng hoặc tổng điểm bằng 0, chưa thể hiển thị biểu đồ tỷ lệ.")
-        
-    with col_details:
-        st.markdown("#### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
-        current_colors = st.session_state.chart_colors[:len(summary)]
-        for i, row in summary.iterrows():
-            color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
-            staff_name = row["Nhân Sự"]
-            staff_pts = float(row["Tổng_Điểm"]) if pd.notnull(row["Tổng_Điểm"]) else 0.0
-            staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-            st.markdown(f"""
-            <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
-                <div style="width: 16px; height: 16px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
-                <div style="font-size: 0.9rem;">
-                    <b>{staff_name}</b>: {staff_pts:,.1f} điểm (<b>{staff_pct:.1f}%</b>)
+            for i, row in summary.iterrows():
+                color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
+                staff_name = row["Nhân Sự"]
+                staff_pts = float(row["Tổng_Điểm"]) if pd.notnull(row["Tổng_Điểm"]) else 0.0
+                staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
+                    <div style="width: 16px; height: 16px; background-color: {color_box}; border-radius: 4px; margin-right: 10px; flex-shrink: 0;"></div>
+                    <div style="font-size: 0.9rem;">
+                        <b>{staff_name}</b>: {staff_pts:,.1f} điểm (<b>{staff_pct:.1f}%</b>)
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
@@ -1330,6 +1338,7 @@ elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
     
     st.subheader("Quản Lý Nhân Sự")
+    st.markdown("💡 Bạn có thể thêm, sửa hoặc xóa tên nhân sự trực tiếp trong bảng dưới đây. Để trống hoàn toàn nếu chưa có nhân sự nào.")
     with st.form("staff_form"):
         staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
         edited_staff_df = st.data_editor(
@@ -1341,14 +1350,11 @@ elif feature == "settings_ui":
         )
         save_staff_btn = st.form_submit_button("💾 Lưu Danh Sách Nhân Sự", use_container_width=True)
         if save_staff_btn:
-            new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != ""]
-            if new_staff_list:
-                st.session_state.staff_list = new_staff_list
-                save_data()
-                st.success("Đã cập nhật danh sách nhân sự!")
-                st.rerun()
-            else:
-                st.warning("Danh sách nhân sự không được để trống.")
+            new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != "" and str(x).strip().lower() != "nan"]
+            st.session_state.staff_list = new_staff_list
+            save_data()
+            st.success("Đã cập nhật danh sách nhân sự thành công!")
+            st.rerun()
 
     st.markdown("---")
     
@@ -1447,7 +1453,7 @@ elif feature == "clean_data":
                 st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
 
     st.markdown("---")
-    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
+    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_wood_width=True if 'use_container_wood_width' in globals() else True):
         st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
         save_data()
         st.success("Đã làm sạch hoàn toàn thùng rác!")
