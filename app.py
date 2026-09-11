@@ -1178,15 +1178,30 @@ elif feature == "rules":
     if deleted_items_list:
         deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
         selected_to_restore = st.multiselect("Khôi phục hạng mục đã xóa:", deleted_names)
-        if st.button("📥 Khôi Phục Đã Chọn", use_container_width=True):
-            if selected_to_restore:
-                items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
-                restored_df = pd.DataFrame(items_to_add)
-                st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
-                st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                save_data()
-                st.success("Đã khôi phục thành công!")
-                st.rerun()
+        
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            if st.button("📥 Khôi Phục Đã Chọn", use_container_width=True):
+                if selected_to_restore:
+                    items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
+                    restored_df = pd.DataFrame(items_to_add)
+                    st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
+                    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+                    save_data()
+                    st.success("Đã khôi phục thành công!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng chọn mục cần khôi phục!")
+        with col_r2:
+            if st.button("🔥 Xóa Vĩnh Viễn Đã Chọn Khỏi Danh Sách Xóa", use_container_width=True):
+                if selected_to_restore:
+                    # Loại bỏ các mục đã chọn khỏi master_rules để chúng biến mất vĩnh viễn khỏi danh sách lưu trữ tạm
+                    master_rules[:] = [item for item in master_rules if item["Hạng Mục Công Việc"] not in selected_to_restore]
+                    save_data()
+                    st.success("Đã xóa vĩnh viễn các mục đã chọn khỏi bộ nhớ tạm!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng chọn mục cần xóa vĩnh viễn!")
 
     st.markdown("---")
     with st.form("rules_form"):
