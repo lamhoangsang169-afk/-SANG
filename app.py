@@ -592,7 +592,6 @@ if feature == "manage_accounts":
                         old_pass = old_info.get("password") if isinstance(old_info, dict) else old_info
                         new_accounts[u] = {"password": old_pass, "role": r}
                 
-                # Bảo vệ ít nhất một tài khoản admin không bị xóa sạch
                 if not any(info.get("role") == "admin" for info in new_accounts.values()):
                     st.error("⚠️ Không thể xóa toàn bộ tài khoản Admin! Hệ thống cần ít nhất một Admin hoạt động.")
                 else:
@@ -1271,8 +1270,44 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Cấu hình trực tiếp các mục trên hệ thống.")
-    st.info("Hệ thống đang sử dụng menu điều hướng trực quan ở thanh bên.")
+    st.markdown("Cấu hình tên hiển thị của các thư mục và sắp xếp các mục menu trong hệ thống.")
+
+    with st.form("folder_manager_form"):
+        updated_folders = []
+        for f_idx, folder in enumerate(st.session_state.folders):
+            st.markdown(f"### Thư mục #{f_idx + 1}")
+            new_f_name = st.text_input(f"Tên thư mục {f_idx + 1}", value=folder["folder_name"], key=f"f_name_{f_idx}")
+            
+            st.markdown("##### Các mục trong thư mục này:")
+            updated_items = []
+            for i_idx, item in enumerate(folder["items"]):
+                col_i1, col_i2 = st.columns([3, 1])
+                with col_i1:
+                    new_item_name = st.text_input(f"Tên mục {i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
+                with col_i2:
+                    remove_item = st.checkbox(f"Xóa mục này", key=f"del_item_{f_idx}_{i_idx}")
+                
+                if not remove_item:
+                    updated_items.append({"id": item["id"], "name": new_item_name})
+            
+            # Thêm mục mới vào thư mục
+            add_new_item = st.text_input(f"Thêm tên mục mới vào thư mục này (để trống nếu không thêm)", key=f"add_new_{f_idx}")
+            if add_new_item.strip():
+                new_id = f"custom_menu_{f_idx}_{len(updated_items) + 1}"
+                updated_items.append({"id": new_id, "name": add_new_item.strip()})
+
+            updated_folders.append({
+                "folder_name": new_f_name,
+                "items": updated_items
+            })
+            st.markdown("---")
+
+        save_folders_btn = st.form_submit_button("💾 Lưu Cấu Hình Thư Mục & Menu", use_container_width=True)
+        if save_folders_btn:
+            st.session_state.folders = updated_folders
+            save_data()
+            st.success("Đã cập nhật tên thư mục và menu thành công!")
+            st.rerun()
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
