@@ -3,7 +3,6 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 import io
-import base64
 import json
 import os
 from PIL import Image
@@ -28,6 +27,7 @@ if HAS_SUPABASE_LIB and SUPABASE_KEY:
         supabase = None
 
 DATA_FILE = "app_storage.json"
+BUCKET_NAME = "app_images"
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -73,18 +73,35 @@ default_folders = [
     }
 ]
 
-def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
+def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
+    """Tải ảnh trực tiếp lên Supabase Storage và trả về Public URL"""
+    if uploaded_file is None or supabase is None:
+        return None
     try:
-        if uploaded_file is None:
-            return None
         img = Image.open(uploaded_file)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-        img.thumbnail(max_size)
+        img.thumbnail((800, 800))
+        
         buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=quality)
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
-    except Exception:
+        img.save(buffered, format="JPEG", quality=70)
+        file_bytes = buffered.getvalue()
+        
+        file_ext = "jpg"
+        file_name = f"{folder_prefix}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.{file_ext}"
+        
+        # Upload lên bucket Supabase Storage
+        supabase.storage.from_(BUCKET_NAME).upload(
+            path=file_name,
+            file=file_bytes,
+            file_options={"content-type": "image/jpeg", "upsert": "true"}
+        )
+        
+        # Lấy Public URL của ảnh
+        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(file_name)
+        return public_url
+    except Exception as e:
+        st.error(f"Lỗi tải ảnh lên Supabase Storage: {e}")
         return None
 
 @st.cache_data(ttl=2)
@@ -124,8 +141,8 @@ def save_data():
         "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
         "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
         "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
-        "bg_image_base64": st.session_state.get("bg_image_base64", None),
-        "avatar_base64": st.session_state.get("avatar_base64", None),
+        "bg_image_url": st.session_state.get("bg_image_url", None),
+        "avatar_url": st.session_state.get("avatar_url", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng"),
         "accounts": st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
     }
@@ -256,10 +273,10 @@ if "sidebar_opacity" not in st.session_state:
     st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 if "text_color" not in st.session_state:
     st.session_state.text_color = saved_data.get("text_color", "#31333F")
-if "bg_image_base64" not in st.session_state:
-    st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
-if "avatar_base64" not in st.session_state:
-    st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
+if "bg_image_url" not in st.session_state:
+    st.session_state.bg_image_url = saved_data.get("bg_image_url", None)
+if "avatar_url" not in st.session_state:
+    st.session_state.avatar_url = saved_data.get("avatar_url", None)
 if "current_menu" not in st.session_state:
     first_item_name = "1. Nhập Sản Lượng"
     if st.session_state.folders and st.session_state.folders[0]["items"]:
@@ -274,8 +291,8 @@ if not st.session_state.attendance_df.empty:
     st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
 
 bg_style = f"background-color: {st.session_state.bg_color};"
-if st.session_state.bg_image_base64:
-    bg_style = f"background-image: url(data:image/jpeg;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
+if st.session_state.bg_image_url:
+    bg_style = f"background-image: url({st.session_state.bg_image_url}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
 
 def hex_to_rgba(hex_str, opacity):
     hex_str = hex_str.lstrip('#')
@@ -426,27 +443,19 @@ with st.sidebar:
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
     
     has_custom_avatar = False
-    avatar_bytes_obj = None
-    if st.session_state.avatar_base64:
-        try:
-            pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
-            pure_b64 += "=" * (-len(pure_b64) % 4)
-            avatar_bytes_obj = base64.b64decode(pure_b64)
-            has_custom_avatar = True
-        except Exception:
-            pass
+    if st.session_state.avatar_url:
+        has_custom_avatar = True
 
     st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
     
     if has_custom_avatar:
         with st.popover(" ", use_container_width=False):
             st.markdown("##### 🔍 Xem Ảnh Đại Diện")
-            st.image(avatar_bytes_obj, use_container_width=True)
+            st.image(st.session_state.avatar_url, use_container_width=True)
             
-        encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
         st.markdown(f"""
         <div style="cursor: pointer; text-align: center;">
-            <img src="data:image/jpeg;base64,{encoded_img}" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+            <img src="{st.session_state.avatar_url}" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -461,17 +470,18 @@ with st.sidebar:
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
         avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
         if avatar_file is not None:
-            compressed_avatar = compress_image_to_base64(avatar_file, max_size=(300, 300), quality=60)
-            if compressed_avatar:
-                st.session_state.avatar_base64 = compressed_avatar
+            with st.spinner("Đang tải lên Supabase..."):
+                avatar_public_url = upload_image_to_supabase(avatar_file, folder_prefix="avatars")
+            if avatar_public_url:
+                st.session_state.avatar_url = avatar_public_url
                 save_data()
                 st.success("Đã cập nhật ảnh đại diện!")
                 st.rerun()
             
-        if st.session_state.avatar_base64:
+        if st.session_state.avatar_url:
             st.markdown("---")
             if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
-                st.session_state.avatar_base64 = None
+                st.session_state.avatar_url = None
                 save_data()
                 st.success("Đã xóa ảnh đại diện!")
                 st.rerun()
@@ -686,12 +696,13 @@ elif feature == "input_production":
                 if not is_valid:
                     st.error(f"⚠️ Vui lòng hoàn thành các mục bắt buộc: {', '.join(missing_fields)}")
                 else:
+                    with st.spinner("Đang tải ảnh lên Supabase Storage..."):
+                        img_url = upload_image_to_supabase(record_image, folder_prefix="production") if record_image is not None else ""
+                    
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
                     he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
                     tong_diem = so_luong * he_so
-                    
-                    img_base64 = compress_image_to_base64(record_image, max_size=(800, 800), quality=65) if record_image is not None else ""
                     
                     new_stt = len(st.session_state.input_df) + 1
                     new_row = {
@@ -699,7 +710,7 @@ elif feature == "input_production":
                         "Ngày": today_str,
                         "Nhân Sự": nhan_su,
                         "Hạng Mục Công Việc": hang_muc,
-                        "Hình Ảnh": img_base64,
+                        "Hình Ảnh": img_url,
                         "Đơn Vị": don_vi,
                         "Số Lượng": so_luong,
                         "Hệ Số Điểm": he_so,
@@ -754,16 +765,12 @@ elif feature == "input_production":
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
-                        img_b64_val = row.get("Hình Ảnh", "")
-                        if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                        img_url_val = row.get("Hình Ảnh", "")
+                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
                             try:
-                                pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
-                                pure_b64 += "=" * (-len(pure_b64) % 4)
-                                img_bytes = base64.b64decode(pure_b64)
-                                
-                                st.image(img_bytes, width=zoom_level)
+                                st.image(img_url_val, width=zoom_level)
                                 with st.popover("🔍 Phóng to"):
-                                    st.image(img_bytes, use_container_width=True)
+                                    st.image(img_url_val, use_container_width=True)
                             except Exception:
                                 st.text("Lỗi hiển thị ảnh")
                     st.markdown("---")
@@ -1219,16 +1226,12 @@ elif feature == "trash":
                     st.session_state.deleted_input_df.loc[idx, "Chọn_Xóa"] = is_selected
                     
                 with row_c2:
-                    img_b64_val = row.get("Hình Ảnh", "")
-                    if img_b64_val and isinstance(img_b64_val, str) and len(img_b64_val) > 10:
+                    img_url_val = row.get("Hình Ảnh", "")
+                    if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
                         try:
-                            pure_b64 = img_b64_val.split(",")[1] if "," in img_b64_val else img_b64_val
-                            pure_b64 += "=" * (-len(pure_b64) % 4)
-                            img_bytes = base64.b64decode(pure_b64)
-                            
-                            st.image(img_bytes, width=trash_zoom)
+                            st.image(img_url_val, width=trash_zoom)
                             with st.popover("🔍 Phóng to"):
-                                st.image(img_bytes, use_container_width=True)
+                                st.image(img_url_val, use_container_width=True)
                         except Exception:
                             st.text("Lỗi hiển thị ảnh")
                 st.markdown("---")
@@ -1255,7 +1258,7 @@ elif feature == "trash":
                     
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    st.success("Đã khôi phục các dòng đã chọn (kèm theo hình ảnh) thành công!")
+                    st.success("Đã khôi phục các dòng đã chọn thành công!")
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng!")
@@ -1279,7 +1282,7 @@ elif feature == "trash":
         if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
             st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
             save_data()
-            st.success("Đã làm sạch hoàn toàn thùng rác và xóa bỏ toàn bộ hình ảnh lưu trữ!")
+            st.success("Đã làm sạch hoàn toàn thùng rác!")
             st.rerun()
     else:
         st.info("Thùng rác hiện tại đang trống.")
@@ -1370,31 +1373,30 @@ elif feature == "settings_ui":
     st.markdown("---")
     st.subheader("🖼️ Quản Lý Hình Nền (Tải lên / Xóa / Tắt nền)")
 
-    if st.session_state.bg_image_base64:
+    if st.session_state.bg_image_url:
         if st.button("👁️ Tắt / Ẩn Hình Nền (Dùng màu đơn)", use_container_width=True):
-            st.session_state.bg_image_base64 = None
+            st.session_state.bg_image_url = None
             save_data()
             st.success("Đã ẩn hình nền, chuyển về màu nền trang đơn sắc!")
             st.rerun()
 
     bg_file = st.file_uploader("Tải ảnh hình nền mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="bg_uploader_standalone")
     if bg_file is not None:
-        compressed_bg = compress_image_to_base64(bg_file, max_size=(1024, 1024), quality=70)
-        if compressed_bg:
-            st.session_state.bg_image_base64 = compressed_bg
+        with st.spinner("Đang tải ảnh nền lên Supabase..."):
+            bg_public_url = upload_image_to_supabase(bg_file, folder_prefix="backgrounds")
+        if bg_public_url:
+            st.session_state.bg_image_url = bg_public_url
             save_data()
             st.success("Đã cập nhật hình nền chính thành công!")
             st.rerun()
 
-    if st.session_state.bg_image_base64:
+    if st.session_state.bg_image_url:
         st.markdown("---")
         st.markdown("#### 📂 Hình Nền Đang Sử Dụng")
         try:
-            pure_b64 = st.session_state.bg_image_base64.split(",")[1] if "," in st.session_state.bg_image_base64 else st.session_state.bg_image_base64
-            img_bytes = base64.b64decode(pure_b64)
-            st.image(img_bytes, width=150, caption="Ảnh nền hiện tại")
+            st.image(st.session_state.bg_image_url, width=150, caption="Ảnh nền hiện tại")
             if st.button("🗑️ Xóa Vĩnh Viễn Hình Nền", use_container_width=True):
-                st.session_state.bg_image_base64 = None
+                st.session_state.bg_image_url = None
                 save_data()
                 st.success("Đã xóa hình nền!")
                 st.rerun()
