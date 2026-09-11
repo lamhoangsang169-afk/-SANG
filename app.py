@@ -971,7 +971,8 @@ elif feature == "report":
     all_staff_current = st.session_state.staff_list
     
     if not st.session_state.input_df.empty:
-        df_in = st.session_state.input_df
+        df_in = st.session_state.input_df.copy()
+        df_in["Tổng Điểm"] = pd.to_numeric(df_in["Tổng Điểm"], errors="coerce").fillna(0)
         summary = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
@@ -983,6 +984,7 @@ elif feature == "report":
             "Tổng_Điểm": [0.0] * len(all_staff_current)
         })
         
+    summary["Tổng_Điểm"] = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0)
     total_all_points = summary["Tổng_Điểm"].sum()
     summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
     
@@ -1111,11 +1113,12 @@ elif feature == "report":
             fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
             current_colors = st.session_state.chart_colors[:len(summary)]
             
-            max_pts = summary["Tổng_Điểm"].max()
-            explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
+            chart_values = pd.to_numeric(summary["Tổng_Điểm"], errors="coerce").fillna(0).tolist()
+            max_pts = max(chart_values) if chart_values else 0
+            explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in chart_values]
 
             wedges, texts, autotexts = ax.pie(
-                summary["Tổng_Điểm"], 
+                chart_values, 
                 labels=None, 
                 autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
                 startangle=90, 
@@ -1141,7 +1144,7 @@ elif feature == "report":
         for i, row in summary.iterrows():
             color_box = current_colors[i] if i < len(current_colors) else "#3b82f6"
             staff_name = row["Nhân Sự"]
-            staff_pts = row["Tổng_Điểm"]
+            staff_pts = float(row["Tổng_Điểm"]) if pd.notnull(row["Tổng_Điểm"]) else 0.0
             staff_pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
             st.markdown(f"""
             <div style="display: flex; align-items: center; margin-bottom: 8px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 6px;">
