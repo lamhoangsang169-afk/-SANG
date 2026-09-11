@@ -127,7 +127,7 @@ def save_data():
         "bg_image_base64": st.session_state.get("bg_image_base64", None),
         "avatar_base64": st.session_state.get("avatar_base64", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng"),
-        "accounts": st.session_state.get("accounts", {"admin": "123456"})
+        "accounts": st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
     }
     
     try:
@@ -146,13 +146,15 @@ def save_data():
 
 saved_data = load_data()
 
-# ==================== KIỂM TRA ĐĂNG NHẬP (AUTHENTICATION) ====================
+# ==================== KIỂM TRA ĐĂNG NHẬP & PHÂN QUYỀN ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
     st.session_state.username = ""
+if "role" not in st.session_state:
+    st.session_state.role = "nhan_vien"
 if "accounts" not in st.session_state:
-    st.session_state.accounts = saved_data.get("accounts", {"admin": "123456"})
+    st.session_state.accounts = saved_data.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
 
 if not st.session_state.logged_in:
     st.markdown("""
@@ -173,9 +175,11 @@ if not st.session_state.logged_in:
                 submit_lg = st.form_submit_button("Đăng Nhập", use_container_width=True)
                 
                 if submit_lg:
-                    if lg_user in st.session_state.accounts and st.session_state.accounts[lg_user] == lg_pass:
+                    user_info = st.session_state.accounts.get(lg_user)
+                    if user_info and user_info.get("password") == lg_pass:
                         st.session_state.logged_in = True
                         st.session_state.username = lg_user
+                        st.session_state.role = user_info.get("role", "nhan_vien")
                         st.success("Đăng nhập thành công!")
                         st.rerun()
                     else:
@@ -196,12 +200,13 @@ if not st.session_state.logged_in:
                     elif rg_user in st.session_state.accounts:
                         st.error("Tên đăng nhập này đã tồn tại!")
                     else:
-                        st.session_state.accounts[rg_user] = rg_pass
+                        # Mặc định tài khoản đăng ký mới là nhân viên
+                        st.session_state.accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                         save_data()
                         st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
-# ==================== KHỞI TẠO DỮ LIỆU SAU KHI ĐĂNG NHẬP ====================
+# ==================== KHỞI TẠO DỮ LIỆU ỨNG DỤNG ====================
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
@@ -385,16 +390,17 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    # Hiển thị thông tin người dùng đang đăng nhập và nút Đăng xuất
+    role_label = "👑 Quản Trị Viên" if st.session_state.role == "admin" else "👤 Nhân Viên"
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
-        <span style="font-size: 0.9rem;">👤 Xin chào: <b>{st.session_state.username}</b></span>
+        <span style="font-size: 0.9rem;">{role_label}: <b>{st.session_state.username}</b></span>
     </div>
     """, unsafe_allow_html=True)
     
     if st.button("🚪 Đăng Xuất", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
+        st.session_state.role = "nhan_vien"
         st.rerun()
 
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
@@ -476,6 +482,14 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
+    
+    # Chỉ Admin mới có quyền thấy tùy chọn quản lý tài khoản hệ thống
+    if st.session_state.role == "admin":
+        if st.button("👥 Quản Lý Tài Khoản", use_container_width=True):
+            st.session_state.current_menu = "Quản Lý Tài Khoản"
+            save_data()
+            st.rerun()
+            
     if st.button("📁 Quản Lý Thư Mục & Menu", use_container_width=True):
         st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
         save_data()
@@ -500,6 +514,8 @@ with st.sidebar:
 menu = st.session_state.current_menu
 
 def get_feature_type(menu_name):
+    if menu_name == "Quản Lý Tài Khoản":
+        return "manage_accounts"
     if menu_name == "⏱️ Chấm Công Ca Làm Việc":
         return "attendance"
     if menu_name == "📁 Quản Lý Thư Mục & Menu":
@@ -522,8 +538,39 @@ def get_feature_type(menu_name):
 
 feature = get_feature_type(menu)
 
+# ==================== QUẢN LÝ TÀI KHOẢN (DÀNH CHO ADMIN) ====================
+if feature == "manage_accounts":
+    if st.session_state.role != "admin":
+        st.error("⚠️ Bạn không có quyền truy cập trang này!")
+    else:
+        st.header("👥 Quản Lý Tài Khoản Hệ Thống")
+        st.markdown("Thay đổi quyền hạn (`admin` hoặc `nhan_vien`) cho các tài khoản đang hoạt động.")
+        
+        acc_data = []
+        for u, info in st.session_state.accounts.items():
+            acc_data.append({"Tên Đăng Nhập": u, "Quyền Hạn": info.get("role", "nhan_vien")})
+        
+        acc_df = pd.DataFrame(acc_data)
+        
+        with st.form("manage_acc_form"):
+            edited_acc = st.data_editor(acc_df, use_container_width=True, hide_index=True)
+            save_acc_btn = st.form_submit_button("💾 Lưu Thay Đổi Quyền", use_container_width=True)
+            
+            if save_acc_btn:
+                new_accounts = {}
+                for idx, row in edited_acc.iterrows():
+                    u = row["Tên Đăng Nhập"]
+                    r = row["Quyền Hạn"]
+                    old_pass = st.session_state.accounts.get(u, {}).get("password", "123456")
+                    new_accounts[u] = {"password": old_pass, "role": r}
+                    
+                st.session_state.accounts = new_accounts
+                save_data()
+                st.success("Đã cập nhật quyền tài khoản thành công!")
+                st.rerun()
+
 # ==================== 1. NHẬP SẢN LƯỢNG ====================
-if feature == "input_production":
+elif feature == "input_production":
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
     
