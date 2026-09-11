@@ -7,8 +7,15 @@ import base64
 import json
 import os
 from PIL import Image
+from supabase import create_client, Client
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
+
+# ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
+SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
+SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # Thay khóa anon public chính xác của bạn vào đây
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -54,8 +61,6 @@ default_folders = [
     }
 ]
 
-DATA_FILE = "app_storage.json"
-
 def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     try:
         if uploaded_file is None:
@@ -71,12 +76,23 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    if os.path.exists(DATA_FILE):
+    # 1. Tải dữ liệu từ Supabase Cloud
+    try:
+        response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
+        if response.data and len(response.data) > 0:
+            return json.loads(response.data[0]["data"])
+    except Exception:
+        pass
+    
+    # 2. Fallback sang file cục bộ nếu có sẵn (giúp di chuyển dữ liệu cũ lên cloud lần đầu)
+    if os.path.exists("app_storage.json"):
         try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open("app_storage.json", "r", encoding="utf-8") as f:
+                local_data = json.load(f)
+                return local_data
         except Exception:
             pass
+            
     return {}
 
 def save_data():
@@ -97,9 +113,12 @@ def save_data():
         "avatar_base64": st.session_state.get("avatar_base64", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
+    
+    # Lưu trực tiếp lên bảng Supabase Cloud Database
     try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, default=str, indent=4)
+        json_str = json.dumps(data, ensure_ascii=False, default=str)
+        payload = {"id": "main_config", "data": json_str}
+        supabase.table("app_storage_table").upsert(payload).execute()
     except Exception:
         pass
 
