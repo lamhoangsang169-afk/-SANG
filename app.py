@@ -548,14 +548,16 @@ if feature == "manage_accounts":
         st.error("⚠️ Bạn không có quyền truy cập trang này!")
     else:
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
-        st.markdown("Thay đổi quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
+        st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
         
         acc_data = []
         for u, info in st.session_state.accounts.items():
+            pass_val = info.get("password", "") if isinstance(info, dict) else info
             acc_data.append({
                 "Xóa": False,
                 "Tên Đăng Nhập": u, 
-                "Quyền Hạn": info.get("role", "nhan_vien") if isinstance(info, dict) else "nhan_vien"
+                "Mật Khẩu": pass_val,
+                "Quyền Hạn": info.get("role", "admin" if u == "admin" else "nhan_vien") if isinstance(info, dict) else ("admin" if u == "admin" else "nhan_vien")
             })
         
         acc_df = pd.DataFrame(acc_data)
@@ -568,6 +570,7 @@ if feature == "manage_accounts":
                 column_config={
                     "Xóa": st.column_config.CheckboxColumn("Xóa tài khoản", default=False),
                     "Tên Đăng Nhập": st.column_config.TextColumn("Tên Đăng Nhập", disabled=True),
+                    "Mật Khẩu": st.column_config.TextColumn("Mật Khẩu"),
                     "Quyền Hạn": st.column_config.SelectboxColumn(
                         "Quyền Hạn",
                         options=["admin", "nhan_vien"],
@@ -582,15 +585,14 @@ if feature == "manage_accounts":
                 deleted_users = []
                 for idx, row in edited_acc.iterrows():
                     u = row["Tên Đăng Nhập"]
+                    p = row["Mật Khẩu"]
                     r = row["Quyền Hạn"]
                     is_deleted = row["Xóa"]
                     
                     if is_deleted:
                         deleted_users.append(u)
                     else:
-                        old_info = st.session_state.accounts.get(u, {"password": "123456", "role": "nhan_vien"})
-                        old_pass = old_info.get("password") if isinstance(old_info, dict) else old_info
-                        new_accounts[u] = {"password": old_pass, "role": r}
+                        new_accounts[u] = {"password": p, "role": r}
                 
                 if not any(info.get("role") == "admin" for info in new_accounts.values()):
                     st.error("⚠️ Không thể xóa toàn bộ tài khoản Admin! Hệ thống cần ít nhất một Admin hoạt động.")
@@ -598,9 +600,9 @@ if feature == "manage_accounts":
                     st.session_state.accounts = new_accounts
                     save_data()
                     if deleted_users:
-                        st.success(f"Đã xóa thành công các tài khoản: {', '.join(deleted_users)} và cập nhật quyền!")
+                        st.success(f"Đã xóa thành công các tài khoản: {', '.join(deleted_users)} và cập nhật thay đổi!")
                     else:
-                        st.success("Đã cập nhật quyền tài khoản thành công!")
+                        st.success("Đã cập nhật thông tin tài khoản và mật khẩu thành công!")
                     st.rerun()
 
 # ==================== 1. NHẬP SẢN LƯỢNG ====================
