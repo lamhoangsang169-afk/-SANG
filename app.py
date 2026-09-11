@@ -233,7 +233,6 @@ if "rules_df" not in st.session_state:
     if r_data:
         st.session_state.rules_df = pd.DataFrame(r_data)
     else:
-        # Hợp nhất toàn bộ master_rules làm dữ liệu khởi tạo linh hoạt (không cố định cứng)
         st.session_state.rules_df = pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
@@ -1172,13 +1171,22 @@ elif feature == "rules":
     
     if not st.session_state.rules_df.empty:
         st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-
-    if st.button("🔄 Khôi Phục Toàn Bộ Mặc Định", use_container_width=True):
-        st.session_state.rules_df = pd.DataFrame(master_rules)
-        st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-        save_data()
-        st.success("Đã khôi phục danh mục mặc định thành công!")
-        st.rerun()
+        
+    current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+    deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
+    
+    if deleted_items_list:
+        deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
+        selected_to_restore = st.multiselect("Khôi phục hạng mục đã xóa:", deleted_names)
+        if st.button("📥 Khôi Phục Đã Chọn", use_container_width=True):
+            if selected_to_restore:
+                items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
+                restored_df = pd.DataFrame(items_to_add)
+                st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
+                st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+                save_data()
+                st.success("Đã khôi phục thành công!")
+                st.rerun()
 
     st.markdown("---")
     with st.form("rules_form"):
