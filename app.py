@@ -548,7 +548,7 @@ if feature == "manage_accounts":
         st.error("⚠️ Bạn không có quyền truy cập trang này!")
     else:
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
-        st.markdown("Thay đổi quyền hạn (`admin` hoặc `nhan_vien`) cho các tài khoản đang hoạt động.")
+        st.markdown("Chọn quyền hạn (`admin` hoặc `nhan_vien`) cho các tài khoản trong danh sách.")
         
         acc_data = []
         for u, info in st.session_state.accounts.items():
@@ -557,7 +557,19 @@ if feature == "manage_accounts":
         acc_df = pd.DataFrame(acc_data)
         
         with st.form("manage_acc_form"):
-            edited_acc = st.data_editor(acc_df, use_container_width=True, hide_index=True)
+            edited_acc = st.data_editor(
+                acc_df, 
+                use_container_width=True, 
+                hide_index=True,
+                column_config={
+                    "Tên Đăng Nhập": st.column_config.TextColumn("Tên Đăng Nhập", disabled=True),
+                    "Quyền Hạn": st.column_config.SelectboxColumn(
+                        "Quyền Hạn",
+                        options=["admin", "nhan_vien"],
+                        required=True
+                    )
+                }
+            )
             save_acc_btn = st.form_submit_button("💾 Lưu Thay Đổi Quyền", use_container_width=True)
             
             if save_acc_btn:
