@@ -424,6 +424,13 @@ with st.sidebar:
         save_data()
         st.rerun()
 
+    # ==================== TÍCH HỢP KIỂM TRA SỨC KHỎE (UPTIME MONITOR) ====================
+    st.markdown("---")
+    st.markdown("### 🟢 Trạng Thái Hệ Thống")
+    db_status = "🟢 Supabase Đã Kết Nối" if supabase is not None else "🟡 Dùng Bộ Nhớ Cục Bộ"
+    st.markdown(f"<small>{db_status}</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🔗 Ping Health: <a href='./_stcore/health' target='_blank'>Online</a></small>", unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
