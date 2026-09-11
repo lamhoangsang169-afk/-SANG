@@ -1338,7 +1338,7 @@ elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
     
     st.subheader("Quản Lý Nhân Sự")
-    st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm, hoặc chọn xóa nhân sự khỏi danh sách.")
+    st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm. Danh sách nhân sự hiện tại hiển thị ngay bên dưới để bạn chọn xóa nhanh chóng.")
     
     with st.form("add_staff_form"):
         new_staff_input = st.text_input("Thêm tên nhân sự mới:")
@@ -1356,19 +1356,25 @@ elif feature == "settings_ui":
             else:
                 st.warning("Vui lòng nhập tên nhân sự!")
 
+    st.markdown("---")
+    st.subheader("Danh Sách Nhân Sự Hiện Tại")
+    
     if st.session_state.staff_list:
-        st.markdown("##### Danh Sách Nhân Sự Hiện Tại")
-        with st.form("delete_staff_form"):
-            staff_to_delete = st.multiselect("Chọn nhân sự muốn xóa:", st.session_state.staff_list)
+        with st.form("delete_staff_list_form"):
+            staff_selections = {}
+            for staff_name in st.session_state.staff_list:
+                staff_selections[staff_name] = st.checkbox(f"👤 {staff_name}", key=f"chk_staff_{staff_name}")
+                
             del_staff_btn = st.form_submit_button("🗑️ Xóa Nhân Sự Đã Chọn", use_container_width=True)
             if del_staff_btn:
-                if staff_to_delete:
-                    st.session_state.staff_list = [s for s in st.session_state.staff_list if s not in staff_to_delete]
+                to_remove = [name for name, selected in staff_selections.items() if selected]
+                if to_remove:
+                    st.session_state.staff_list = [s for s in st.session_state.staff_list if s not in to_remove]
                     save_data()
-                    st.success("Đã xóa nhân sự được chọn!")
+                    st.success(f"Đã xóa thành công các nhân sự: {', '.join(to_remove)}")
                     st.rerun()
                 else:
-                    st.warning("Vui lòng chọn ít nhất một nhân sự để xóa.")
+                    st.warning("Vui lòng tích chọn ít nhất một nhân sự để xóa.")
     else:
         st.info("Hiện tại chưa có nhân sự nào trong hệ thống.")
 
