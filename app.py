@@ -176,12 +176,18 @@ if not st.session_state.logged_in:
                 
                 if submit_lg:
                     user_info = st.session_state.accounts.get(lg_user)
-                    if user_info and user_info.get("password") == lg_pass:
-                        st.session_state.logged_in = True
-                        st.session_state.username = lg_user
-                        st.session_state.role = user_info.get("role", "nhan_vien")
-                        st.success("Đăng nhập thành công!")
-                        st.rerun()
+                    if user_info:
+                        stored_pass = user_info.get("password") if isinstance(user_info, dict) else user_info
+                        user_role = user_info.get("role", "admin" if lg_user == "admin" else "nhan_vien") if isinstance(user_info, dict) else ("admin" if lg_user == "admin" else "nhan_vien")
+                        
+                        if stored_pass == lg_pass:
+                            st.session_state.logged_in = True
+                            st.session_state.username = lg_user
+                            st.session_state.role = user_role
+                            st.success("Đăng nhập thành công!")
+                            st.rerun()
+                        else:
+                            st.error("Sai tên đăng nhập hoặc mật khẩu!")
                     else:
                         st.error("Sai tên đăng nhập hoặc mật khẩu!")
                         
@@ -200,7 +206,6 @@ if not st.session_state.logged_in:
                     elif rg_user in st.session_state.accounts:
                         st.error("Tên đăng nhập này đã tồn tại!")
                     else:
-                        # Mặc định tài khoản đăng ký mới là nhân viên
                         st.session_state.accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                         save_data()
                         st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
@@ -483,7 +488,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
     
-    # Chỉ Admin mới có quyền thấy tùy chọn quản lý tài khoản hệ thống
     if st.session_state.role == "admin":
         if st.button("👥 Quản Lý Tài Khoản", use_container_width=True):
             st.session_state.current_menu = "Quản Lý Tài Khoản"
@@ -548,7 +552,7 @@ if feature == "manage_accounts":
         
         acc_data = []
         for u, info in st.session_state.accounts.items():
-            acc_data.append({"Tên Đăng Nhập": u, "Quyền Hạn": info.get("role", "nhan_vien")})
+            acc_data.append({"Tên Đăng Nhập": u, "Quyền Hạn": info.get("role", "nhan_vien") if isinstance(info, dict) else "nhan_vien"})
         
         acc_df = pd.DataFrame(acc_data)
         
@@ -561,7 +565,8 @@ if feature == "manage_accounts":
                 for idx, row in edited_acc.iterrows():
                     u = row["Tên Đăng Nhập"]
                     r = row["Quyền Hạn"]
-                    old_pass = st.session_state.accounts.get(u, {}).get("password", "123456")
+                    old_info = st.session_state.accounts.get(u, {"password": "123456", "role": "nhan_vien"})
+                    old_pass = old_info.get("password") if isinstance(old_info, dict) else old_info
                     new_accounts[u] = {"password": old_pass, "role": r}
                     
                 st.session_state.accounts = new_accounts
