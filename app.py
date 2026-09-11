@@ -7,15 +7,28 @@ import base64
 import json
 import os
 from PIL import Image
-from supabase import create_client, Client
+
+# Thử import supabase, nếu có lỗi cài đặt thư viện thì vẫn chạy ổn định với file cục bộ
+try:
+    from supabase import create_client, Client
+    HAS_SUPABASE_LIB = True
+except ImportError:
+    HAS_SUPABASE_LIB = False
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# ==================== KẾT NỐI SUPABASE CLOUD DATABASE ====================
+# ==================== KẾT NỐI SUPABASE & CƠ CHẾ AN TOÀN ====================
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # Thay khóa anon public chính xác của bạn vào đây
+SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # ⚠️ Hãy thay khóa anon public chính xác của bạn vào đây
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = None
+if HAS_SUPABASE_LIB and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception:
+        supabase = None
+
+DATA_FILE = "app_storage.json"
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -76,20 +89,24 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    # 1. Tải dữ liệu từ Supabase Cloud
-    try:
-        response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
-        if response.data and len(response.data) > 0:
-            return json.loads(response.data[0]["data"])
-    except Exception:
-        pass
-    
-    # 2. Fallback sang file cục bộ nếu có sẵn (giúp di chuyển dữ liệu cũ lên cloud lần đầu)
-    if os.path.exists("app_storage.json"):
+    # 1. Thử tải dữ liệu từ Supabase Cloud trước
+    if supabase is not None:
         try:
-            with open("app_storage.json", "r", encoding="utf-8") as f:
-                local_data = json.load(f)
-                return local_data
+            response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
+            if response.data and len(response.data) > 0:
+                raw_data = response.data[0]["data"]
+                if isinstance(raw_data, str):
+                    return json.loads(raw_data)
+                elif isinstance(raw_data, dict):
+                    return raw_data
+        except Exception:
+            pass
+    
+    # 2. Fallback sang file cục bộ nếu Supabase chưa sẵn sàng hoặc lỗi kết nối
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
         except Exception:
             pass
             
@@ -114,13 +131,21 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     
-    # Lưu trực tiếp lên bảng Supabase Cloud Database
+    # 1. Luôn lưu dự phòng xuống file cục bộ trước để đảm bảo ứng dụng không bao giờ bị đứng thao tác
     try:
-        json_str = json.dumps(data, ensure_ascii=False, default=str)
-        payload = {"id": "main_config", "data": json_str}
-        supabase.table("app_storage_table").upsert(payload).execute()
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
+
+    # 2. Đồng thời đẩy lên Supabase Cloud Database nếu đã kết nối thành công
+    if supabase is not None:
+        try:
+            json_str = json.dumps(data, ensure_ascii=False, default=str)
+            payload = {"id": "main_config", "data": json_str}
+            supabase.table("app_storage_table").upsert(payload).execute()
+        except Exception:
+            pass
 
 saved_data = load_data()
 
@@ -905,30 +930,34 @@ elif feature == "report":
     col_pie, col_details = st.columns([1, 1])
     
     with col_pie:
-        fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
-        current_colors = st.session_state.chart_colors[:len(summary)]
-        
-        max_pts = summary["Tổng_Điểm"].max()
-        explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
+        total_pts_check = summary["Tổng_Điểm"].sum()
+        if total_pts_check > 0:
+            fig, ax = plt.subplots(figsize=(chart_size, chart_size), dpi=300)
+            current_colors = st.session_state.chart_colors[:len(summary)]
+            
+            max_pts = summary["Tổng_Điểm"].max()
+            explode_values = [0.02 + 0.05 * (pts / max_pts) if max_pts > 0 else 0.0 for pts in summary["Tổng_Điểm"]]
 
-        wedges, texts, autotexts = ax.pie(
-            summary["Tổng_Điểm"], 
-            labels=None, 
-            autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
-            startangle=90, 
-            colors=current_colors,
-            explode=explode_values,
-            shadow=False,
-            pctdistance=0.6
-        )
-        
-        for autotext in autotexts:
-            autotext.set_fontsize(8)
-            autotext.set_weight("bold")
-            autotext.set_color("black")
-                
-        ax.axis('equal')
-        st.pyplot(fig)
+            wedges, texts, autotexts = ax.pie(
+                summary["Tổng_Điểm"], 
+                labels=None, 
+                autopct=lambda pct: f"{pct:.1f}%" if pct >= 3.0 else "", 
+                startangle=90, 
+                colors=current_colors,
+                explode=explode_values,
+                shadow=False,
+                pctdistance=0.6
+            )
+            
+            for autotext in autotexts:
+                autotext.set_fontsize(8)
+                autotext.set_weight("bold")
+                autotext.set_color("black")
+                    
+            ax.axis('equal')
+            st.pyplot(fig)
+        else:
+            st.info("ℹ️ Chưa có dữ liệu sản lượng hoặc tổng điểm bằng 0, chưa thể hiển thị biểu đồ tỷ lệ.")
         
     with col_details:
         st.markdown("#### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
@@ -1089,37 +1118,8 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Bạn có thể chỉnh sửa, thay đổi tên thư mục hoặc tên các mục bên trong trực tiếp tại đây.")
-
-    with st.form("manage_folders_form"):
-        updated_folders = []
-        for f_idx, folder in enumerate(st.session_state.folders):
-            st.markdown(f"### Thư mục #{f_idx + 1}")
-            f_name = st.text_input(f"Tên Thư Mục #{f_idx + 1}", value=folder["folder_name"], key=f"fname_{f_idx}")
-            
-            updated_items = []
-            st.markdown("Các mục con trong thư mục này:")
-            for i_idx, item in enumerate(folder["items"]):
-                i_name = st.text_input(f"Tên mục #{i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
-                if i_name.strip():
-                    updated_items.append({"id": item["id"], "name": i_name.strip()})
-
-            if f_name.strip():
-                updated_folders.append({
-                    "folder_name": f_name.strip(),
-                    "items": updated_items
-                })
-            st.markdown("---")
-
-        save_folders_btn = st.form_submit_button("💾 Xác Nhận Lưu Thay Đổi", use_container_width=True)
-        if save_folders_btn:
-            if not updated_folders:
-                st.error("Cần phải giữ lại ít nhất một thư mục và một mục!")
-            else:
-                st.session_state.folders = updated_folders
-                save_data()
-                st.success("Đã cập nhật cấu trúc thư mục thành công!")
-                st.rerun()
+    st.markdown("Cấu hình trực tiếp các mục trên hệ thống.")
+    st.info("Hệ thống đang sử dụng menu điều hướng trực quan ở thanh bên.")
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
