@@ -1338,23 +1338,39 @@ elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
     
     st.subheader("Quản Lý Nhân Sự")
-    st.markdown("💡 Bạn có thể thêm, sửa hoặc xóa tên nhân sự trực tiếp trong bảng dưới đây. Để trống hoàn toàn nếu chưa có nhân sự nào.")
-    with st.form("staff_form"):
-        staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
-        edited_staff_df = st.data_editor(
-            staff_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="staff_editor",
-            hide_index=True
-        )
-        save_staff_btn = st.form_submit_button("💾 Lưu Danh Sách Nhân Sự", use_container_width=True)
-        if save_staff_btn:
-            new_staff_list = [str(x).strip() for x in edited_staff_df["Nhân Sự"].tolist() if str(x).strip() != "" and str(x).strip().lower() != "nan"]
-            st.session_state.staff_list = new_staff_list
-            save_data()
-            st.success("Đã cập nhật danh sách nhân sự thành công!")
-            st.rerun()
+    st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm, hoặc chọn xóa nhân sự khỏi danh sách.")
+    
+    with st.form("add_staff_form"):
+        new_staff_input = st.text_input("Thêm tên nhân sự mới:")
+        add_staff_btn = st.form_submit_button("➕ Thêm Nhân Sự", use_container_width=True)
+        if add_staff_btn:
+            clean_name = new_staff_input.strip()
+            if clean_name:
+                if clean_name not in st.session_state.staff_list:
+                    st.session_state.staff_list.append(clean_name)
+                    save_data()
+                    st.success(f"Đã thêm nhân sự **{clean_name}** thành công!")
+                    st.rerun()
+                else:
+                    st.warning("Tên nhân sự này đã có trong danh sách.")
+            else:
+                st.warning("Vui lòng nhập tên nhân sự!")
+
+    if st.session_state.staff_list:
+        st.markdown("##### Danh Sách Nhân Sự Hiện Tại")
+        with st.form("delete_staff_form"):
+            staff_to_delete = st.multiselect("Chọn nhân sự muốn xóa:", st.session_state.staff_list)
+            del_staff_btn = st.form_submit_button("🗑️ Xóa Nhân Sự Đã Chọn", use_container_width=True)
+            if del_staff_btn:
+                if staff_to_delete:
+                    st.session_state.staff_list = [s for s in st.session_state.staff_list if s not in staff_to_delete]
+                    save_data()
+                    st.success("Đã xóa nhân sự được chọn!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng chọn ít nhất một nhân sự để xóa.")
+    else:
+        st.info("Hiện tại chưa có nhân sự nào trong hệ thống.")
 
     st.markdown("---")
     
@@ -1453,7 +1469,7 @@ elif feature == "clean_data":
                 st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
 
     st.markdown("---")
-    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_wood_width=True if 'use_container_wood_width' in globals() else True):
+    if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
         st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
         save_data()
         st.success("Đã làm sạch hoàn toàn thùng rác!")
