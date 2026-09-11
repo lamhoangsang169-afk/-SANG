@@ -19,7 +19,7 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 # ==================== KẾT NỐI SUPABASE & CƠ CHẾ AN TOÀN ====================
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY" # ⚠️ Hãy thay khóa anon public chính xác của bạn vào đây
+SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP" # ⚠️ Hãy thay khóa anon public chính xác của bạn vào đây
 
 supabase = None
 if HAS_SUPABASE_LIB and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
