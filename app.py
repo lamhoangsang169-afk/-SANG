@@ -506,7 +506,6 @@ with st.sidebar:
     for f_idx, folder in enumerate(st.session_state.folders):
         with st.expander(folder["folder_name"], expanded=True):
             for item in folder["items"]:
-                # Ẩn mục Thùng rác (menu_4) nếu không phải admin
                 if st.session_state.role != "admin" and item["id"] == "menu_4":
                     continue
                 
@@ -1236,8 +1235,6 @@ elif feature == "trash":
         if not st.session_state.deleted_input_df.empty:
             st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
             
-            trash_zoom = st.slider("🔍 Kích thước ảnh trong thùng rác:", min_value=50, max_value=200, value=80, step=10, key="trash_zoom")
-            
             with st.form("trash_form"):
                 for idx, row in st.session_state.deleted_input_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
@@ -1257,7 +1254,7 @@ elif feature == "trash":
                         img_url_val = row.get("Hình Ảnh", "")
                         if img_url_val and isinstance(img_url_val, str):
                             try:
-                                st.image(img_url_val, width=trash_zoom)
+                                st.image(img_url_val, width=50)
                                 with st.popover("🔍 Phóng to"):
                                     st.image(img_url_val, use_container_width=True)
                             except Exception:
