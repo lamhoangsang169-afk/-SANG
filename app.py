@@ -1281,16 +1281,9 @@ elif feature == "manage_folders":
             st.markdown("##### Các mục trong thư mục này:")
             updated_items = []
             for i_idx, item in enumerate(folder["items"]):
-                col_i1, col_i2 = st.columns([3, 1])
-                with col_i1:
-                    new_item_name = st.text_input(f"Tên mục {i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
-                with col_i2:
-                    remove_item = st.checkbox(f"Xóa mục này", key=f"del_item_{f_idx}_{i_idx}")
-                
-                if not remove_item:
-                    updated_items.append({"id": item["id"], "name": new_item_name})
+                new_item_name = st.text_input(f"Tên mục {i_idx + 1}", value=item["name"], key=f"item_name_{f_idx}_{i_idx}")
+                updated_items.append({"id": item["id"], "name": new_item_name})
             
-            # Thêm mục mới vào thư mục
             add_new_item = st.text_input(f"Thêm tên mục mới vào thư mục này (để trống nếu không thêm)", key=f"add_new_{f_idx}")
             if add_new_item.strip():
                 new_id = f"custom_menu_{f_idx}_{len(updated_items) + 1}"
