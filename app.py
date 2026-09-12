@@ -46,7 +46,6 @@ class VietnamTz(datetime.tzinfo):
 
 VN_TIMEZONE = VietnamTz()
 
-# Đã làm trống master_rules để không bị tự động khôi phục lại các mục cũ khi xóa sạch
 master_rules = []
 
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
@@ -384,6 +383,9 @@ if "avatar_url" not in st.session_state:
 
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = "1. Nhập Sản Lượng"
+
+if "last_success_report" not in st.session_state:
+    st.session_state.last_success_report = None
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -816,8 +818,32 @@ elif feature == "input_production":
 
     st.subheader(f"{menu} ({today_str})")
 
+    # Hiển thị thông báo chi tiết ngay phía dưới tiêu đề nếu vừa báo cáo sản lượng thành công
+    if st.session_state.last_success_report:
+        rep = st.session_state.last_success_report
+        st.markdown(f"""
+        <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h4 style="color: #10b981; margin-top: 0; margin-bottom: 8px;">✅ Báo Cáo Sản Lượng Thành Công!</h4>
+            <p style="margin: 3px 0;">👤 Nhân sự: <b>{rep['nhan_su']}</b></p>
+            <p style="margin: 3px 0;">📌 Hạng mục: <b>{rep['hang_muc']}</b></p>
+            <p style="margin: 3px 0;">📦 Số lượng: <b>{rep['so_luong']} {rep['don_vi']}</b></p>
+            <p style="margin: 3px 0;">⭐ Hệ số điểm: <b>{rep['he_so']}</b> &nbsp;|&nbsp; 🎯 <b>Tổng điểm: {rep['tong_diem']} điểm</b></p>
+            <p style="margin: 3px 0; font-size: 0.85rem; color: #666;">📅 Thời gian: {rep['thoi_gian']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("✖️ Đóng thông báo này", key="close_success_banner"):
+            st.session_state.last_success_report = None
+            st.rerun()
+
+    if not st.session_state.rules_df.empty:
+        danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
+    else:
+        danh_sach_hang_muc = []
+
     if not st.session_state.staff_list:
         st.warning("⚠️ Danh sách nhân sự hiện đang trống. Vui lòng đăng ký tài khoản con kèm tên nhân sự để hệ thống tự động cập nhật!")
+    elif not danh_sach_hang_muc:
+        st.warning("⚠️ Danh sách hạng mục công việc đang trống. Vui lòng vào mục **3. Tham Chiếu Công Việc** để thêm các định mức công việc!")
     elif not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
@@ -830,7 +856,6 @@ elif feature == "input_production":
             with f_col2:
                 nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
             with f_col3:
-                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                 
             img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
@@ -885,6 +910,18 @@ elif feature == "input_production":
                         "Ghi Chú": ghi_chu
                     }
                     safe_merge_and_save("input_df", pd.DataFrame([new_row]))
+                    
+                    # Lưu lại thông tin báo cáo thành công gần nhất vào session state
+                    st.session_state.last_success_report = {
+                        "nhan_su": nhan_su,
+                        "hang_muc": hang_muc,
+                        "so_luong": so_luong,
+                        "don_vi": don_vi,
+                        "he_so": he_so,
+                        "tong_diem": round(tong_diem, 2),
+                        "thoi_gian": now_vn.strftime("%d/%m/%Y %H:%M:%S")
+                    }
+                    
                     st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
 
