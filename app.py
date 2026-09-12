@@ -177,7 +177,7 @@ def safe_merge_and_save(table_key, new_rows_df):
     latest = load_data()
     if table_key == "input_df":
         existing = latest.get("input_df", [])
-        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Thời Gian", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
         st.session_state.input_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
     elif table_key == "attendance_df":
@@ -340,14 +340,17 @@ if "rules_df" not in st.session_state:
     r_data = saved_data.get("rules_df")
     st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(columns=["STT", "Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"])
 
-default_input_columns = ["STT", "Ngày", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+default_input_columns = ["STT", "Ngày", "Thời Gian", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
     in_data = saved_data.get("input_df")
     st.session_state.input_df = pd.DataFrame(in_data) if in_data else pd.DataFrame(columns=default_input_columns)
 
 for col in default_input_columns:
     if col not in st.session_state.input_df.columns:
-        st.session_state.input_df[col] = ""
+        if col == "Thời Gian":
+            st.session_state.input_df[col] = "00:00:00"
+        else:
+            st.session_state.input_df[col] = ""
 
 if "attendance_df" not in st.session_state:
     att_data = saved_data.get("attendance_df")
@@ -359,7 +362,10 @@ if "deleted_input_df" not in st.session_state:
 
 for col in default_input_columns:
     if col not in st.session_state.deleted_input_df.columns:
-        st.session_state.deleted_input_df[col] = ""
+        if col == "Thời Gian":
+            st.session_state.deleted_input_df[col] = "00:00:00"
+        else:
+            st.session_state.deleted_input_df[col] = ""
 
 if "chart_colors" not in st.session_state:
     st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
@@ -801,6 +807,7 @@ if feature == "manage_accounts":
 elif feature == "input_production":
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
+    current_time_str = now_vn.strftime("%H:%M:%S")
     
     active_staff = []
     inactive_staff = []
@@ -882,6 +889,7 @@ elif feature == "input_production":
                     new_row = {
                         "STT": 1,
                         "Ngày": today_str,
+                        "Thời Gian": current_time_str,
                         "Tài Khoản Tạo": st.session_state.username,
                         "Nhân Sự": nhan_su,
                         "Hạng Mục Công Việc": hang_muc,
@@ -897,7 +905,6 @@ elif feature == "input_production":
                     st.session_state.show_success_msg = True
                     st.rerun()
 
-    # Hiển thị thông báo gọn gàng "Đã báo cáo" ngay phía dưới form nhập liệu (nếu vừa gửi thành công)
     if st.session_state.get("show_success_msg", False):
         st.markdown("""
         <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 20px; text-align: center;">
@@ -916,6 +923,8 @@ elif feature == "input_production":
     current_input_df = pd.DataFrame(latest_input_list) if latest_input_list else st.session_state.input_df.copy()
     
     if not current_input_df.empty:
+        if "Thời Gian" not in current_input_df.columns:
+            current_input_df["Thời Gian"] = "00:00:00"
         current_input_df["STT"] = range(1, len(current_input_df) + 1)
         
         s_col1, s_col2 = st.columns(2)
@@ -941,10 +950,12 @@ elif feature == "input_production":
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
                         acc_creator = row.get('Tài Khoản Tạo', 'Admin')
+                        time_val = row.get('Thời Gian', '00:00:00')
                         st.markdown(f"""
                         <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 💻 Tài khoản nhập: <b>{acc_creator}</b><br>
-                            👤 Nhân sự: <b>{row['Nhân Sự']}</b> &nbsp;|&nbsp; 📌 {row['Hạng Mục Công Việc']}<br>
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; ⏰ <b>{time_val}</b><br>
+                            💻 Tài khoản nhập: <b>{acc_creator}</b> &nbsp;|&nbsp; 👤 Nhân sự: <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']}<br>
                             📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
@@ -1451,10 +1462,12 @@ elif feature == "trash":
                 for idx, row in st.session_state.deleted_input_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
+                        time_val = row.get('Thời Gian', '00:00:00')
                         st.markdown(f"""
                         <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; ⏰ {time_val}<br>
+                            👤 Nhân sự: <b>{row['Nhân Sự']}</b> &nbsp;|&nbsp; 📌 {row['Hạng Mục Công Việc']}<br>
+                            📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
                         """, unsafe_allow_html=True)
