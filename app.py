@@ -149,8 +149,7 @@ def save_data():
         "sidebar_opacity": st.session_state.get("sidebar_opacity", 0.9),
         "text_color": st.session_state.get("text_color", "#31333F"),
         "bg_image_url": st.session_state.get("bg_image_url", None),
-        "avatar_url": st.session_state.get("avatar_url", None),
-        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
+        "avatar_url": st.session_state.get("avatar_url", None)
     }
     
     current_all_data["rules_df"] = st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules
@@ -204,7 +203,6 @@ def safe_merge_and_save(table_key, new_rows_df):
 
 saved_data = load_data()
 
-# Tự động kích hoạt cơ chế làm mới trang tự động nếu là Admin và đã bật thư viện autorefresh
 if "auto_refresh_minutes" not in st.session_state:
     st.session_state.auto_refresh_minutes = saved_data.get("auto_refresh_minutes", 5)
 
@@ -265,7 +263,9 @@ if not st.session_state.logged_in:
                             st.session_state.text_color = u_set.get("text_color", "#31333F")
                             st.session_state.bg_image_url = u_set.get("bg_image_url", None)
                             st.session_state.avatar_url = u_set.get("avatar_url", None)
-                            st.session_state.current_menu = u_set.get("current_menu", "1. Nhập Sản Lượng")
+                            
+                            # LUÔN MẶC ĐỊNH HIỂN THỊ BẢNG NHẬP SẢN LƯỢNG KHI ĐĂNG NHẬP
+                            st.session_state.current_menu = "1. Nhập Sản Lượng"
                             
                             st.success("Đăng nhập thành công!")
                             st.rerun()
@@ -298,7 +298,6 @@ if not st.session_state.logged_in:
                             st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
-# Cơ chế tự động làm mới ngầm định chỉ dành riêng cho tài khoản tổng (admin)
 if st.session_state.role == "admin" and HAS_AUTOREFRESH:
     refresh_interval_ms = int(st.session_state.get("auto_refresh_minutes", 5)) * 60 * 1000
     st_autorefresh(interval=refresh_interval_ms, key="admin_global_auto_refresh")
@@ -351,11 +350,9 @@ if "bg_image_url" not in st.session_state:
     st.session_state.bg_image_url = user_settings_dict.get("bg_image_url", None)
 if "avatar_url" not in st.session_state:
     st.session_state.avatar_url = user_settings_dict.get("avatar_url", None)
+
 if "current_menu" not in st.session_state:
-    first_item_name = "1. Nhập Sản Lượng"
-    if st.session_state.folders and st.session_state.folders[0]["items"]:
-        first_item_name = st.session_state.folders[0]["items"][0]["name"]
-    st.session_state.current_menu = user_settings_dict.get("current_menu", first_item_name)
+    st.session_state.current_menu = "1. Nhập Sản Lượng"
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -1475,7 +1472,6 @@ elif feature == "manage_folders":
 elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự Riêng Cho Bạn")
     
-    # Chỉ hiển thị cấu hình thời gian tự động đồng bộ nếu tài khoản đăng nhập là admin tổng
     if st.session_state.role == "admin":
         st.subheader("⚡ Tự Động Đồng Bộ Dữ Liệu Ngầm (Dành cho Admin)")
         st.markdown("Tùy chỉnh thời gian tự động làm mới trang để cập nhật dữ liệu chung từ các tài khoản con (từ 1 đến 60 phút).")
