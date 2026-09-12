@@ -499,11 +499,22 @@ with st.sidebar:
 
     if st.button("🔄 Cập Nhật", use_container_width=True):
         st.cache_data.clear()
-        # Nạp lại toàn bộ dữ liệu tài khoản và cấu hình mới nhất từ database/file
-        reloaded_data = load_data()
-        if "accounts" in reloaded_data:
-            st.session_state.accounts = reloaded_data["accounts"]
-        st.success("Đã cập nhật và đồng bộ hệ thống thành công!")
+        # Đồng bộ toàn diện toàn bộ dữ liệu mới nhất từ cơ sở dữ liệu chung lên giao diện
+        latest_data = load_data()
+        if "accounts" in latest_data:
+            st.session_state.accounts = latest_data["accounts"]
+        if "staff_list" in latest_data:
+            st.session_state.staff_list = latest_data["staff_list"]
+        if "input_df" in latest_data:
+            st.session_state.input_df = pd.DataFrame(latest_data["input_df"])
+        if "attendance_df" in latest_data:
+            st.session_state.attendance_df = pd.DataFrame(latest_data["attendance_df"])
+        if "rules_df" in latest_data:
+            st.session_state.rules_df = pd.DataFrame(latest_data["rules_df"])
+        if "deleted_input_df" in latest_data:
+            st.session_state.deleted_input_df = pd.DataFrame(latest_data["deleted_input_df"])
+            
+        st.success("Đã đồng bộ toàn bộ dữ liệu mới nhất thành công!")
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
