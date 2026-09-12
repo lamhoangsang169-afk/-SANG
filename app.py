@@ -159,6 +159,32 @@ def save_data():
         except Exception:
             pass
 
+# Hàm hỗ trợ nạp và gộp dữ liệu an toàn trước khi ghi nhận thao tác mới từ bất kỳ tài khoản nào
+def safe_merge_and_save(table_key, new_rows_df):
+    latest = load_data()
+    if table_key == "input_df":
+        existing = latest.get("input_df", [])
+        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+        st.session_state.input_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
+        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+    elif table_key == "attendance_df":
+        existing = latest.get("attendance_df", [])
+        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
+        st.session_state.attendance_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
+        st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+    elif table_key == "staff_list":
+        existing_staff = latest.get("staff_list", [])
+        combined = list(set(existing_staff + list(new_rows_df)))
+        st.session_state.staff_list = combined
+    
+    # Đồng thời cập nhật luôn các bảng khác nếu có thay đổi trong db
+    if "accounts" in latest:
+        st.session_state.accounts = latest["accounts"]
+    if "rules_df" in latest:
+        st.session_state.rules_df = pd.DataFrame(latest["rules_df"])
+        
+    save_data()
+
 saved_data = load_data()
 
 # ==================== NẠP DỮ LIỆU TÀI KHOẢN TỪ BỘ NHỚ LƯU TRỮ ====================
@@ -194,6 +220,11 @@ if not st.session_state.logged_in:
                 submit_lg = st.form_submit_button("Đăng Nhập", use_container_width=True)
                 
                 if submit_lg:
+                    # Tải lại tài khoản mới nhất từ database trước khi xác thực
+                    latest_fresh = load_data()
+                    if "accounts" in latest_fresh:
+                        st.session_state.accounts = latest_fresh["accounts"]
+                        
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
                         stored_pass = user_info.get("password") if isinstance(user_info, dict) else user_info
@@ -222,12 +253,17 @@ if not st.session_state.logged_in:
                         st.warning("Vui lòng điền đầy đủ thông tin!")
                     elif rg_pass != rg_pass_confirm:
                         st.error("Mật khẩu xác nhận không khớp!")
-                    elif rg_user in st.session_state.accounts:
-                        st.error("Tên đăng nhập này đã tồn tại!")
                     else:
-                        st.session_state.accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
-                        save_data()
-                        st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
+                        # Tải tài khoản mới nhất để tránh ghi đè tài khoản khác vừa tạo
+                        latest_fresh = load_data()
+                        current_accounts = latest_fresh.get("accounts", st.session_state.accounts)
+                        if rg_user in current_accounts:
+                            st.error("Tên đăng nhập này đã tồn tại!")
+                        else:
+                            current_accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
+                            st.session_state.accounts = current_accounts
+                            save_data()
+                            st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
 # ==================== KHỞI TẠO DỮ LIỆU AN TOÀN TRONG SESSION ====================
@@ -734,9 +770,8 @@ elif feature == "input_production":
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
                     tong_diem = so_luong * he_so
                     
-                    new_stt = len(st.session_state.input_df) + 1
                     new_row = {
-                        "STT": new_stt,
+                        "STT": 1,
                         "Ngày": today_str,
                         "Nhân Sự": nhan_su,
                         "Hạng Mục Công Việc": hang_muc,
@@ -747,9 +782,8 @@ elif feature == "input_production":
                         "Tổng Điểm": round(tong_diem, 2),
                         "Ghi Chú": ghi_chu
                     }
-                    st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
-                    st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
-                    save_data()
+                    # Gọi hàm Safe Merge & Save để gộp an toàn vào database chung, tránh mất dữ liệu của nhân sự khác
+                    safe_merge_and_save("input_df", pd.DataFrame([new_row]))
                     st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
 
@@ -887,6 +921,11 @@ elif feature == "attendance":
             current_time_str = now_vn.strftime("%H:%M:%S")
             
             if check_in_clicked:
+                # Tải dữ liệu mới nhất trước khi kiểm tra ca làm
+                latest_fresh = load_data()
+                if "attendance_df" in latest_fresh:
+                    st.session_state.attendance_df = pd.DataFrame(latest_fresh["attendance_df"])
+
                 already_active = False
                 if not st.session_state.attendance_df.empty:
                     active_check = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
@@ -898,9 +937,8 @@ elif feature == "attendance":
                 if already_active:
                     st.warning(f"⚠️ Nhân sự **{att_staff}** đang trong ca làm việc, không thể Check-in lại khi chưa Check-out!")
                 else:
-                    new_att_stt = len(st.session_state.attendance_df) + 1
                     new_att_row = {
-                        "STT": new_att_stt,
+                        "STT": 1,
                         "Ngày": str(att_date),
                         "Nhân Sự": att_staff,
                         "Giờ Vào Ca": current_time_str,
@@ -908,13 +946,15 @@ elif feature == "attendance":
                         "Số Phút Làm Việc": 0,
                         "Ghi Chú": att_note
                     }
-                    st.session_state.attendance_df = pd.concat([st.session_state.attendance_df, pd.DataFrame([new_att_row])], ignore_index=True)
-                    st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-                    save_data()
+                    safe_merge_and_save("attendance_df", pd.DataFrame([new_att_row]))
                     st.success(f"Đã ghi nhận **Vào ca** cho **{att_staff}** lúc {current_time_str}!")
                     st.rerun()
                 
             if check_out_clicked:
+                latest_fresh = load_data()
+                if "attendance_df" in latest_fresh:
+                    st.session_state.attendance_df = pd.DataFrame(latest_fresh["attendance_df"])
+
                 if not st.session_state.attendance_df.empty:
                     mask = (st.session_state.attendance_df["Nhân Sự"] == att_staff) & \
                            (st.session_state.attendance_df["Ngày"] == str(att_date)) & \
@@ -1382,9 +1422,12 @@ elif feature == "settings_ui":
         if add_staff_btn:
             clean_name = new_staff_input.strip()
             if clean_name:
-                if clean_name not in st.session_state.staff_list:
-                    st.session_state.staff_list.append(clean_name)
-                    save_data()
+                # Tải danh sách nhân sự mới nhất trước khi thêm để tránh ghi đè
+                latest_fresh = load_data()
+                current_staff = latest_fresh.get("staff_list", st.session_state.staff_list)
+                if clean_name not in current_staff:
+                    current_staff.append(clean_name)
+                    safe_merge_and_save("staff_list", current_staff)
                     st.success(f"Đã thêm nhân sự **{clean_name}** thành công!")
                     st.rerun()
                 else:
