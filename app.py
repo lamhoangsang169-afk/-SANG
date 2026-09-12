@@ -161,7 +161,7 @@ def save_data():
 
 saved_data = load_data()
 
-# ==================== KIỂM TRA ĐĂNG NHẬP & PHÂN QUYỀN ====================
+# ==================== NẠP DỮ LIỆU TÀI KHOẢN TỪ BỘ NHỚ LƯU TRỮ ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -169,10 +169,11 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "nhan_vien"
 
-# Ép buộc cố định cấu hình tài khoản admin chuẩn xác
-st.session_state.accounts = {
-    "admin": {"password": "123456", "role": "admin"}
-}
+if "accounts" not in st.session_state:
+    loaded_accounts = saved_data.get("accounts", {})
+    if "admin" not in loaded_accounts:
+        loaded_accounts["admin"] = {"password": "123456", "role": "admin"}
+    st.session_state.accounts = loaded_accounts
 
 if not st.session_state.logged_in:
     st.markdown("""
@@ -225,6 +226,7 @@ if not st.session_state.logged_in:
                         st.error("Tên đăng nhập này đã tồn tại!")
                     else:
                         st.session_state.accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
+                        # 👉 ĐÃ BỔ SUNG LƯU VĨNH VIỄN VÀO HỆ THỐNG/DATABASE
                         save_data()
                         st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
@@ -427,7 +429,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Fragment độc lập giúp cập nhật ảnh đại diện mượt mà, không chớp toàn trang
+# Fragment độc lập chống chớp màn hình khi cập nhật ảnh đại diện
 @st.fragment
 def render_avatar_widget():
     has_custom_avatar = False
@@ -490,7 +492,6 @@ with st.sidebar:
 
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
     
-    # Gọi hàm widget avatar đã được tối ưu fragment cục bộ
     render_avatar_widget()
 
     st.markdown('</div>', unsafe_allow_html=True)
