@@ -907,7 +907,6 @@ elif feature == "input_production":
     st.markdown("---")
     st.subheader("Bảng Tin")
     
-    # Luôn tải dữ liệu mới nhất từ cloud/storage để hiển thị toàn bộ bản ghi không bị thiếu
     latest_storage = load_data()
     latest_input_list = latest_storage.get("input_df", [])
     current_input_df = pd.DataFrame(latest_input_list) if latest_input_list else st.session_state.input_df.copy()
