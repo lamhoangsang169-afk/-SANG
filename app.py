@@ -156,8 +156,8 @@ def save_data():
     current_all_data["input_df"] = st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else []
     current_all_data["attendance_df"] = st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else []
     current_all_data["deleted_input_df"] = st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else []
-    current_all_data["staff_list"] = st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list
     current_all_data["account_staff_map"] = st.session_state.account_staff_map if "account_staff_map" in st.session_state else {}
+    current_all_data["staff_list"] = list(st.session_state.account_staff_map.values()) if "account_staff_map" in st.session_state else (st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list)
     current_all_data["chart_colors"] = st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors
     current_all_data["folders"] = st.session_state.folders if "folders" in st.session_state else default_folders
     current_all_data["accounts"] = st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
@@ -195,6 +195,9 @@ def safe_merge_and_save(table_key, new_rows_df):
     
     if "accounts" in latest:
         st.session_state.accounts = latest["accounts"]
+    if "account_staff_map" in latest:
+        st.session_state.account_staff_map = latest["account_staff_map"]
+        st.session_state.staff_list = list(st.session_state.account_staff_map.values())
     if "rules_df" in latest:
         st.session_state.rules_df = pd.DataFrame(latest["rules_df"])
     if "auto_refresh_minutes" in latest:
@@ -202,6 +205,7 @@ def safe_merge_and_save(table_key, new_rows_df):
         
     save_data()
 
+# Nạp dữ liệu mới nhất từ Cloud mỗi lần khởi chạy/refresh để đồng bộ tuyệt đối
 saved_data = load_data()
 
 if "auto_refresh_minutes" not in st.session_state:
@@ -222,6 +226,9 @@ if "accounts" not in st.session_state:
 
 if "account_staff_map" not in st.session_state:
     st.session_state.account_staff_map = saved_data.get("account_staff_map", {})
+
+# Đồng bộ danh sách nhân sự từ bản đồ tài khoản
+st.session_state.staff_list = list(st.session_state.account_staff_map.values())
 
 if not st.session_state.logged_in:
     st.markdown("""
@@ -249,6 +256,7 @@ if not st.session_state.logged_in:
                         st.session_state.auto_refresh_minutes = latest_fresh["auto_refresh_minutes"]
                     if "account_staff_map" in latest_fresh:
                         st.session_state.account_staff_map = latest_fresh["account_staff_map"]
+                        st.session_state.staff_list = list(st.session_state.account_staff_map.values())
                         
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
@@ -300,16 +308,13 @@ if not st.session_state.logged_in:
                             current_accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                             st.session_state.accounts = current_accounts
                             
-                            # Lưu ánh xạ tài khoản -> tên nhân sự
                             if "account_staff_map" not in st.session_state:
                                 st.session_state.account_staff_map = latest_fresh.get("account_staff_map", {})
                             st.session_state.account_staff_map[rg_user] = rg_staff_name.strip()
-                            
-                            # Đồng bộ lại danh sách nhân sự chính thức từ map tài khoản
                             st.session_state.staff_list = list(st.session_state.account_staff_map.values())
                                 
                             save_data()
-                            st.success("Đăng ký thành công! Tên nhân sự đã được liên kết với tài khoản. Bạn có thể chuyển sang tab Đăng Nhập.")
+                            st.success("Đăng ký thành công! Tên nhân sự đã được liên kết với hệ thống. Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
 if st.session_state.role == "admin" and HAS_AUTOREFRESH:
@@ -342,14 +347,6 @@ if "deleted_input_df" not in st.session_state:
 for col in default_input_columns:
     if col not in st.session_state.deleted_input_df.columns:
         st.session_state.deleted_input_df[col] = ""
-
-# Đảm bảo danh sách nhân sự chỉ bao gồm các nhân sự được gắn kết từ tài khoản đăng ký
-if "account_staff_map" in saved_data and saved_data["account_staff_map"]:
-    st.session_state.account_staff_map = saved_data["account_staff_map"]
-    st.session_state.staff_list = list(st.session_state.account_staff_map.values())
-else:
-    # Nếu chưa có map, lọc sạch rác thủ công và chỉ lấy từ accounts nếu có định dạng
-    st.session_state.staff_list = [info.get("staff_name") for u, info in st.session_state.accounts.items() if isinstance(info, dict) and info.get("staff_name")]
 
 if "chart_colors" not in st.session_state:
     st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
@@ -740,21 +737,17 @@ if feature == "manage_accounts":
                 else:
                     st.session_state.accounts = new_accounts
                     
-                    # XÓA TOÀN BỘ DỮ LIỆU & NHÂN SỰ LIÊN QUAN ĐẾN TÀI KHOẢN BỊ XÓA
                     if deleted_users:
-                        # 1. Thu hồi tên nhân sự liên kết trong account_staff_map và xóa khỏi staff_list
                         if "account_staff_map" in st.session_state:
                             for du in deleted_users:
                                 st.session_state.account_staff_map.pop(du, None)
                             st.session_state.staff_list = list(st.session_state.account_staff_map.values())
                         
-                        # 2. Xóa sản lượng do tài khoản đó tạo
                         if not st.session_state.input_df.empty and "Tài Khoản Tạo" in st.session_state.input_df.columns:
                             st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["Tài Khoản Tạo"].isin(deleted_users)].reset_index(drop=True)
                             if not st.session_state.input_df.empty:
                                 st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                                 
-                        # 3. Xóa cài đặt cá nhân hóa user_settings của tài khoản đó
                         latest_all = load_data()
                         if "user_settings" in latest_all:
                             for du in deleted_users:
