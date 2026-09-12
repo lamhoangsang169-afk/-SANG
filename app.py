@@ -46,24 +46,8 @@ class VietnamTz(datetime.tzinfo):
 
 VN_TIMEZONE = VietnamTz()
 
-master_rules = [
-    {"STT": 1, "Hạng Mục Công Việc": "Lấy hộp có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 2, "Hạng Mục Công Việc": "Lấy hộp mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 3, "Hạng Mục Công Việc": "Lấy đế có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 4, "Hạng Mục Công Việc": "Lấy đế mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 5, "Hạng Mục Công Việc": "Lấy phụ kiện có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.5, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 6, "Hạng Mục Công Việc": "Lấy phụ kiện mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 7, "Hạng Mục Công Việc": "Lấy mặt có sẵn", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 8, "Hạng Mục Công Việc": "Lấy mặt mới", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kho / Vận hành"},
-    {"STT": 9, "Hạng Mục Công Việc": "Vệ sinh + kiểm tra ,+ cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.5, "Ghi Chú": "Kiểm tra chất lượng"},
-    {"STT": 10, "Hạng Mục Công Việc": "Kiểm tra BTP + cắt hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
-    {"STT": 11, "Hạng Mục Công Việc": "Kiểm tra hộp + cất hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Kiểm tra chất lượng"},
-    {"STT": 12, "Hạng Mục Công Việc": "Kiểm tra pha lê + cất hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Kiểm tra chất lượng"},
-    {"STT": 13, "Hạng Mục Công Việc": "Giao hàng shiper", "Đơn Vị": "Cái", "Hệ Số Điểm": 1.0, "Ghi Chú": "Vận chuyển / Giao nhận"},
-    {"STT": 14, "Hạng Mục Công Việc": "tự đi giao hàng", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Vận chuyển / Giao nhận"},
-    {"STT": 15, "Hạng Mục Công Việc": "Nhận hàng gia công ngoài", "Đơn Vị": "Cái", "Hệ Số Điểm": 0.1, "Ghi Chú": "Vận chuyển / Giao nhận"},
-    {"STT": 16, "Hạng Mục Công Việc": "Cắp pha lê tấm", "Đơn Vị": "Cái", "Hệ Số Điểm": 2.0, "Ghi Chú": "Sản xuất / Gia công"},
-]
+# Đã làm trống master_rules để không bị tự động khôi phục lại các mục cũ khi xóa sạch
+master_rules = []
 
 default_chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
@@ -355,7 +339,7 @@ user_settings_dict = saved_data.get("user_settings", {}).get(st.session_state.us
 
 if "rules_df" not in st.session_state:
     r_data = saved_data.get("rules_df")
-    st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(master_rules)
+    st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(columns=["STT", "Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"])
 
 default_input_columns = ["STT", "Ngày", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
@@ -846,7 +830,7 @@ elif feature == "input_production":
             with f_col2:
                 nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
             with f_col3:
-                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
+                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                 
             img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
@@ -1431,38 +1415,6 @@ elif feature == "rules":
             save_data()
             st.success("Đã xóa các hạng mục công việc được chọn thành công!")
             st.rerun()
-
-    current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
-    deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
-    
-    if deleted_items_list:
-        st.markdown("---")
-        st.markdown("#### 📥 Khôi Phục Các Hạng Mục Mặc Định Đã Xóa")
-        deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
-        selected_to_restore = st.multiselect("Chọn hạng mục muốn khôi phục:", deleted_names)
-        
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button("📥 Khôi Phục Đã Chọn", use_container_width=True):
-                if selected_to_restore:
-                    items_to_add = [item for item in deleted_items_list if item["Hạng Mục Công Việc"] in selected_to_restore]
-                    restored_df = pd.DataFrame(items_to_add)
-                    st.session_state.rules_df = pd.concat([st.session_state.rules_df, restored_df], ignore_index=True)
-                    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
-                    save_data()
-                    st.success("Đã khôi phục thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng chọn mục cần khôi phục!")
-        with col_r2:
-            if st.button("🔥 Xóa Vĩnh Viễn Đã Chọn Khỏi Danh Sách Xóa", use_container_width=True):
-                if selected_to_restore:
-                    master_rules[:] = [item for item in master_rules if item["Hạng Mục Công Việc"] not in selected_to_restore]
-                    save_data()
-                    st.success("Đã xóa vĩnh viễn các mục đã chọn khỏi bộ nhớ tạm!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng chọn mục cần xóa vĩnh viễn!")
 
 # ==================== THÙNG RÁC SẢN LƯỢNG ====================
 elif feature == "trash":
