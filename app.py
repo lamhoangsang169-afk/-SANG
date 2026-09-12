@@ -1379,17 +1379,67 @@ elif feature == "report":
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
     st.header(menu)
-    st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây. Bạn có thể tự do thêm, sửa, xóa các mục mà không bị cố định cứng.")
+    st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây. Tích chọn cột **Xóa** ở dòng tương ứng để xóa hạng mục công việc.")
     
     if not st.session_state.rules_df.empty:
         st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
         
+    rules_display_df = st.session_state.rules_df.copy()
+    if "Xóa" not in rules_display_df.columns:
+        rules_display_df.insert(0, "Xóa", False)
+
+    with st.form("rules_form"):
+        edited_rules = st.data_editor(
+            rules_display_df, 
+            num_rows="dynamic", 
+            use_container_width=True, 
+            key="rules_editor",
+            hide_index=True,
+            column_config={
+                "Xóa": st.column_config.CheckboxColumn("Xóa dòng", default=False),
+                "STT": st.column_config.NumberColumn("STT", disabled=True),
+                "Hạng Mục Công Việc": st.column_config.TextColumn("Hạng Mục Công Việc"),
+                "Đơn Vị": st.column_config.TextColumn("Đơn Vị"),
+                "Hệ Số Điểm": st.column_config.NumberColumn("Hệ Số Điểm", format="%.2f"),
+                "Ghi Chú": st.column_config.TextColumn("Ghi Chú")
+            }
+        )
+        
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            save_rules_btn = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
+        with col_b2:
+            delete_rules_btn = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
+            
+        if save_rules_btn:
+            if "Xóa" in edited_rules.columns:
+                edited_rules = edited_rules.drop(columns=["Xóa"])
+            edited_rules["STT"] = range(1, len(edited_rules) + 1)
+            st.session_state.rules_df = edited_rules
+            save_data()
+            st.success("Đã lưu danh mục tham chiếu công việc thành công!")
+            st.rerun()
+            
+        if delete_rules_btn:
+            if "Xóa" in edited_rules.columns:
+                keep_rules = edited_rules[edited_rules["Xóa"] != True].drop(columns=["Xóa"])
+            else:
+                keep_rules = edited_rules.copy()
+                
+            keep_rules["STT"] = range(1, len(keep_rules) + 1)
+            st.session_state.rules_df = keep_rules
+            save_data()
+            st.success("Đã xóa các hạng mục công việc được chọn thành công!")
+            st.rerun()
+
     current_items = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
     deleted_items_list = [r for r in master_rules if r["Hạng Mục Công Việc"] not in current_items]
     
     if deleted_items_list:
+        st.markdown("---")
+        st.markdown("#### 📥 Khôi Phục Các Hạng Mục Mặc Định Đã Xóa")
         deleted_names = [item["Hạng Mục Công Việc"] for item in deleted_items_list]
-        selected_to_restore = st.multiselect("Khôi phục hạng mục đã xóa:", deleted_names)
+        selected_to_restore = st.multiselect("Chọn hạng mục muốn khôi phục:", deleted_names)
         
         col_r1, col_r2 = st.columns(2)
         with col_r1:
@@ -1413,23 +1463,6 @@ elif feature == "rules":
                     st.rerun()
                 else:
                     st.warning("Vui lòng chọn mục cần xóa vĩnh viễn!")
-
-    st.markdown("---")
-    with st.form("rules_form"):
-        edited_rules = st.data_editor(
-            st.session_state.rules_df, 
-            num_rows="dynamic", 
-            use_container_width=True, 
-            key="rules_editor",
-            hide_index=True
-        )
-        save_rules_btn = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
-        if save_rules_btn:
-            edited_rules["STT"] = range(1, len(edited_rules) + 1)
-            st.session_state.rules_df = edited_rules
-            save_data()
-            st.success("Đã lưu danh mục tham chiếu công việc thành công!")
-            st.rerun()
 
 # ==================== THÙNG RÁC SẢN LƯỢNG ====================
 elif feature == "trash":
