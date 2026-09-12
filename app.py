@@ -222,7 +222,6 @@ def safe_merge_and_save(table_key, new_rows_df):
         
     save_data()
 
-# Nạp dữ liệu mới nhất từ Cloud/JSON mỗi lần khởi chạy/refresh để đồng bộ tuyệt đối
 saved_data = load_data()
 
 if "auto_refresh_minutes" not in st.session_state:
@@ -235,7 +234,6 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "nhan_vien"
 
-# Bắt buộc nạp trực tiếp từ cloud accounts mới nhất
 loaded_accounts = saved_data.get("accounts", {})
 if "admin" not in loaded_accounts:
     loaded_accounts["admin"] = {"password": "123456", "role": "admin", "staff_name": "Admin"}
@@ -909,6 +907,7 @@ elif feature == "input_production":
     st.markdown("---")
     st.subheader("Bảng Tin")
     
+    # Luôn tải dữ liệu mới nhất từ cloud/storage để hiển thị toàn bộ bản ghi không bị thiếu
     latest_storage = load_data()
     latest_input_list = latest_storage.get("input_df", [])
     current_input_df = pd.DataFrame(latest_input_list) if latest_input_list else st.session_state.input_df.copy()
