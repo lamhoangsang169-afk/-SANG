@@ -384,8 +384,8 @@ if "avatar_url" not in st.session_state:
 if "current_menu" not in st.session_state:
     st.session_state.current_menu = "1. Nhập Sản Lượng"
 
-if "last_success_report" not in st.session_state:
-    st.session_state.last_success_report = None
+if "show_success_msg" not in st.session_state:
+    st.session_state.show_success_msg = False
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -818,23 +818,6 @@ elif feature == "input_production":
 
     st.subheader(f"{menu} ({today_str})")
 
-    # Thông báo trực quan hiển thị ngay dưới tiêu đề sau khi báo cáo thành công
-    if st.session_state.get("last_success_report"):
-        rep = st.session_state.last_success_report
-        st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h4 style="color: #10b981; margin-top: 0; margin-bottom: 8px;">✅ Báo Cáo Sản Lượng Thành Công!</h4>
-            <p style="margin: 3px 0;">👤 Nhân sự thực hiện: <b>{rep['nhan_su']}</b></p>
-            <p style="margin: 3px 0;">📌 Hạng mục công việc: <b>{rep['hang_muc']}</b></p>
-            <p style="margin: 3px 0;">📦 Số lượng: <b>{rep['so_luong']} {rep['don_vi']}</b></p>
-            <p style="margin: 3px 0;">⭐ Hệ số điểm: <b>{rep['he_so']}</b> &nbsp;|&nbsp; 🎯 <b>Tổng điểm đạt được: {rep['tong_diem']} điểm</b></p>
-            <p style="margin: 3px 0; font-size: 0.85rem; opacity: 0.8;">📅 Thời gian ghi nhận: {rep['thoi_gian']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("✖️ Đóng thông báo này", key="close_success_banner"):
-            st.session_state.last_success_report = None
-            st.rerun()
-
     if not st.session_state.rules_df.empty:
         danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
     else:
@@ -911,18 +894,19 @@ elif feature == "input_production":
                     }
                     safe_merge_and_save("input_df", pd.DataFrame([new_row]))
                     
-                    # Lưu lại thông tin báo cáo thành công vào session để hiển thị thông báo
-                    st.session_state.last_success_report = {
-                        "nhan_su": nhan_su,
-                        "hang_muc": hang_muc,
-                        "so_luong": so_luong,
-                        "don_vi": don_vi,
-                        "he_so": he_so,
-                        "tong_diem": round(tong_diem, 2),
-                        "thoi_gian": now_vn.strftime("%d/%m/%Y %H:%M:%S")
-                    }
-                    
+                    st.session_state.show_success_msg = True
                     st.rerun()
+
+    # Hiển thị thông báo gọn gàng "Đã báo cáo" ngay phía dưới form nhập liệu (nếu vừa gửi thành công)
+    if st.session_state.get("show_success_msg", False):
+        st.markdown("""
+        <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; padding: 12px; border-radius: 8px; margin-top: 15px; margin-bottom: 20px; text-align: center;">
+            <h4 style="color: #10b981; margin: 0;">✅ Đã báo cáo</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("✖️ Đóng thông báo", use_container_width=True, key="close_short_banner"):
+            st.session_state.show_success_msg = False
+            st.rerun()
 
     st.markdown("---")
     st.subheader("Bảng Tin")
