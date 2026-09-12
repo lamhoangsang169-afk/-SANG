@@ -818,17 +818,17 @@ elif feature == "input_production":
 
     st.subheader(f"{menu} ({today_str})")
 
-    # Hiển thị thông báo chi tiết ngay phía dưới tiêu đề nếu vừa báo cáo sản lượng thành công
-    if st.session_state.last_success_report:
+    # Thông báo trực quan hiển thị ngay dưới tiêu đề sau khi báo cáo thành công
+    if st.session_state.get("last_success_report"):
         rep = st.session_state.last_success_report
         st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <h4 style="color: #10b981; margin-top: 0; margin-bottom: 8px;">✅ Báo Cáo Sản Lượng Thành Công!</h4>
-            <p style="margin: 3px 0;">👤 Nhân sự: <b>{rep['nhan_su']}</b></p>
-            <p style="margin: 3px 0;">📌 Hạng mục: <b>{rep['hang_muc']}</b></p>
+            <p style="margin: 3px 0;">👤 Nhân sự thực hiện: <b>{rep['nhan_su']}</b></p>
+            <p style="margin: 3px 0;">📌 Hạng mục công việc: <b>{rep['hang_muc']}</b></p>
             <p style="margin: 3px 0;">📦 Số lượng: <b>{rep['so_luong']} {rep['don_vi']}</b></p>
-            <p style="margin: 3px 0;">⭐ Hệ số điểm: <b>{rep['he_so']}</b> &nbsp;|&nbsp; 🎯 <b>Tổng điểm: {rep['tong_diem']} điểm</b></p>
-            <p style="margin: 3px 0; font-size: 0.85rem; color: #666;">📅 Thời gian: {rep['thoi_gian']}</p>
+            <p style="margin: 3px 0;">⭐ Hệ số điểm: <b>{rep['he_so']}</b> &nbsp;|&nbsp; 🎯 <b>Tổng điểm đạt được: {rep['tong_diem']} điểm</b></p>
+            <p style="margin: 3px 0; font-size: 0.85rem; opacity: 0.8;">📅 Thời gian ghi nhận: {rep['thoi_gian']}</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("✖️ Đóng thông báo này", key="close_success_banner"):
@@ -911,7 +911,7 @@ elif feature == "input_production":
                     }
                     safe_merge_and_save("input_df", pd.DataFrame([new_row]))
                     
-                    # Lưu lại thông tin báo cáo thành công gần nhất vào session state
+                    # Lưu lại thông tin báo cáo thành công vào session để hiển thị thông báo
                     st.session_state.last_success_report = {
                         "nhan_su": nhan_su,
                         "hang_muc": hang_muc,
@@ -922,7 +922,6 @@ elif feature == "input_production":
                         "thoi_gian": now_vn.strftime("%d/%m/%Y %H:%M:%S")
                     }
                     
-                    st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
 
     st.markdown("---")
