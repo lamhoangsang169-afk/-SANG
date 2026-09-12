@@ -226,7 +226,6 @@ if not st.session_state.logged_in:
                         st.error("Tên đăng nhập này đã tồn tại!")
                     else:
                         st.session_state.accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
-                        # 👉 ĐÃ BỔ SUNG LƯU VĨNH VIỄN VÀO HỆ THỐNG/DATABASE
                         save_data()
                         st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
@@ -498,9 +497,9 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
-   if st.button("🔄 Cập Nhật", use_container_width=True):
+    if st.button("🔄 Cập Nhật", use_container_width=True):
         st.cache_data.clear()
-        # Nạp lại toàn bộ dữ liệu tài khoản và cấu hình mới nhất từ bộ nhớ/database
+        # Nạp lại toàn bộ dữ liệu tài khoản và cấu hình mới nhất từ database/file
         reloaded_data = load_data()
         if "accounts" in reloaded_data:
             st.session_state.accounts = reloaded_data["accounts"]
