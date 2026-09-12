@@ -809,15 +809,13 @@ elif feature == "input_production":
     if not current_input_df.empty:
         current_input_df["STT"] = range(1, len(current_input_df) + 1)
         
-        s_col1, s_col2, s_col3 = st.columns(3)
+        s_col1, s_col2 = st.columns(2)
         with s_col1:
             all_dates = ["Tất cả"] + sorted(current_input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
             all_staff = ["Tất cả"] + sorted(current_input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
-        with s_col3:
-            zoom_level = st.slider("🔍 Kích thước ảnh:", min_value=50, max_value=200, value=80, step=10)
         
         filtered_df = current_input_df.copy()
         if filter_date != "Tất cả":
@@ -850,7 +848,8 @@ elif feature == "input_production":
                         img_url_val = row.get("Hình Ảnh", "")
                         if img_url_val and isinstance(img_url_val, str):
                             try:
-                                st.image(img_url_val, width=zoom_level)
+                                # Cố định kích thước ảnh bằng 50
+                                st.image(img_url_val, width=50)
                                 with st.popover("🔍 Phóng to"):
                                     st.image(img_url_val, use_container_width=True)
                             except Exception:
@@ -1062,7 +1061,6 @@ elif feature == "attendance":
 elif feature == "report":
     st.header(menu)
     
-    # Đồng bộ hoàn toàn dữ liệu mới nhất từ cơ sở dữ liệu chung cho tất cả tài khoản
     latest_report_storage = load_data()
     latest_report_input_list = latest_report_storage.get("input_df", [])
     current_report_df = pd.DataFrame(latest_report_input_list) if latest_report_input_list else st.session_state.input_df.copy()
