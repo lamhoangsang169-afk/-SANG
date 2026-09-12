@@ -191,6 +191,11 @@ if not st.session_state.logged_in:
                 submit_lg = st.form_submit_button("Đăng Nhập", use_container_width=True)
                 
                 if submit_lg:
+                    # Đồng bộ lại dữ liệu mới nhất từ database trước khi xác thực đăng nhập
+                    latest_data_login = load_data()
+                    if "accounts" in latest_data_login:
+                        st.session_state.accounts = latest_data_login["accounts"]
+
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
                         stored_pass = user_info.get("password") if isinstance(user_info, dict) else user_info
@@ -578,6 +583,11 @@ if feature == "manage_accounts":
     if st.session_state.role != "admin":
         st.error("⚠️ Bạn không có quyền truy cập trang này!")
     else:
+        # Tự động nạp lại danh sách tài khoản mới nhất từ database mỗi khi Admin mở trang này
+        latest_data_acc = load_data()
+        if "accounts" in latest_data_acc:
+            st.session_state.accounts = latest_data_acc["accounts"]
+
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
         st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
         
@@ -1489,7 +1499,7 @@ elif feature == "clean_data":
                     else:
                         st.info("Danh sách sản lượng hiện đang trống.")
                 else:
-                    st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
+                    st.warning("⚠️ Vူi lòng nhập đúng chữ 'XAC NHAN'.")
 
         st.markdown("---")
         if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
