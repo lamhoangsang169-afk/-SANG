@@ -263,8 +263,6 @@ if not st.session_state.logged_in:
                             st.session_state.text_color = u_set.get("text_color", "#31333F")
                             st.session_state.bg_image_url = u_set.get("bg_image_url", None)
                             st.session_state.avatar_url = u_set.get("avatar_url", None)
-                            
-                            # LUÔN MẶC ĐỊNH HIỂN THỊ BẢNG NHẬP SẢN LƯỢNG KHI ĐĂNG NHẬP
                             st.session_state.current_menu = "1. Nhập Sản Lượng"
                             
                             st.success("Đăng nhập thành công!")
@@ -277,13 +275,14 @@ if not st.session_state.logged_in:
         with tab_register:
             with st.form("register_form"):
                 rg_user = st.text_input("Tên đăng nhập mới")
+                rg_staff_name = st.text_input("Tên hiển thị nhân sự (Ví dụ: Nguyễn Văn A)")
                 rg_pass = st.text_input("Mật khẩu mới", type="password")
                 rg_pass_confirm = st.text_input("Xác nhận lại mật khẩu", type="password")
                 submit_rg = st.form_submit_button("Đăng Ký", use_container_width=True)
                 
                 if submit_rg:
-                    if not rg_user or not rg_pass:
-                        st.warning("Vui lòng điền đầy đủ thông tin!")
+                    if not rg_user or not rg_pass or not rg_staff_name:
+                        st.warning("Vui lòng điền đầy đủ tên đăng nhập, tên nhân sự và mật khẩu!")
                     elif rg_pass != rg_pass_confirm:
                         st.error("Mật khẩu xác nhận không khớp!")
                     else:
@@ -294,8 +293,15 @@ if not st.session_state.logged_in:
                         else:
                             current_accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                             st.session_state.accounts = current_accounts
+                            
+                            # Tự động thêm tên nhân sự vào danh sách nhân sự chung
+                            current_staff = latest_fresh.get("staff_list", default_staff_list)
+                            if rg_staff_name.strip() not in current_staff:
+                                current_staff.append(rg_staff_name.strip())
+                                st.session_state.staff_list = current_staff
+                                
                             save_data()
-                            st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
+                            st.success("Đăng ký thành công! Tên nhân sự đã được thêm vào hệ thống. Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
 if st.session_state.role == "admin" and HAS_AUTOREFRESH:
@@ -747,7 +753,7 @@ elif feature == "input_production":
     st.subheader(f"{menu} ({today_str})")
 
     if not st.session_state.staff_list:
-        st.warning("⚠️ Danh sách nhân sự hiện đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự vào hệ thống trước khi chấm điểm sản lượng!")
+        st.warning("⚠️ Danh sách nhân sự hiện đang trống. Vui lòng đăng ký tài khoản con kèm tên nhân sự để hệ thống tự động cập nhật!")
     elif not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
@@ -940,7 +946,7 @@ elif feature == "attendance":
     """, unsafe_allow_html=True)
 
     if not st.session_state.staff_list:
-        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự.")
+        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng đăng ký tài khoản con kèm tên nhân sự.")
     else:
         with st.form("attendance_form"):
             f_att1, f_att2, f_att3 = st.columns(3)
@@ -1086,7 +1092,7 @@ elif feature == "report":
     all_staff_current = st.session_state.staff_list
     
     if not all_staff_current:
-        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự hiển thị báo cáo.")
+        st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng đăng ký tài khoản con để thêm nhân sự hiển thị báo cáo.")
     else:
         if not current_report_df.empty:
             df_in = current_report_df.copy()
@@ -1470,7 +1476,7 @@ elif feature == "manage_folders":
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
-    st.header("Cài Đặt Giao Diện & Nhân Sự Riêng Cho Bạn")
+    st.header("Cài Đặt Giao Diện Riêng Cho Bạn")
     
     if st.session_state.role == "admin":
         st.subheader("⚡ Tự Động Đồng Bộ Dữ Liệu Ngầm (Dành cho Admin)")
@@ -1486,51 +1492,6 @@ elif feature == "settings_ui":
             st.rerun()
         st.markdown("---")
 
-    st.subheader("Quản Lý Nhân Sự")
-    st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm. Danh sách nhân sự hiện tại hiển thị ngay bên dưới để bạn chọn xóa nhanh chóng.")
-    
-    with st.form("add_staff_form"):
-        new_staff_input = st.text_input("Thêm tên nhân sự mới:")
-        add_staff_btn = st.form_submit_button("➕ Thêm Nhân Sự", use_container_width=True)
-        if add_staff_btn:
-            clean_name = new_staff_input.strip()
-            if clean_name:
-                latest_fresh = load_data()
-                current_staff = latest_fresh.get("staff_list", st.session_state.staff_list)
-                if clean_name not in current_staff:
-                    current_staff.append(clean_name)
-                    safe_merge_and_save("staff_list", current_staff)
-                    st.success(f"Đã thêm nhân sự **{clean_name}** thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Tên nhân sự này đã có trong danh sách.")
-            else:
-                st.warning("Vui lòng nhập tên nhân sự!")
-
-    st.markdown("---")
-    st.subheader("Danh Sách Nhân Sự Hiện Tại")
-    
-    if st.session_state.staff_list:
-        with st.form("delete_staff_list_form"):
-            staff_selections = {}
-            for staff_name in st.session_state.staff_list:
-                staff_selections[staff_name] = st.checkbox(f"👤 {staff_name}", key=f"chk_staff_{staff_name}")
-                
-            del_staff_btn = st.form_submit_button("🗑️ Xóa Nhân Sự Đã Chọn", use_container_width=True)
-            if del_staff_btn:
-                to_remove = [name for name, selected in staff_selections.items() if selected]
-                if to_remove:
-                    st.session_state.staff_list = [s for s in st.session_state.staff_list if s not in to_remove]
-                    save_data()
-                    st.success(f"Đã xóa thành công các nhân sự: {', '.join(to_remove)}")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn ít nhất một nhân sự để xóa.")
-    else:
-        st.info("Hiện tại chưa có nhân sự nào trong hệ thống.")
-
-    st.markdown("---")
-    
     st.subheader("Màu Sắc Giao Diện Cá Nhân")
     col_c1, col_c2 = st.columns(2)
     with col_c1:
