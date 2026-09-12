@@ -800,7 +800,7 @@ elif feature == "input_production":
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
+    st.subheader("Bảng Tin")
     
     latest_storage = load_data()
     latest_input_list = latest_storage.get("input_df", [])
@@ -848,7 +848,6 @@ elif feature == "input_production":
                         img_url_val = row.get("Hình Ảnh", "")
                         if img_url_val and isinstance(img_url_val, str):
                             try:
-                                # Cố định kích thước ảnh bằng 50
                                 st.image(img_url_val, width=50)
                                 with st.popover("🔍 Phóng to"):
                                     st.image(img_url_val, use_container_width=True)
