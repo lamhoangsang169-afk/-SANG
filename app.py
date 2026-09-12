@@ -294,7 +294,6 @@ if not st.session_state.logged_in:
                             current_accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                             st.session_state.accounts = current_accounts
                             
-                            # Tự động thêm tên nhân sự vào danh sách nhân sự chung
                             current_staff = latest_fresh.get("staff_list", default_staff_list)
                             if rg_staff_name.strip() not in current_staff:
                                 current_staff.append(rg_staff_name.strip())
@@ -674,7 +673,7 @@ if feature == "manage_accounts":
         st.error("⚠️ Bạn không có quyền truy cập trang này!")
     else:
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
-        st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
+        st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống (toàn bộ dữ liệu sản lượng và cấu hình của tài khoản đó sẽ bị xóa vĩnh viễn).")
         
         acc_data = []
         for u, info in st.session_state.accounts.items():
@@ -724,9 +723,25 @@ if feature == "manage_accounts":
                     st.error("⚠️ Không thể xóa toàn bộ tài khoản Admin! Hệ thống cần ít nhất một Admin hoạt động.")
                 else:
                     st.session_state.accounts = new_accounts
-                    save_data()
+                    
+                    # XÓA TOÀN BỘ DỮ LIỆU HOẠT ĐỘNG CỦA TÀI KHOẢN BỊ XÓA
                     if deleted_users:
-                        st.success(f"Đã xóa thành công các tài khoản: {', '.join(deleted_users)} và cập nhật thay đổi!")
+                        # 1. Xóa sản lượng do tài khoản đó tạo
+                        if not st.session_state.input_df.empty and "Tài Khoản Tạo" in st.session_state.input_df.columns:
+                            st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["Tài Khoản Tạo"].isin(deleted_users)].reset_index(drop=True)
+                            if not st.session_state.input_df.empty:
+                                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                                
+                        # 2. Xóa cài đặt giao diện/user_settings của tài khoản đó trên Supabase/JSON nếu có
+                        latest_all = load_data()
+                        if "user_settings" in latest_all:
+                            for du in deleted_users:
+                                latest_all["user_settings"].pop(du, None)
+                                
+                    save_data()
+                    
+                    if deleted_users:
+                        st.success(f"Đã xóa vĩnh viễn tài khoản và toàn bộ dữ liệu hoạt động của các tài khoản: {', '.join(deleted_users)}!")
                     else:
                         st.success("Đã cập nhật thông tin tài khoản và mật khẩu thành công!")
                     st.rerun()
