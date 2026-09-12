@@ -169,7 +169,7 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "nhan_vien"
 
-# BẢO VỆ TUYỆT ĐỐI: Ép buộc cố định cấu hình tài khoản admin chuẩn xác
+# Ép buộc cố định cấu hình tài khoản admin chuẩn xác
 st.session_state.accounts = {
     "admin": {"password": "123456", "role": "admin"}
 }
@@ -427,22 +427,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    role_label = "👑 Quản Trị Viên" if st.session_state.role == "admin" else "👤 Nhân Viên"
-    st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
-        <span style="font-size: 0.9rem;">{role_label}: <b>{st.session_state.username}</b></span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.button("🚪 Đăng Xuất", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.session_state.role = "nhan_vien"
-        st.rerun()
-
-    st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
-    
+# Fragment độc lập giúp cập nhật ảnh đại diện mượt mà, không chớp toàn trang
+@st.fragment
+def render_avatar_widget():
     has_custom_avatar = False
     if st.session_state.avatar_url:
         has_custom_avatar = True
@@ -477,17 +464,35 @@ with st.sidebar:
                 st.session_state.avatar_url = avatar_public_url
                 save_data()
                 st.success("Đã cập nhật ảnh đại diện!")
-                st.rerun()
             
         if st.session_state.avatar_url:
             st.markdown("---")
-            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True, key="del_avatar_btn"):
                 st.session_state.avatar_url = None
                 save_data()
                 st.success("Đã xóa ảnh đại diện!")
-                st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
+with st.sidebar:
+    role_label = "👑 Quản Trị Viên" if st.session_state.role == "admin" else "👤 Nhân Viên"
+    st.markdown(f"""
+    <div style="background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+        <span style="font-size: 0.9rem;">{role_label}: <b>{st.session_state.username}</b></span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🚪 Đăng Xuất", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.session_state.role = "nhan_vien"
+        st.rerun()
+
+    st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
+    
+    # Gọi hàm widget avatar đã được tối ưu fragment cục bộ
+    render_avatar_widget()
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
