@@ -129,7 +129,6 @@ def load_data():
 def save_data():
     username = st.session_state.get("username", "admin")
     
-    # Đọc cấu hình hiện tại trước để không làm mất cài đặt riêng của các user khác
     current_all_data = load_data()
     if not isinstance(current_all_data, dict):
         current_all_data = {}
@@ -137,7 +136,6 @@ def save_data():
     if "user_settings" not in current_all_data:
         current_all_data["user_settings"] = {}
         
-    # Lưu cấu hình cá nhân hóa riêng của tài khoản hiện tại
     current_all_data["user_settings"][username] = {
         "primary_color": st.session_state.get("primary_color", "#ff4b4b"),
         "bg_color": st.session_state.get("bg_color", "#ffffff"),
@@ -149,7 +147,6 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     
-    # Lưu chung dữ liệu hệ thống (tài khoản, sản lượng, chấm công, nhân sự)
     current_all_data["rules_df"] = st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules
     current_all_data["input_df"] = st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else []
     current_all_data["attendance_df"] = st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else []
@@ -172,12 +169,11 @@ def save_data():
         except Exception:
             pass
 
-# Hàm gộp và lưu an toàn dữ liệu chung (Sản lượng, chấm công, nhân sự)
 def safe_merge_and_save(table_key, new_rows_df):
     latest = load_data()
     if table_key == "input_df":
         existing = latest.get("input_df", [])
-        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+        df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
         st.session_state.input_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
     elif table_key == "attendance_df":
@@ -199,7 +195,6 @@ def safe_merge_and_save(table_key, new_rows_df):
 
 saved_data = load_data()
 
-# ==================== NẠP DỮ LIỆU TÀI KHOẢN TỪ BỘ NHỚ LƯU TRỮ ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -246,7 +241,6 @@ if not st.session_state.logged_in:
                             st.session_state.username = lg_user
                             st.session_state.role = user_role
                             
-                            # Tải riêng cài đặt giao diện/avatar của user này (nếu có)
                             user_settings_map = latest_fresh.get("user_settings", {})
                             u_set = user_settings_map.get(lg_user, {})
                             st.session_state.primary_color = u_set.get("primary_color", "#ff4b4b")
@@ -289,15 +283,13 @@ if not st.session_state.logged_in:
                             st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
-# ==================== KHỞI TẠO DỮ LIỆU AN TOÀN TRONG SESSION ====================
-# Tải cấu hình giao diện riêng cho user hiện tại khi đã login
 user_settings_dict = saved_data.get("user_settings", {}).get(st.session_state.username, {})
 
 if "rules_df" not in st.session_state:
     r_data = saved_data.get("rules_df")
     st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(master_rules)
 
-default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+default_input_columns = ["STT", "Ngày", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
     in_data = saved_data.get("input_df")
     st.session_state.input_df = pd.DataFrame(in_data) if in_data else pd.DataFrame(columns=default_input_columns)
@@ -488,7 +480,6 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Fragment độc lập cho ảnh đại diện riêng của từng tài khoản
 @st.fragment
 def render_avatar_widget():
     has_custom_avatar = False
@@ -794,6 +785,7 @@ elif feature == "input_production":
                     new_row = {
                         "STT": 1,
                         "Ngày": today_str,
+                        "Tài Khoản Tạo": st.session_state.username,
                         "Nhân Sự": nhan_su,
                         "Hạng Mục Công Việc": hang_muc,
                         "Hình Ảnh": img_url,
@@ -841,10 +833,12 @@ elif feature == "input_production":
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
+                        acc_creator = row.get('Tài Khoản Tạo', 'Admin')
                         st.markdown(f"""
                         <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 💻 Tài khoản nhập: <b>{acc_creator}</b><br>
+                            👤 Nhân sự: <b>{row['Nhân Sự']}</b> &nbsp;|&nbsp; 📌 {row['Hạng Mục Công Việc']}<br>
+                            📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
                         """, unsafe_allow_html=True)
@@ -1068,13 +1062,18 @@ elif feature == "attendance":
 elif feature == "report":
     st.header(menu)
     
+    # Đồng bộ hoàn toàn dữ liệu mới nhất từ cơ sở dữ liệu chung cho tất cả tài khoản
+    latest_report_storage = load_data()
+    latest_report_input_list = latest_report_storage.get("input_df", [])
+    current_report_df = pd.DataFrame(latest_report_input_list) if latest_report_input_list else st.session_state.input_df.copy()
+    
     all_staff_current = st.session_state.staff_list
     
     if not all_staff_current:
         st.warning("⚠️ Danh sách nhân sự đang trống. Vui lòng vào **Cài Đặt Giao Diện** để thêm nhân sự hiển thị báo cáo.")
     else:
-        if not st.session_state.input_df.empty:
-            df_in = st.session_state.input_df.copy()
+        if not current_report_df.empty:
+            df_in = current_report_df.copy()
             df_in["Tổng Điểm"] = pd.to_numeric(df_in["Tổng Điểm"], errors="coerce").fillna(0)
             summary = df_in.groupby("Nhân Sự").agg(
                 Tổng_Số_Lượng=("Số Lượng", "sum"),
@@ -1115,8 +1114,12 @@ elif feature == "report":
         st.markdown("---")
         st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
         
-        if not st.session_state.attendance_df.empty:
-            att_summary = st.session_state.attendance_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
+        latest_att_storage = load_data()
+        latest_att_list = latest_att_storage.get("attendance_df", [])
+        current_att_df = pd.DataFrame(latest_att_list) if latest_att_list else st.session_state.attendance_df.copy()
+        
+        if not current_att_df.empty:
+            att_summary = current_att_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
             att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
         else:
             att_summary = pd.DataFrame({"Nhân Sự": all_staff_current, "Tổng Phút Làm Việc": 0})
@@ -1180,8 +1183,8 @@ elif feature == "report":
             )
             
         with col_dl2:
-            if not st.session_state.input_df.empty:
-                csv_detail = st.session_state.input_df.drop(columns=["Hình Ảnh"], errors="ignore").to_csv(index=False).encode('utf-8-sig')
+            if not current_report_df.empty:
+                csv_detail = current_report_df.drop(columns=["Hình Ảnh"], errors="ignore").to_csv(index=False).encode('utf-8-sig')
                 st.download_button(
                     label="📥 Tải Chi Tiết Sản Lượng (CSV)",
                     data=csv_detail,
@@ -1189,6 +1192,19 @@ elif feature == "report":
                     mime="text/csv",
                     use_container_width=True
                 )
+
+        st.markdown("---")
+        st.subheader("🔍 Kiểm Tra Chi Tiết Theo Từng Tài Khoản Con")
+        if not current_report_df.empty and "Tài Khoản Tạo" in current_report_df.columns:
+            list_acc_created = sorted(current_report_df["Tài Khoản Tạo"].dropna().unique().tolist())
+            selected_acc_filter = st.selectbox("Chọn tài khoản con:", ["Tất cả tài khoản"] + list_acc_created)
+            
+            filtered_acc_df = current_report_df.copy()
+            if selected_acc_filter != "Tất cả tài khoản":
+                filtered_acc_df = filtered_acc_df[filtered_acc_df["Tài Khoản Tạo"] == selected_acc_filter]
+            st.dataframe(filtered_acc_df.drop(columns=["Hình Ảnh"], errors="ignore"), use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có dữ liệu phân loại theo tài khoản con.")
 
         st.markdown("---")
         st.subheader("Biểu Đồ & Chi Tiết Tỷ Lệ Đóng Góp")
