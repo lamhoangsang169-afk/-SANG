@@ -154,7 +154,6 @@ def save_data():
 
     if supabase is not None:
         try:
-            # Truyền trực tiếp từ điển (dictionary) vì cột trên Supabase đã là kiểu json
             payload = {"id": "main_config", "data": current_data}
             supabase.table("app_storage_table").upsert(payload).execute()
         except Exception:
@@ -170,15 +169,10 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "nhan_vien"
 
-if "accounts" not in st.session_state:
-    st.session_state.accounts = saved_data.get("accounts", {})
-
-# BẢO VỆ: Luôn đảm bảo tài khoản admin cốt lõi tồn tại và chuẩn định dạng
-if not st.session_state.accounts or "admin" not in st.session_state.accounts:
-    st.session_state.accounts["admin"] = {"password": "123456", "role": "admin"}
-else:
-    if isinstance(st.session_state.accounts.get("admin"), str):
-        st.session_state.accounts["admin"] = {"password": st.session_state.accounts["admin"], "role": "admin"}
+# BẢO VỆ TUYỆT ĐỐI: Ép buộc cố định cấu hình tài khoản admin chuẩn xác
+st.session_state.accounts = {
+    "admin": {"password": "123456", "role": "admin"}
+}
 
 if not st.session_state.logged_in:
     st.markdown("""
