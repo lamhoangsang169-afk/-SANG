@@ -172,6 +172,16 @@ if "role" not in st.session_state:
 if "accounts" not in st.session_state:
     st.session_state.accounts = saved_data.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
 
+# Đảm bảo tài khoản admin luôn tồn tại, không bị mất mật khẩu hoặc lỗi định dạng
+if "admin" not in st.session_state.accounts:
+    st.session_state.accounts["admin"] = {"password": "123456", "role": "admin"}
+else:
+    if isinstance(st.session_state.accounts["admin"], str):
+        st.session_state.accounts["admin"] = {"password": "123456", "role": "admin"}
+    else:
+        st.session_state.accounts["admin"]["password"] = "123456"
+        st.session_state.accounts["admin"]["role"] = "admin"
+
 if not st.session_state.logged_in:
     st.markdown("""
         <div style="text-align: center; padding: 20px;">
@@ -195,6 +205,9 @@ if not st.session_state.logged_in:
                     latest_data_login = load_data()
                     if "accounts" in latest_data_login:
                         st.session_state.accounts = latest_data_login["accounts"]
+                        # Đảm bảo admin luôn an toàn
+                        if "admin" not in st.session_state.accounts:
+                            st.session_state.accounts["admin"] = {"password": "123456", "role": "admin"}
 
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
@@ -587,6 +600,8 @@ if feature == "manage_accounts":
         latest_data_acc = load_data()
         if "accounts" in latest_data_acc:
             st.session_state.accounts = latest_data_acc["accounts"]
+            if "admin" not in st.session_state.accounts:
+                st.session_state.accounts["admin"] = {"password": "123456", "role": "admin"}
 
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
         st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
@@ -1482,24 +1497,25 @@ elif feature == "clean_data":
             clean_btn = st.form_submit_button("🧹 Xóa Dữ Liệu Cũ Theo Ngày", use_container_width=True)
             if clean_btn:
                 if confirm_text == "XAC NHAN":
-                    if not st.session_state.input_df.empty:
-                        st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
-                        target_dt = pd.to_datetime(clean_date)
-                        
-                        keep_df = st.session_state.input_df[st.session_state.input_df["_dt"] >= target_dt].drop(columns=["_dt"])
-                        removed_count = len(st.session_state.input_df) - len(keep_df)
-                        
-                        st.session_state.input_df = keep_df
+                    if not st.session_state.input_df.complete if False else True:
                         if not st.session_state.input_df.empty:
-                            st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                            st.session_state.input_df["_dt"] = pd.to_datetime(st.session_state.input_df["Ngày"], errors="coerce")
+                            target_dt = pd.to_datetime(clean_date)
                             
-                        save_data()
-                        st.success(f"Đã xóa {removed_count} bản ghi cũ trước ngày {clean_date}.")
-                        st.rerun()
-                    else:
-                        st.info("Danh sách sản lượng hiện đang trống.")
+                            keep_df = st.session_state.input_df[st.session_state.input_df["_dt"] >= target_dt].drop(columns=["_dt"])
+                            removed_count = len(st.session_state.input_df) - len(keep_df)
+                            
+                            st.session_state.input_df = keep_df
+                            if not st.session_state.input_df.empty:
+                                st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                                
+                            save_data()
+                            st.success(f"Đã xóa {removed_count} bản ghi cũ trước ngày {clean_date}.")
+                            st.rerun()
+                        else:
+                            st.info("Danh sách sản lượng hiện đang trống.")
                 else:
-                    st.warning("⚠️ Vူi lòng nhập đúng chữ 'XAC NHAN'.")
+                    st.warning("⚠️ Vui lòng nhập đúng chữ 'XAC NHAN'.")
 
         st.markdown("---")
         if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
