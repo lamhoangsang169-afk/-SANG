@@ -203,6 +203,10 @@ def safe_merge_and_save(table_key, new_rows_df):
 
 saved_data = load_data()
 
+# LÀM SẠCH HOÀN TOÀN: Đặt lại danh sách nhân sự thủ công cũ về trống (hoặc tự động lấy khớp theo danh sách tài khoản nếu cần)
+if "staff_list" not in st.session_state:
+    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
+
 if "auto_refresh_minutes" not in st.session_state:
     st.session_state.auto_refresh_minutes = saved_data.get("auto_refresh_minutes", 5)
 
@@ -334,8 +338,6 @@ for col in default_input_columns:
     if col not in st.session_state.deleted_input_df.columns:
         st.session_state.deleted_input_df[col] = ""
 
-if "staff_list" not in st.session_state:
-    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
 if "chart_colors" not in st.session_state:
     st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
 if "folders" not in st.session_state:
@@ -724,15 +726,12 @@ if feature == "manage_accounts":
                 else:
                     st.session_state.accounts = new_accounts
                     
-                    # XÓA TOÀN BỘ DỮ LIỆU HOẠT ĐỘNG CỦA TÀI KHOẢN BỊ XÓA
                     if deleted_users:
-                        # 1. Xóa sản lượng do tài khoản đó tạo
                         if not st.session_state.input_df.empty and "Tài Khoản Tạo" in st.session_state.input_df.columns:
                             st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["Tài Khoản Tạo"].isin(deleted_users)].reset_index(drop=True)
                             if not st.session_state.input_df.empty:
                                 st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                                 
-                        # 2. Xóa cài đặt giao diện/user_settings của tài khoản đó trên Supabase/JSON nếu có
                         latest_all = load_data()
                         if "user_settings" in latest_all:
                             for du in deleted_users:
@@ -1575,6 +1574,15 @@ elif feature == "clean_data":
             st.metric("📦 Tổng bản ghi sản lượng", len(st.session_state.input_df))
         with m_col2:
             st.metric("🗑️ Bản ghi trong thùng rác", len(st.session_state.deleted_input_df))
+
+        st.markdown("---")
+        
+        # Nút xóa nhanh nhân sự cũ thủ công
+        if st.button("🧹 Làm Sạch Danh Sách Nhân Sự Cũ (Xóa Bảo, Đức, Tiến)", use_container_width=True):
+            st.session_state.staff_list = []
+            save_data()
+            st.success("Đã làm sạch danh sách nhân sự thủ công cũ thành công!")
+            st.rerun()
 
         st.markdown("---")
         
