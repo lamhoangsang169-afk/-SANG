@@ -394,6 +394,8 @@ if "show_success_msg" not in st.session_state:
     st.session_state.show_success_msg = False
 if "select_all_state" not in st.session_state:
     st.session_state.select_all_state = False
+if "trash_select_all_state" not in st.session_state:
+    st.session_state.trash_select_all_state = False
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -1469,6 +1471,13 @@ elif feature == "trash":
             st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
             
             with st.form("trash_form"):
+                trash_select_all_val = st.checkbox("☑️ Chọn tất cả / Bỏ chọn tất cả", value=st.session_state.get("trash_select_all_state", False), key="trash_select_all_checkbox_widget")
+                if trash_select_all_val != st.session_state.get("trash_select_all_state", False):
+                    st.session_state.trash_select_all_state = trash_select_all_val
+                    st.rerun()
+
+                st.markdown("---")
+
                 for idx, row in st.session_state.deleted_input_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -1482,7 +1491,7 @@ elif feature == "trash":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        is_selected = st.checkbox(f"Chọn bản ghi STT {row['STT']}", key=f"trash_chk_{row['STT']}")
+                        is_selected = st.checkbox(f"Chọn bản ghi STT {row['STT']}", value=st.session_state.get("trash_select_all_state", False), key=f"trash_chk_{row['STT']}")
                         st.session_state.deleted_input_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
@@ -1517,6 +1526,7 @@ elif feature == "trash":
                             st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                         
                         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+                        st.session_state.trash_select_all_state = False
                         save_data()
                         st.success("Đã khôi phục các dòng đã chọn thành công!")
                         st.rerun()
@@ -1532,6 +1542,7 @@ elif feature == "trash":
                         if not st.session_state.deleted_input_df.empty:
                             st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                         
+                        st.session_state.trash_select_all_state = False
                         save_data()
                         st.success("Đã xóa vĩnh viễn các dòng đã chọn!")
                         st.rerun()
@@ -1541,6 +1552,7 @@ elif feature == "trash":
             st.markdown("---")
             if st.button("🔥 Làm Sạch Hoàn Toàn Thùng Rác", use_container_width=True):
                 st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
+                st.session_state.trash_select_all_state = False
                 save_data()
                 st.success("Đã làm sạch hoàn toàn thùng rác!")
                 st.rerun()
