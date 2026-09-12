@@ -9,6 +9,12 @@ import base64
 from PIL import Image
 
 try:
+    from streamlit_autorefresh import st_autorefresh
+    HAS_AUTOREFRESH = True
+except ImportError:
+    HAS_AUTOREFRESH = False
+
+try:
     from supabase import create_client, Client
     HAS_SUPABASE_LIB = True
 except ImportError:
@@ -155,6 +161,7 @@ def save_data():
     current_all_data["chart_colors"] = st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors
     current_all_data["folders"] = st.session_state.folders if "folders" in st.session_state else default_folders
     current_all_data["accounts"] = st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
+    current_all_data["auto_refresh_minutes"] = st.session_state.get("auto_refresh_minutes", 5)
     
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -190,10 +197,16 @@ def safe_merge_and_save(table_key, new_rows_df):
         st.session_state.accounts = latest["accounts"]
     if "rules_df" in latest:
         st.session_state.rules_df = pd.DataFrame(latest["rules_df"])
+    if "auto_refresh_minutes" in latest:
+        st.session_state.auto_refresh_minutes = latest["auto_refresh_minutes"]
         
     save_data()
 
 saved_data = load_data()
+
+# Tự động kích hoạt cơ chế làm mới trang tự động nếu là Admin và đã bật thư viện autorefresh
+if "auto_refresh_minutes" not in st.session_state:
+    st.session_state.auto_refresh_minutes = saved_data.get("auto_refresh_minutes", 5)
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -230,6 +243,8 @@ if not st.session_state.logged_in:
                     latest_fresh = load_data()
                     if "accounts" in latest_fresh:
                         st.session_state.accounts = latest_fresh["accounts"]
+                    if "auto_refresh_minutes" in latest_fresh:
+                        st.session_state.auto_refresh_minutes = latest_fresh["auto_refresh_minutes"]
                         
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
@@ -282,6 +297,11 @@ if not st.session_state.logged_in:
                             save_data()
                             st.success("Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
+
+# Cơ chế tự động làm mới ngầm định chỉ dành riêng cho tài khoản tổng (admin)
+if st.session_state.role == "admin" and HAS_AUTOREFRESH:
+    refresh_interval_ms = int(st.session_state.get("auto_refresh_minutes", 5)) * 60 * 1000
+    st_autorefresh(interval=refresh_interval_ms, key="admin_global_auto_refresh")
 
 user_settings_dict = saved_data.get("user_settings", {}).get(st.session_state.username, {})
 
@@ -561,6 +581,8 @@ with st.sidebar:
             st.session_state.rules_df = pd.DataFrame(latest_data["rules_df"])
         if "deleted_input_df" in latest_data:
             st.session_state.deleted_input_df = pd.DataFrame(latest_data["deleted_input_df"])
+        if "auto_refresh_minutes" in latest_data:
+            st.session_state.auto_refresh_minutes = latest_data["auto_refresh_minutes"]
             
         st.success("Đã đồng bộ toàn bộ dữ liệu mới nhất thành công!")
         st.rerun()
@@ -1453,6 +1475,21 @@ elif feature == "manage_folders":
 elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự Riêng Cho Bạn")
     
+    # Chỉ hiển thị cấu hình thời gian tự động đồng bộ nếu tài khoản đăng nhập là admin tổng
+    if st.session_state.role == "admin":
+        st.subheader("⚡ Tự Động Đồng Bộ Dữ Liệu Ngầm (Dành cho Admin)")
+        st.markdown("Tùy chỉnh thời gian tự động làm mới trang để cập nhật dữ liệu chung từ các tài khoản con (từ 1 đến 60 phút).")
+        
+        current_refresh_min = int(st.session_state.get("auto_refresh_minutes", 5))
+        new_refresh_min = st.slider("Thời gian tự động đồng bộ (Phút):", min_value=1, max_value=60, value=current_refresh_min, step=1)
+        
+        if st.button("💾 Lưu Thời Gian Đồng Bộ", use_container_width=True):
+            st.session_state.auto_refresh_minutes = new_refresh_min
+            save_data()
+            st.success(f"Đã cập nhật thời gian tự động đồng bộ là {new_refresh_min} phút!")
+            st.rerun()
+        st.markdown("---")
+
     st.subheader("Quản Lý Nhân Sự")
     st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm. Danh sách nhân sự hiện tại hiển thị ngay bên dưới để bạn chọn xóa nhanh chóng.")
     
