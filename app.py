@@ -498,9 +498,13 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
-    if st.button("🔄 Cập Nhật", use_container_width=True):
+   if st.button("🔄 Cập Nhật", use_container_width=True):
         st.cache_data.clear()
-        st.success("Đã cập nhật hệ thống thành công!")
+        # Nạp lại toàn bộ dữ liệu tài khoản và cấu hình mới nhất từ bộ nhớ/database
+        reloaded_data = load_data()
+        if "accounts" in reloaded_data:
+            st.session_state.accounts = reloaded_data["accounts"]
+        st.success("Đã cập nhật và đồng bộ hệ thống thành công!")
         st.rerun()
 
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
