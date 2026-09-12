@@ -157,6 +157,7 @@ def save_data():
     current_all_data["attendance_df"] = st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else []
     current_all_data["deleted_input_df"] = st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else []
     current_all_data["staff_list"] = st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list
+    current_all_data["account_staff_map"] = st.session_state.account_staff_map if "account_staff_map" in st.session_state else {}
     current_all_data["chart_colors"] = st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors
     current_all_data["folders"] = st.session_state.folders if "folders" in st.session_state else default_folders
     current_all_data["accounts"] = st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
@@ -203,10 +204,6 @@ def safe_merge_and_save(table_key, new_rows_df):
 
 saved_data = load_data()
 
-# LÀM SẠCH HOÀN TOÀN: Đặt lại danh sách nhân sự thủ công cũ về trống (hoặc tự động lấy khớp theo danh sách tài khoản nếu cần)
-if "staff_list" not in st.session_state:
-    st.session_state.staff_list = saved_data.get("staff_list", default_staff_list)
-
 if "auto_refresh_minutes" not in st.session_state:
     st.session_state.auto_refresh_minutes = saved_data.get("auto_refresh_minutes", 5)
 
@@ -222,6 +219,9 @@ if "accounts" not in st.session_state:
     if "admin" not in loaded_accounts:
         loaded_accounts["admin"] = {"password": "123456", "role": "admin"}
     st.session_state.accounts = loaded_accounts
+
+if "account_staff_map" not in st.session_state:
+    st.session_state.account_staff_map = saved_data.get("account_staff_map", {})
 
 if not st.session_state.logged_in:
     st.markdown("""
@@ -247,6 +247,8 @@ if not st.session_state.logged_in:
                         st.session_state.accounts = latest_fresh["accounts"]
                     if "auto_refresh_minutes" in latest_fresh:
                         st.session_state.auto_refresh_minutes = latest_fresh["auto_refresh_minutes"]
+                    if "account_staff_map" in latest_fresh:
+                        st.session_state.account_staff_map = latest_fresh["account_staff_map"]
                         
                     user_info = st.session_state.accounts.get(lg_user)
                     if user_info:
@@ -298,13 +300,16 @@ if not st.session_state.logged_in:
                             current_accounts[rg_user] = {"password": rg_pass, "role": "nhan_vien"}
                             st.session_state.accounts = current_accounts
                             
-                            current_staff = latest_fresh.get("staff_list", default_staff_list)
-                            if rg_staff_name.strip() not in current_staff:
-                                current_staff.append(rg_staff_name.strip())
-                                st.session_state.staff_list = current_staff
+                            # Lưu ánh xạ tài khoản -> tên nhân sự
+                            if "account_staff_map" not in st.session_state:
+                                st.session_state.account_staff_map = latest_fresh.get("account_staff_map", {})
+                            st.session_state.account_staff_map[rg_user] = rg_staff_name.strip()
+                            
+                            # Đồng bộ lại danh sách nhân sự chính thức từ map tài khoản
+                            st.session_state.staff_list = list(st.session_state.account_staff_map.values())
                                 
                             save_data()
-                            st.success("Đăng ký thành công! Tên nhân sự đã được thêm vào hệ thống. Bạn có thể chuyển sang tab Đăng Nhập.")
+                            st.success("Đăng ký thành công! Tên nhân sự đã được liên kết với tài khoản. Bạn có thể chuyển sang tab Đăng Nhập.")
     st.stop()
 
 if st.session_state.role == "admin" and HAS_AUTOREFRESH:
@@ -337,6 +342,14 @@ if "deleted_input_df" not in st.session_state:
 for col in default_input_columns:
     if col not in st.session_state.deleted_input_df.columns:
         st.session_state.deleted_input_df[col] = ""
+
+# Đảm bảo danh sách nhân sự chỉ bao gồm các nhân sự được gắn kết từ tài khoản đăng ký
+if "account_staff_map" in saved_data and saved_data["account_staff_map"]:
+    st.session_state.account_staff_map = saved_data["account_staff_map"]
+    st.session_state.staff_list = list(st.session_state.account_staff_map.values())
+else:
+    # Nếu chưa có map, lọc sạch rác thủ công và chỉ lấy từ accounts nếu có định dạng
+    st.session_state.staff_list = [info.get("staff_name") for u, info in st.session_state.accounts.items() if isinstance(info, dict) and info.get("staff_name")]
 
 if "chart_colors" not in st.session_state:
     st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
@@ -575,8 +588,9 @@ with st.sidebar:
         latest_data = load_data()
         if "accounts" in latest_data:
             st.session_state.accounts = latest_data["accounts"]
-        if "staff_list" in latest_data:
-            st.session_state.staff_list = latest_data["staff_list"]
+        if "account_staff_map" in latest_data:
+            st.session_state.account_staff_map = latest_data["account_staff_map"]
+            st.session_state.staff_list = list(st.session_state.account_staff_map.values())
         if "input_df" in latest_data:
             st.session_state.input_df = pd.DataFrame(latest_data["input_df"])
         if "attendance_df" in latest_data:
@@ -675,7 +689,7 @@ if feature == "manage_accounts":
         st.error("⚠️ Bạn không có quyền truy cập trang này!")
     else:
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
-        st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống (toàn bộ dữ liệu sản lượng và cấu hình của tài khoản đó sẽ bị xóa vĩnh viễn).")
+        st.markdown("Thay đổi mật khẩu, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống (toàn bộ dữ liệu sản lượng, nhân sự và cấu hình liên quan sẽ bị xóa vĩnh viễn).")
         
         acc_data = []
         for u, info in st.session_state.accounts.items():
@@ -726,12 +740,21 @@ if feature == "manage_accounts":
                 else:
                     st.session_state.accounts = new_accounts
                     
+                    # XÓA TOÀN BỘ DỮ LIỆU & NHÂN SỰ LIÊN QUAN ĐẾN TÀI KHOẢN BỊ XÓA
                     if deleted_users:
+                        # 1. Thu hồi tên nhân sự liên kết trong account_staff_map và xóa khỏi staff_list
+                        if "account_staff_map" in st.session_state:
+                            for du in deleted_users:
+                                st.session_state.account_staff_map.pop(du, None)
+                            st.session_state.staff_list = list(st.session_state.account_staff_map.values())
+                        
+                        # 2. Xóa sản lượng do tài khoản đó tạo
                         if not st.session_state.input_df.empty and "Tài Khoản Tạo" in st.session_state.input_df.columns:
                             st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["Tài Khoản Tạo"].isin(deleted_users)].reset_index(drop=True)
                             if not st.session_state.input_df.empty:
                                 st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                                 
+                        # 3. Xóa cài đặt cá nhân hóa user_settings của tài khoản đó
                         latest_all = load_data()
                         if "user_settings" in latest_all:
                             for du in deleted_users:
@@ -740,7 +763,7 @@ if feature == "manage_accounts":
                     save_data()
                     
                     if deleted_users:
-                        st.success(f"Đã xóa vĩnh viễn tài khoản và toàn bộ dữ liệu hoạt động của các tài khoản: {', '.join(deleted_users)}!")
+                        st.success(f"Đã xóa vĩnh viễn tài khoản, tên nhân sự và toàn bộ dữ liệu hoạt động của các tài khoản: {', '.join(deleted_users)}!")
                     else:
                         st.success("Đã cập nhật thông tin tài khoản và mật khẩu thành công!")
                     st.rerun()
@@ -1574,15 +1597,6 @@ elif feature == "clean_data":
             st.metric("📦 Tổng bản ghi sản lượng", len(st.session_state.input_df))
         with m_col2:
             st.metric("🗑️ Bản ghi trong thùng rác", len(st.session_state.deleted_input_df))
-
-        st.markdown("---")
-        
-        # Nút xóa nhanh nhân sự cũ thủ công
-        if st.button("🧹 Làm Sạch Danh Sách Nhân Sự Cũ (Xóa Bảo, Đức, Tiến)", use_container_width=True):
-            st.session_state.staff_list = []
-            save_data()
-            st.success("Đã làm sạch danh sách nhân sự thủ công cũ thành công!")
-            st.rerun()
 
         st.markdown("---")
         
