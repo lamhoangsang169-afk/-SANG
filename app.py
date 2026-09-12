@@ -127,39 +127,52 @@ def load_data():
     return data
 
 def save_data():
-    current_data = {
-        "rules_df": st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules,
-        "input_df": st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else [],
-        "attendance_df": st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else [],
-        "deleted_input_df": st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else [],
-        "staff_list": st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list,
-        "chart_colors": st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors,
-        "folders": st.session_state.folders if "folders" in st.session_state else default_folders,
-        "primary_color": st.session_state.primary_color if "primary_color" in st.session_state else "#ff4b4b",
-        "bg_color": st.session_state.bg_color if "bg_color" in st.session_state else "#ffffff",
-        "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
-        "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
-        "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
+    username = st.session_state.get("username", "admin")
+    
+    # Đọc cấu hình hiện tại trước để không làm mất cài đặt riêng của các user khác
+    current_all_data = load_data()
+    if not isinstance(current_all_data, dict):
+        current_all_data = {}
+        
+    if "user_settings" not in current_all_data:
+        current_all_data["user_settings"] = {}
+        
+    # Lưu cấu hình cá nhân hóa riêng của tài khoản hiện tại
+    current_all_data["user_settings"][username] = {
+        "primary_color": st.session_state.get("primary_color", "#ff4b4b"),
+        "bg_color": st.session_state.get("bg_color", "#ffffff"),
+        "sidebar_bg": st.session_state.get("sidebar_bg", "#f0f2f6"),
+        "sidebar_opacity": st.session_state.get("sidebar_opacity", 0.9),
+        "text_color": st.session_state.get("text_color", "#31333F"),
         "bg_image_url": st.session_state.get("bg_image_url", None),
         "avatar_url": st.session_state.get("avatar_url", None),
-        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng"),
-        "accounts": st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
+        "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
+    
+    # Lưu chung dữ liệu hệ thống (tài khoản, sản lượng, chấm công, nhân sự)
+    current_all_data["rules_df"] = st.session_state.rules_df.to_dict(orient="records") if "rules_df" in st.session_state else master_rules
+    current_all_data["input_df"] = st.session_state.input_df.to_dict(orient="records") if "input_df" in st.session_state else []
+    current_all_data["attendance_df"] = st.session_state.attendance_df.to_dict(orient="records") if "attendance_df" in st.session_state else []
+    current_all_data["deleted_input_df"] = st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else []
+    current_all_data["staff_list"] = st.session_state.staff_list if "staff_list" in st.session_state else default_staff_list
+    current_all_data["chart_colors"] = st.session_state.chart_colors if "chart_colors" in st.session_state else default_chart_colors
+    current_all_data["folders"] = st.session_state.folders if "folders" in st.session_state else default_folders
+    current_all_data["accounts"] = st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin"}})
     
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(current_data, f, ensure_ascii=False, default=str, indent=4)
+            json.dump(current_all_data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
     if supabase is not None:
         try:
-            payload = {"id": "main_config", "data": current_data}
+            payload = {"id": "main_config", "data": current_all_data}
             supabase.table("app_storage_table").upsert(payload).execute()
         except Exception:
             pass
 
-# Hàm hỗ trợ nạp và gộp dữ liệu an toàn trước khi ghi nhận thao tác mới từ bất kỳ tài khoản nào
+# Hàm gộp và lưu an toàn dữ liệu chung (Sản lượng, chấm công, nhân sự)
 def safe_merge_and_save(table_key, new_rows_df):
     latest = load_data()
     if table_key == "input_df":
@@ -177,7 +190,6 @@ def safe_merge_and_save(table_key, new_rows_df):
         combined = list(set(existing_staff + list(new_rows_df)))
         st.session_state.staff_list = combined
     
-    # Đồng thời cập nhật luôn các bảng khác nếu có thay đổi trong db
     if "accounts" in latest:
         st.session_state.accounts = latest["accounts"]
     if "rules_df" in latest:
@@ -220,7 +232,6 @@ if not st.session_state.logged_in:
                 submit_lg = st.form_submit_button("Đăng Nhập", use_container_width=True)
                 
                 if submit_lg:
-                    # Tải lại tài khoản mới nhất từ database trước khi xác thực
                     latest_fresh = load_data()
                     if "accounts" in latest_fresh:
                         st.session_state.accounts = latest_fresh["accounts"]
@@ -234,6 +245,19 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.username = lg_user
                             st.session_state.role = user_role
+                            
+                            # Tải riêng cài đặt giao diện/avatar của user này (nếu có)
+                            user_settings_map = latest_fresh.get("user_settings", {})
+                            u_set = user_settings_map.get(lg_user, {})
+                            st.session_state.primary_color = u_set.get("primary_color", "#ff4b4b")
+                            st.session_state.bg_color = u_set.get("bg_color", "#ffffff")
+                            st.session_state.sidebar_bg = u_set.get("sidebar_bg", "#f0f2f6")
+                            st.session_state.sidebar_opacity = u_set.get("sidebar_opacity", 0.9)
+                            st.session_state.text_color = u_set.get("text_color", "#31333F")
+                            st.session_state.bg_image_url = u_set.get("bg_image_url", None)
+                            st.session_state.avatar_url = u_set.get("avatar_url", None)
+                            st.session_state.current_menu = u_set.get("current_menu", "1. Nhập Sản Lượng")
+                            
                             st.success("Đăng nhập thành công!")
                             st.rerun()
                         else:
@@ -254,7 +278,6 @@ if not st.session_state.logged_in:
                     elif rg_pass != rg_pass_confirm:
                         st.error("Mật khẩu xác nhận không khớp!")
                     else:
-                        # Tải tài khoản mới nhất để tránh ghi đè tài khoản khác vừa tạo
                         latest_fresh = load_data()
                         current_accounts = latest_fresh.get("accounts", st.session_state.accounts)
                         if rg_user in current_accounts:
@@ -267,12 +290,12 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==================== KHỞI TẠO DỮ LIỆU AN TOÀN TRONG SESSION ====================
+# Tải cấu hình giao diện riêng cho user hiện tại khi đã login
+user_settings_dict = saved_data.get("user_settings", {}).get(st.session_state.username, {})
+
 if "rules_df" not in st.session_state:
     r_data = saved_data.get("rules_df")
-    if r_data:
-        st.session_state.rules_df = pd.DataFrame(r_data)
-    else:
-        st.session_state.rules_df = pd.DataFrame(master_rules)
+    st.session_state.rules_df = pd.DataFrame(r_data) if r_data else pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" not in st.session_state:
@@ -301,25 +324,26 @@ if "chart_colors" not in st.session_state:
     st.session_state.chart_colors = saved_data.get("chart_colors", default_chart_colors)
 if "folders" not in st.session_state:
     st.session_state.folders = saved_data.get("folders", default_folders)
+
 if "primary_color" not in st.session_state:
-    st.session_state.primary_color = saved_data.get("primary_color", "#ff4b4b")
+    st.session_state.primary_color = user_settings_dict.get("primary_color", "#ff4b4b")
 if "bg_color" not in st.session_state:
-    st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
+    st.session_state.bg_color = user_settings_dict.get("bg_color", "#ffffff")
 if "sidebar_bg" not in st.session_state:
-    st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
+    st.session_state.sidebar_bg = user_settings_dict.get("sidebar_bg", "#f0f2f6")
 if "sidebar_opacity" not in st.session_state:
-    st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
+    st.session_state.sidebar_opacity = user_settings_dict.get("sidebar_opacity", 0.9)
 if "text_color" not in st.session_state:
-    st.session_state.text_color = saved_data.get("text_color", "#31333F")
+    st.session_state.text_color = user_settings_dict.get("text_color", "#31333F")
 if "bg_image_url" not in st.session_state:
-    st.session_state.bg_image_url = saved_data.get("bg_image_url", None)
+    st.session_state.bg_image_url = user_settings_dict.get("bg_image_url", None)
 if "avatar_url" not in st.session_state:
-    st.session_state.avatar_url = saved_data.get("avatar_url", None)
+    st.session_state.avatar_url = user_settings_dict.get("avatar_url", None)
 if "current_menu" not in st.session_state:
     first_item_name = "1. Nhập Sản Lượng"
     if st.session_state.folders and st.session_state.folders[0]["items"]:
         first_item_name = st.session_state.folders[0]["items"][0]["name"]
-    st.session_state.current_menu = saved_data.get("current_menu", first_item_name)
+    st.session_state.current_menu = user_settings_dict.get("current_menu", first_item_name)
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -464,7 +488,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Fragment độc lập chống chớp màn hình khi cập nhật ảnh đại diện
+# Fragment độc lập cho ảnh đại diện riêng của từng tài khoản
 @st.fragment
 def render_avatar_widget():
     has_custom_avatar = False
@@ -492,7 +516,7 @@ def render_avatar_widget():
 
     st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
     with st.popover(" "):
-        st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
+        st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện Riêng")
         avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
         if avatar_file is not None:
             with st.spinner("Đang tải lên Supabase..."):
@@ -500,7 +524,7 @@ def render_avatar_widget():
             if avatar_public_url:
                 st.session_state.avatar_url = avatar_public_url
                 save_data()
-                st.success("Đã cập nhật ảnh đại diện!")
+                st.success("Đã cập nhật ảnh đại diện cá nhân!")
             
         if st.session_state.avatar_url:
             st.markdown("---")
@@ -526,16 +550,13 @@ with st.sidebar:
         st.rerun()
 
     st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
-    
     render_avatar_widget()
-
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
 
     if st.button("🔄 Cập Nhật", use_container_width=True):
         st.cache_data.clear()
-        # Đồng bộ toàn diện toàn bộ dữ liệu mới nhất từ cơ sở dữ liệu chung lên giao diện
         latest_data = load_data()
         if "accounts" in latest_data:
             st.session_state.accounts = latest_data["accounts"]
@@ -585,7 +606,7 @@ with st.sidebar:
         st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
         save_data()
         st.rerun()
-    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+    if st.button("🎨 Cài Đặt Giao Diện Riêng", use_container_width=True):
         st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
         save_data()
         st.rerun()
@@ -782,7 +803,6 @@ elif feature == "input_production":
                         "Tổng Điểm": round(tong_diem, 2),
                         "Ghi Chú": ghi_chu
                     }
-                    # Gọi hàm Safe Merge & Save để gộp an toàn vào database chung, tránh mất dữ liệu của nhân sự khác
                     safe_merge_and_save("input_df", pd.DataFrame([new_row]))
                     st.success(f"Đã báo cáo sản lượng thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
                     st.rerun()
@@ -790,20 +810,24 @@ elif feature == "input_production":
     st.markdown("---")
     st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
     
-    if not st.session_state.input_df.empty:
-        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+    latest_storage = load_data()
+    latest_input_list = latest_storage.get("input_df", [])
+    current_input_df = pd.DataFrame(latest_input_list) if latest_input_list else st.session_state.input_df.copy()
+    
+    if not current_input_df.empty:
+        current_input_df["STT"] = range(1, len(current_input_df) + 1)
         
         s_col1, s_col2, s_col3 = st.columns(3)
         with s_col1:
-            all_dates = ["Tất cả"] + sorted(st.session_state.input_df["Ngày"].unique().tolist())
+            all_dates = ["Tất cả"] + sorted(current_input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            all_staff = ["Tất cả"] + sorted(st.session_state.input_df["Nhân Sự"].unique().tolist())
+            all_staff = ["Tất cả"] + sorted(current_input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
         with s_col3:
             zoom_level = st.slider("🔍 Kích thước ảnh:", min_value=50, max_value=200, value=80, step=10)
         
-        filtered_df = st.session_state.input_df.copy()
+        filtered_df = current_input_df.copy()
         if filter_date != "Tất cả":
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
         if filter_staff != "Tất cả":
@@ -844,10 +868,10 @@ elif feature == "input_production":
                     selected_rows = filtered_df[filtered_df["Chọn_Xóa"] == True]
                     if not selected_rows.empty:
                         stt_to_remove = selected_rows["STT"].tolist()
-                        rows_to_delete = st.session_state.input_df[st.session_state.input_df["STT"].isin(stt_to_remove)]
+                        rows_to_delete = current_input_df[current_input_df["STT"].isin(stt_to_remove)]
                         st.session_state.deleted_input_df = pd.concat([st.session_state.deleted_input_df, rows_to_delete], ignore_index=True)
                         
-                        st.session_state.input_df = st.session_state.input_df[~st.session_state.input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
+                        st.session_state.input_df = current_input_df[~current_input_df["STT"].isin(stt_to_remove)].reset_index(drop=True)
                         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                         
                         if not st.session_state.deleted_input_df.empty:
@@ -868,6 +892,10 @@ elif feature == "attendance":
     st.header(menu)
     st.markdown("Thực hiện Check-in và Check-out theo múi giờ Việt Nam (GMT+7). Hệ thống sẽ tự động tính số phút làm việc từ lúc Check-in đến khi Check-out.")
     
+    latest_att_storage = load_data()
+    latest_att_list = latest_att_storage.get("attendance_df", [])
+    st.session_state.attendance_df = pd.DataFrame(latest_att_list) if latest_att_list else st.session_state.attendance_df
+
     now_vn = datetime.datetime.now(VN_TIMEZONE)
     today_str = str(now_vn.date())
     
@@ -921,7 +949,6 @@ elif feature == "attendance":
             current_time_str = now_vn.strftime("%H:%M:%S")
             
             if check_in_clicked:
-                # Tải dữ liệu mới nhất trước khi kiểm tra ca làm
                 latest_fresh = load_data()
                 if "attendance_df" in latest_fresh:
                     st.session_state.attendance_df = pd.DataFrame(latest_fresh["attendance_df"])
@@ -1411,7 +1438,7 @@ elif feature == "manage_folders":
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
-    st.header("Cài Đặt Giao Diện & Nhân Sự")
+    st.header("Cài Đặt Giao Diện & Nhân Sự Riêng Cho Bạn")
     
     st.subheader("Quản Lý Nhân Sự")
     st.markdown("💡 Nhập tên nhân sự mới vào ô bên dưới và bấm nút thêm. Danh sách nhân sự hiện tại hiển thị ngay bên dưới để bạn chọn xóa nhanh chóng.")
@@ -1422,7 +1449,6 @@ elif feature == "settings_ui":
         if add_staff_btn:
             clean_name = new_staff_input.strip()
             if clean_name:
-                # Tải danh sách nhân sự mới nhất trước khi thêm để tránh ghi đè
                 latest_fresh = load_data()
                 current_staff = latest_fresh.get("staff_list", st.session_state.staff_list)
                 if clean_name not in current_staff:
@@ -1459,7 +1485,7 @@ elif feature == "settings_ui":
 
     st.markdown("---")
     
-    st.subheader("Màu Sắc Giao Diện")
+    st.subheader("Màu Sắc Giao Diện Cá Nhân")
     col_c1, col_c2 = st.columns(2)
     with col_c1:
         new_primary = st.color_picker("Màu chủ đạo", st.session_state.primary_color, key="picker_primary")
@@ -1470,24 +1496,24 @@ elif feature == "settings_ui":
         
     new_opacity = st.slider("Độ trong suốt thanh Sidebar", min_value=0.0, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05, key="slider_opacity")
 
-    if st.button("💾 Lưu Thay Đổi Màu Sắc", use_container_width=True):
+    if st.button("💾 Lưu Thay Đổi Màu Sắc Riêng", use_container_width=True):
         st.session_state.primary_color = new_primary
         st.session_state.bg_color = new_bg
         st.session_state.sidebar_bg = new_sidebar_bg
         st.session_state.text_color = new_text_color
         st.session_state.sidebar_opacity = new_opacity
         save_data()
-        st.success("Đã lưu và cập nhật màu sắc giao diện thành công!")
+        st.success("Đã lưu và cập nhật màu sắc giao diện cá nhân thành công!")
         st.rerun()
 
     st.markdown("---")
-    st.subheader("🖼️ Quản Lý Hình Nền (Tải lên / Xóa / Tắt nền)")
+    st.subheader("🖼️ Quản Lý Hình Nền Cá Nhân (Tải lên / Xóa / Tắt nền)")
 
     if st.session_state.bg_image_url:
-        if st.button("👁️ Tắt / Ẩn Hình Nền (Dùng màu đơn)", use_container_width=True):
+        if st.button("👁️ Tắt / Ẩn Hình Nền Riêng (Dùng màu đơn)", use_container_width=True):
             st.session_state.bg_image_url = None
             save_data()
-            st.success("Đã ẩn hình nền, chuyển về màu nền trang đơn sắc!")
+            st.success("Đã ẩn hình nền cá nhân!")
             st.rerun()
 
     bg_file = st.file_uploader("Tải ảnh hình nền mới (PNG, JPG)", type=["png", "jpg", "jpeg"], key="bg_uploader_standalone")
@@ -1497,7 +1523,7 @@ elif feature == "settings_ui":
         if bg_public_url:
             st.session_state.bg_image_url = bg_public_url
             save_data()
-            st.success("Đã cập nhật hình nền chính thành công!")
+            st.success("Đã cập nhật hình nền cá nhân thành công!")
             st.rerun()
 
     if st.session_state.bg_image_url:
@@ -1513,7 +1539,7 @@ elif feature == "settings_ui":
         except Exception:
             pass
     else:
-        st.text("Chưa có hình nền nào được chọn.")
+        st.text("Chưa có hình nền cá nhân nào.")
 
 # ==================== LÀM SẠCH DỮ LIỆU ====================
 elif feature == "clean_data":
