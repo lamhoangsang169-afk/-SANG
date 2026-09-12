@@ -157,7 +157,6 @@ def save_data():
     current_all_data["deleted_input_df"] = st.session_state.deleted_input_df.to_dict(orient="records") if "deleted_input_df" in st.session_state else []
     current_all_data["accounts"] = st.session_state.get("accounts", {"admin": {"password": "123456", "role": "admin", "staff_name": "Admin"}})
     
-    # Tự động đồng bộ chuẩn hóa toàn bộ tài khoản sang cấu trúc chuẩn có staff_name
     normalized_accounts = {}
     for u, info in current_all_data["accounts"].items():
         if isinstance(info, dict):
@@ -205,7 +204,17 @@ def safe_merge_and_save(table_key, new_rows_df):
         st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
     
     if "accounts" in latest:
-        st.session_state.accounts = latest["accounts"]
+        raw_accs = latest["accounts"]
+        norm_accs = {}
+        for u, info in raw_accs.items():
+            if isinstance(info, dict):
+                norm_accs[u] = {"password": info.get("password", ""), "role": info.get("role", "nhan_vien"), "staff_name": info.get("staff_name", u)}
+            else:
+                norm_accs[u] = {"password": str(info), "role": "nhan_vien", "staff_name": u}
+        st.session_state.accounts = norm_accs
+        st.session_state.account_staff_map = {u: info["staff_name"] for u, info in norm_accs.items() if u != "admin"}
+        st.session_state.staff_list = list(st.session_state.account_staff_map.values())
+
     if "rules_df" in latest:
         st.session_state.rules_df = pd.DataFrame(latest["rules_df"])
     if "auto_refresh_minutes" in latest:
@@ -213,7 +222,7 @@ def safe_merge_and_save(table_key, new_rows_df):
         
     save_data()
 
-# Nạp dữ liệu mới nhất từ Cloud/JSON mỗi lần khởi chạy
+# Nạp dữ liệu mới nhất từ Cloud/JSON mỗi lần khởi chạy/refresh để đồng bộ tuyệt đối
 saved_data = load_data()
 
 if "auto_refresh_minutes" not in st.session_state:
@@ -226,25 +235,20 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = "nhan_vien"
 
-if "accounts" not in st.session_state:
-    loaded_accounts = saved_data.get("accounts", {})
-    if "admin" not in loaded_accounts:
-        loaded_accounts["admin"] = {"password": "123456", "role": "admin", "staff_name": "Admin"}
-    st.session_state.accounts = loaded_accounts
+# Bắt buộc nạp trực tiếp từ cloud accounts mới nhất
+loaded_accounts = saved_data.get("accounts", {})
+if "admin" not in loaded_accounts:
+    loaded_accounts["admin"] = {"password": "123456", "role": "admin", "staff_name": "Admin"}
 
-# Chuẩn hóa tất cả tài khoản và gán tên nhân sự đầy đủ không bị sót
-normalized_accounts = {}
-for u, info in st.session_state.accounts.items():
+norm_accounts = {}
+for u, info in loaded_accounts.items():
     if isinstance(info, dict):
-        pass_val = info.get("password", "")
-        role_val = info.get("role", "admin" if u == "admin" else "nhan_vien")
-        s_name = info.get("staff_name", u)
-        normalized_accounts[u] = {"password": pass_val, "role": role_val, "staff_name": s_name}
+        norm_accounts[u] = {"password": info.get("password", ""), "role": info.get("role", "admin" if u == "admin" else "nhan_vien"), "staff_name": info.get("staff_name", u)}
     else:
-        normalized_accounts[u] = {"password": str(info), "role": "admin" if u == "admin" else "nhan_vien", "staff_name": u}
+        norm_accounts[u] = {"password": str(info), "role": "admin" if u == "admin" else "nhan_vien", "staff_name": u}
 
-st.session_state.accounts = normalized_accounts
-staff_map = {u: info["staff_name"] for u, info in normalized_accounts.items() if u != "admin"}
+st.session_state.accounts = norm_accounts
+staff_map = {u: info["staff_name"] for u, info in norm_accounts.items() if u != "admin"}
 st.session_state.account_staff_map = staff_map
 st.session_state.staff_list = list(staff_map.values())
 
@@ -325,7 +329,6 @@ if not st.session_state.logged_in:
                         latest_fresh = load_data()
                         current_accounts = latest_fresh.get("accounts", st.session_state.accounts)
                         
-                        # Chuẩn hóa lại cấu trúc hiện tại từ cloud
                         norm_existing = {}
                         for u, info in current_accounts.items():
                             if isinstance(info, dict):
@@ -723,7 +726,6 @@ if feature == "manage_accounts":
         st.header("👥 Quản Lý Tài Khoản Hệ Thống")
         st.markdown("Thay đổi mật khẩu, tên nhân sự, quyền hạn hoặc chọn **Xóa** tài khoản khỏi hệ thống.")
         
-        # Đảm bảo làm mới dữ liệu accounts trực tiếp từ Cloud/storage trước khi hiển thị bảng quản lý
         fresh_load = load_data()
         if "accounts" in fresh_load and isinstance(fresh_load["accounts"], dict):
             norm_accs = {}
@@ -733,6 +735,8 @@ if feature == "manage_accounts":
                 else:
                     norm_accs[u] = {"password": str(info), "role": "admin" if u == "admin" else "nhan_vien", "staff_name": u}
             st.session_state.accounts = norm_accs
+            st.session_state.account_staff_map = {u: info["staff_name"] for u, info in norm_accs.items() if u != "admin"}
+            st.session_state.staff_list = list(st.session_state.account_staff_map.values())
             
         acc_data = []
         for u, info in st.session_state.accounts.items():
