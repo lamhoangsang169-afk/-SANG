@@ -392,6 +392,8 @@ if "current_menu" not in st.session_state:
 
 if "show_success_msg" not in st.session_state:
     st.session_state.show_success_msg = False
+if "select_all_state" not in st.session_state:
+    st.session_state.select_all_state = False
 
 if not st.session_state.input_df.empty:
     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
@@ -946,6 +948,13 @@ elif feature == "input_production":
             filtered_df = filtered_df.iloc[::-1].reset_index(drop=True)
             
             with st.form("input_delete_form"):
+                select_all_btn_val = st.checkbox("☑️ Chọn tất cả / Bỏ chọn tất cả", value=st.session_state.get("select_all_state", False), key="select_all_checkbox_widget")
+                if select_all_btn_val != st.session_state.get("select_all_state", False):
+                    st.session_state.select_all_state = select_all_btn_val
+                    st.rerun()
+
+                st.markdown("---")
+
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -961,7 +970,7 @@ elif feature == "input_production":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", value=st.session_state.get("select_all_state", False), key=f"chk_{row['STT']}")
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
@@ -989,6 +998,7 @@ elif feature == "input_production":
                         if not st.session_state.deleted_input_df.empty:
                             st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
                             
+                        st.session_state.select_all_state = False
                         save_data()
                         st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
                         st.rerun()
