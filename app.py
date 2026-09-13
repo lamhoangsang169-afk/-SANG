@@ -870,15 +870,15 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH (THU NHỎ BẰNG MỘT NỬA) ====================
+    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH (SIÊU NÉT, NHỎ GỌN) ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
         chart_col1, chart_col2 = st.columns([0.5, 1])
         
         with chart_col1:
-            # Thu nhỏ kích thước khung vẽ xuống 1.8x1.8 để biểu đồ nhỏ bằng 1 nửa
-            fig, ax = plt.subplots(figsize=(1.8, 1.8))
+            # Tăng độ phân giải dpi=300 để biểu đồ sắc nét hoàn hảo ở kích thước nhỏ
+            fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=300)
             fig.patch.set_facecolor('none')
             ax.set_facecolor('none')
             
