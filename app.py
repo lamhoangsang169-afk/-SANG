@@ -870,19 +870,18 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ & KHUNG Ô VUÔNG NỀN TRẮNG ====================
+    # ==================== PHẦN BIỂU ĐỒ & KHUNG NỀN TRẮNG RIÊNG CHO BIỂU ĐỒ ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        # Tạo khung hình chữ nhật nền trắng bao quanh
-        st.markdown("""
-        <div style="background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; margin-bottom: 20px;">
-        """, unsafe_allow_html=True)
-        
         chart_col1, chart_col2 = st.columns([0.6, 1.2])
         
         with chart_col1:
-            # Giữ kích thước biểu đồ nhỏ gọn (1.8x1.8) nhưng tăng mạnh dpi=300 để cực kỳ sắc nét, chữ % to rõ
+            # Tạo ô vuông nền trắng riêng bao quanh biểu đồ hình tròn nhỏ gọn, sắc nét (dpi=300)
+            st.markdown("""
+            <div style="background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; text-align: center; display: inline-block; width: 100%;">
+            """, unsafe_allow_html=True)
+            
             fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=300)
             fig.patch.set_facecolor('none')
             ax.set_facecolor('none')
@@ -901,10 +900,12 @@ elif feature == "report":
             for autotext in autotexts:
                 autotext.set_color('#000000')
                 autotext.set_weight('bold')
-                autotext.set_fontsize(9.5)  # Phóng to cỡ chữ phần trăm bên trong rõ ràng
+                autotext.set_fontsize(9.5)  # Chữ % sắc nét, rõ ràng
                 
             ax.axis('equal')
             st.pyplot(fig)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
             
         with chart_col2:
             st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
@@ -921,8 +922,6 @@ elif feature == "report":
                     <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
                 </div>
                 """, unsafe_allow_html=True)
-                
-        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
 
