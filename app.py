@@ -19,7 +19,7 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 # ==================== KẾT NỐI SUPABASE & CƠ CHẾ AN TOÀN ====================
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"
+SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP" # Khóa Supabase của bạn
 
 supabase = None
 if HAS_SUPABASE_LIB and SUPABASE_KEY and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
@@ -88,8 +88,9 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     except Exception:
         return None
 
-def load_data():
-    # 1. Thử lấy từ Supabase trực tiếp không qua cache gây lỗi treo
+# Đọc dữ liệu chống lỗi vòng lặp
+@st.cache_data(ttl=2)
+def fetch_supabase_data():
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
@@ -101,8 +102,15 @@ def load_data():
                     return raw_data
         except Exception:
             pass
+    return None
+
+def load_data():
+    # Thử lấy từ Supabase trước
+    cloud_data = fetch_supabase_data()
+    if cloud_data:
+        return cloud_data
     
-    # 2. Nếu Supabase lỗi hoặc chưa có, đọc từ file cục bộ
+    # Nếu không có hoặc lỗi, fallback về file JSON cục bộ
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -133,12 +141,14 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     
+    # Lưu file cục bộ trước để đảm bảo tốc độ
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
+    # Lưu lên Supabase an toàn không gây nghẽn vòng lặp
     if supabase is not None:
         try:
             json_str = json.dumps(data, ensure_ascii=False, default=str)
@@ -147,6 +157,7 @@ def save_data():
         except Exception:
             pass
 
+# Khởi tạo dữ liệu ban đầu
 saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
@@ -196,3 +207,5 @@ if not st.session_state.attendance_df.empty:
     if "Ghi Chú" not in st.session_state.attendance_df.columns:
         st.session_state.attendance_df["Ghi Chú"] = ""
     st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
+
+# Phần Giao Diện & Logic còn lại giữ nguyên như cũ...
