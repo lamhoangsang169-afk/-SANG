@@ -869,7 +869,41 @@ elif feature == "report":
         )
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
+
+    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN ====================
+    st.markdown("---")
+    st.subheader("📊 Biểu Đồ Tỷ Lệ Đóng Góp Điểm Số Theo Nhân Sự")
     
+    if not summary.empty and total_all_points > 0:
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        
+        # Thiết lập màu nền trong suốt cho biểu đồ phù hợp với giao diện
+        fig.patch.set_facecolor('none')
+        ax.set_facecolor('none')
+        
+        wedges, texts, autotexts = ax.pie(
+            summary["Tổng_Điểm"], 
+            labels=summary["Nhân Sự"], 
+            autopct='%1.1f%%', 
+            startangle=140,
+            colors=default_chart_colors[:len(summary)],
+            wedgeprops=dict(width=0.4, edgecolor='white', linewidth=2) # Donut chart style
+        )
+        
+        # Tùy chỉnh màu chữ hiển thị trên biểu đồ theo màu chữ hệ thống
+        for text in texts:
+            text.set_color(st.session_state.text_color)
+            text.set_fontsize(10)
+        for autotext in autotexts:
+            autotext.set_color('#ffffff')
+            autotext.set_weight('bold')
+            autotext.set_fontsize(9)
+            
+        ax.axis('equal')
+        st.pyplot(fig)
+    else:
+        st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
+
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
