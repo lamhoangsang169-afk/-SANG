@@ -215,9 +215,11 @@ sidebar_rgba = hex_to_rgba(st.session_state.sidebar_bg, st.session_state.sidebar
 
 st.markdown(f"""
 <style>
+    /* Tối ưu hóa tổng thể trang web cho Mobile & PC */
     .stApp {{
         {bg_style}
         color: {st.session_state.text_color} !important;
+        padding-top: 1rem;
     }}
     
     p, span, label, div, h1, h2, h3, h4, h5, h6, 
@@ -311,21 +313,36 @@ st.markdown(f"""
         line-height: 1;
     }}
 
+    /* CSS Responsive chuyên biệt khi xem trên Điện thoại (Mobile) */
     @media (max-width: 768px) {{
         .stApp {{
-            padding: 2px !important;
+            padding: 4px !important;
         }}
         h1 {{
             font-size: 1.3rem !important;
         }}
+        h2 {{
+            font-size: 1.1rem !important;
+        }}
+        h3 {{
+            font-size: 1rem !important;
+        }}
+        /* Ép các cột hiển thị gọn gàng trên mobile tránh bị tràn */
         [data-testid="column"] {{
             width: 100% !important;
             flex: 100% !important;
             min-width: 100% !important;
+            margin-bottom: 6px;
         }}
-        .stButton button {{
+        /* Phóng to nút bấm và ô nhập liệu trên điện thoại để dễ chạm */
+        .stButton button, .stFormSubmitButton button {{
             width: 100% !important;
+            min-height: 42px !important;
             margin-bottom: 5px;
+        }}
+        [data-testid="stDataFrame"], [data-testid="stDataEditor"] {{
+            font-size: 0.8rem !important;
+            overflow-x: auto;
         }}
     }}
 </style>
