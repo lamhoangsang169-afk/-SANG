@@ -171,8 +171,9 @@ def upload_image_to_storage(uploaded_file):
         file_bytes = uploaded_file.getvalue()
         file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{uploaded_file.name}"
         supabase.storage.from_("production-images").upload(file_name, file_bytes, {"content-type": uploaded_file.type})
-        public_url_res = supabase.storage.from_("production-images").get_public_url(file_name)
-        return public_url_res
+        # Tạo trực tiếp URL public chuẩn của Supabase Storage để đảm bảo luôn trả về chuỗi URL hợp lệ
+        public_url = f"{SUPABASE_URL}/storage/v1/object/public/production-images/{file_name}"
+        return public_url
     except Exception:
         return ""
 
@@ -630,8 +631,10 @@ if feature == "input_production":
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
-                        if img_url_val:
-                            st.image(img_url_val, width=60)
+                        if isinstance(img_url_val, dict):
+                            img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                            st.image(img_url_val, width=80)
                         else:
                             st.text("Không có ảnh")
                     st.markdown("---")
