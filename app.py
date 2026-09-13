@@ -871,11 +871,7 @@ elif feature == "manage_folders":
         
         updated_items = []
         for i_idx, item in enumerate(st.session_state.folders[0]["items"]):
-            col_id, col_name = st.columns([1, 2])
-            with col_id:
-                st.text_input("ID", value=item["id"], key=f"edit_id_{i_idx}", disabled=True)
-            with col_name:
-                new_name = st.text_input("Tên hiển thị", value=item["name"], key=f"edit_name_{i_idx}", label_visibility="collapsed")
+            new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item["name"], key=f"edit_name_{i_idx}")
             updated_items.append({"id": item["id"], "name": new_name})
             
         submitted_menu = st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True)
