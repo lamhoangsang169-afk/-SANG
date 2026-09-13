@@ -615,6 +615,16 @@ if feature == "input_production":
         if filter_staff != "Tất cả": filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
             
         if not filtered_df.empty:
+            # Nút xóa tất cả các dòng đang hiển thị nhanh chóng
+            col_del_all_1, col_del_all_2 = st.columns([3, 1])
+            with col_del_all_2:
+                if st.button("🗑️ Xóa Tất Cả Dòng Đang Lọc", use_container_width=True, type="primary"):
+                    all_filtered_ids = filtered_df["db_id"].tolist()
+                    if all_filtered_ids:
+                        update_production_log_deleted_status(all_filtered_ids, True)
+                        st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
+                        st.rerun()
+
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
