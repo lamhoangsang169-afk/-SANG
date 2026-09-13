@@ -124,6 +124,7 @@ def save_data():
         "sidebar_bg": st.session_state.sidebar_bg if "sidebar_bg" in st.session_state else "#f0f2f6",
         "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
         "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
+        "require_image": st.session_state.get("require_image", True),
         "bg_image_base64": st.session_state.get("bg_image_base64", None),
         "avatar_base64": st.session_state.get("avatar_base64", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
@@ -176,6 +177,7 @@ st.session_state.bg_color = saved_data.get("bg_color", "#ffffff")
 st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
 st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 st.session_state.text_color = saved_data.get("text_color", "#31333F")
+st.session_state.require_image = saved_data.get("require_image", True)
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 
@@ -483,7 +485,11 @@ if feature == "input_production":
     if not active_staff:
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
-        st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
+        req_img = st.session_state.get("require_image", True)
+        if req_img:
+            st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
+        else:
+            st.info("💡 Hệ thống hiện đang **tắt yêu cầu bắt buộc ảnh**, bạn có thể báo cáo sản lượng trực tiếp mà không cần tải ảnh.")
         
         with st.form("entry_form"):
             f_col1, f_col2, f_col3 = st.columns(3)
@@ -495,11 +501,14 @@ if feature == "input_production":
                 danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                 
-            img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
-            if img_source == "Chụp trực tiếp":
-                record_image = st.camera_input("Chụp ảnh công việc (Bắt buộc)")
+            if req_img:
+                img_source = st.radio("Nguồn ảnh:", ["Tải lên / Kéo thả", "Chụp trực tiếp"], horizontal=True)
+                if img_source == "Chụp trực tiếp":
+                    record_image = st.camera_input("Chụp ảnh công việc (Bắt buộc)")
+                else:
+                    record_image = st.file_uploader("Tải ảnh đính kèm (Bắt buộc)", type=["png", "jpg", "jpeg"], key="record_img")
             else:
-                record_image = st.file_uploader("Tải ảnh đính kèm (Bắt buộc)", type=["png", "jpg", "jpeg"], key="record_img")
+                record_image = st.file_uploader("Tải ảnh đính kèm (Không bắt buộc)", type=["png", "jpg", "jpeg"], key="record_img_optional")
                     
             f_col4, f_col5 = st.columns(2)
             with f_col4:
@@ -518,7 +527,7 @@ if feature == "input_production":
                 if not hang_muc:
                     is_valid = False
                     missing_fields.append("Hạng mục công việc")
-                if record_image is None:
+                if req_img and record_image is None:
                     is_valid = False
                     missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
 
@@ -598,12 +607,13 @@ if feature == "input_production":
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
                                 
-                                # Cố định kích thước hiển thị ảnh là 50 pixel đúng theo yêu cầu
                                 st.image(img_bytes, width=50)
                                 with st.popover("🔍 Phóng to"):
                                     st.image(img_bytes, use_container_width=True)
                             except Exception:
                                 st.text("Lỗi hiển thị ảnh")
+                        else:
+                            st.text("Không có ảnh")
                     st.markdown("---")
                     
                 delete_submitted = st.form_submit_button("🗑️ Xóa Các Dòng Đã Tích Chọn", use_container_width=True)
@@ -801,19 +811,19 @@ elif feature == "report":
     
     all_staff_current = st.session_state.staff_list
     
+    summary = pd.DataFrame({"Nhân Sự": all_staff_current})
+    summary["Tổng_Số_Lượng"] = 0.0
+    summary["Tổng_Điểm"] = 0.0
+
     if not st.session_state.input_df.empty:
         df_in = st.session_state.input_df
-        summary = df_in.groupby("Nhân Sự").agg(
+        agg_in = df_in.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
             Tổng_Điểm=("Tổng Điểm", "sum")
-        ).reindex(all_staff_current).fillna(0).reset_index()
-    else:
-        summary = pd.DataFrame({
-            "Nhân Sự": all_staff_current,
-            "Tổng_Số_Lượng": [0.0] * len(all_staff_current),
-            "Tổng_Điểm": [0.0] * len(all_staff_current)
-        })
+        ).reset_index()
         
+        summary = pd.merge(summary[["Nhân Sự"]], agg_in, on="Nhân Sự", how="left").fillna(0)
+    
     total_all_points = summary["Tổng_Điểm"].sum()
     summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
     
@@ -876,7 +886,7 @@ elif feature == "report":
     comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
     comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
     
-    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]].copy()
     comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
     
     st.dataframe(
@@ -1152,6 +1162,17 @@ elif feature == "settings_ui":
                 st.rerun()
             else:
                 st.warning("Danh sách nhân sự không được để trống.")
+
+    st.markdown("---")
+    
+    st.subheader("⚙️ Tùy Chỉnh Yêu Cầu Báo Cáo")
+    current_req_img = st.session_state.get("require_image", True)
+    new_req_img = st.checkbox("📸 Bắt buộc tải ảnh đính kèm / chụp ảnh khi báo cáo sản lượng", value=current_req_img, key="chk_require_img")
+    if new_req_img != current_req_img:
+        st.session_state.require_image = new_req_img
+        save_data()
+        st.success(f"Đã cập nhật: {'Bắt buộc' if new_req_img else 'Không bắt buộc'} tải ảnh khi báo cáo!")
+        st.rerun()
 
     st.markdown("---")
     
