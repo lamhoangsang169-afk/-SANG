@@ -870,18 +870,18 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH GIỐNG ẢNH ====================
+    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH (THU NHỎ GỌN) ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        chart_col1, chart_col2 = st.columns([1.3, 1])
+        chart_col1, chart_col2 = st.columns([1.1, 1])
         
         with chart_col1:
-            fig, ax = plt.subplots(figsize=(5, 5))
+            # Thu nhỏ kích thước khung chứa và biểu đồ
+            fig, ax = plt.subplots(figsize=(3.6, 3.6))
             fig.patch.set_facecolor('none')
             ax.set_facecolor('none')
             
-            # Tách múi (explode) nhẹ để tạo khoảng cách giữa các phần giống mẫu
             explode = [0.03] * len(summary)
             
             wedges, texts, autotexts = ax.pie(
@@ -896,7 +896,7 @@ elif feature == "report":
             for autotext in autotexts:
                 autotext.set_color('#000000')
                 autotext.set_weight('bold')
-                autotext.set_fontsize(13)
+                autotext.set_fontsize(11)
                 
             ax.axis('equal')
             st.pyplot(fig)
@@ -905,15 +905,14 @@ elif feature == "report":
             st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
             for idx, row in summary.iterrows():
                 staff_name = row["Nhân Sự"]
-                # Lấy tên ngắn gọn trước khoảng trắng đầu tiên hoặc giữ nguyên nếu ngắn
                 short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
                 pts = row["Tổng_Điểm"]
                 pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
                 color_code = default_chart_colors[idx % len(default_chart_colors)]
                 
                 st.markdown(f"""
-                <div style="background-color: rgba(255,255,255,0.7); padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; border-left: 6px solid {color_code}; font-size: 0.95rem;">
-                    <span style="display:inline-block; width:12px; height:12px; background-color:{color_code}; border-radius:3px; margin-right:6px;"></span>
+                <div style="background-color: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; border-left: 6px solid {color_code}; font-size: 0.9rem;">
+                    <span style="display:inline-block; width:10px; height:10px; background-color:{color_code}; border-radius:3px; margin-right:6px;"></span>
                     <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
                 </div>
                 """, unsafe_allow_html=True)
