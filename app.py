@@ -67,7 +67,7 @@ default_folders = [
     }
 ]
 
-# Hàm nén ảnh tổng quát (cho ảnh nền hoặc avatar)
+# Hàm nén ảnh tổng quát
 def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     try:
         if uploaded_file is None:
@@ -93,7 +93,7 @@ def calculate_minutes(time_in_str, time_out_str):
     except Exception:
         return 0
 
-# Khởi tạo dữ liệu an toàn
+# Khởi tạo dữ liệu an toàn & Bảng cài đặt hệ thống trên Supabase
 def init_db_data():
     if supabase is None:
         return
@@ -107,6 +107,21 @@ def init_db_data():
         if not res_rules.data:
             for r in master_rules:
                 supabase.table("rules").insert(r).execute()
+                
+        # Kiểm tra bảng app_settings lưu cấu hình giao diện
+        res_settings = supabase.table("app_settings").select("id").limit(1).execute()
+        if not res_settings.data:
+            default_settings = {
+                "id": 1,
+                "primary_color": "#ff4b4b",
+                "bg_color": "#ffffff",
+                "sidebar_bg": "#f0f2f6",
+                "sidebar_opacity": 0.9,
+                "text_color": "#31333F",
+                "bg_image_base64": None,
+                "avatar_base64": None
+            }
+            supabase.table("app_settings").insert(default_settings).execute()
     except Exception as e:
         st.warning(f"⚠️ Cảnh báo kết nối Supabase: {e}")
 
@@ -161,6 +176,25 @@ def save_rules_df_db(df):
                 "ghi_chu": row.get("Ghi Chú", "")
             }
             supabase.table("rules").insert(payload).execute()
+    except Exception:
+        pass
+
+def load_app_settings_db():
+    if supabase is None:
+        return {}
+    try:
+        res = supabase.table("app_settings").select("*").eq("id", 1).execute()
+        if res.data:
+            return res.data[0]
+    except Exception:
+        pass
+    return {}
+
+def save_app_settings_db(settings_dict):
+    if supabase is None:
+        return
+    try:
+        supabase.table("app_settings").update(settings_dict).eq("id", 1).execute()
     except Exception:
         pass
 
@@ -305,7 +339,7 @@ def delete_attendance_db(db_ids):
     except Exception:
         pass
 
-# ==================== GÁN SESSION STATE & GIAO DIỆN ====================
+# ==================== GÁN SESSION STATE TỪ DATABASE ====================
 st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
 st.session_state.chart_colors = default_chart_colors
@@ -313,13 +347,24 @@ st.session_state.chart_colors = default_chart_colors
 if "folders" not in st.session_state or not st.session_state.folders:
     st.session_state.folders = default_folders
 
-if "primary_color" not in st.session_state: st.session_state.primary_color = "#ff4b4b"
-if "bg_color" not in st.session_state: st.session_state.bg_color = "#ffffff"
-if "sidebar_bg" not in st.session_state: st.session_state.sidebar_bg = "#f0f2f6"
-if "sidebar_opacity" not in st.session_state: st.session_state.sidebar_opacity = 0.9
-if "text_color" not in st.session_state: st.session_state.text_color = "#31333F"
-if "bg_image_base64" not in st.session_state: st.session_state.bg_image_base64 = None
-if "avatar_base64" not in st.session_state: st.session_state.avatar_base64 = None
+# Tải cấu hình giao diện từ Supabase
+db_settings = load_app_settings_db()
+
+if "primary_color" not in st.session_state: 
+    st.session_state.primary_color = db_settings.get("primary_color", "#ff4b4b")
+if "bg_color" not in st.session_state: 
+    st.session_state.bg_color = db_settings.get("bg_color", "#ffffff")
+if "sidebar_bg" not in st.session_state: 
+    st.session_state.sidebar_bg = db_settings.get("sidebar_bg", "#f0f2f6")
+if "sidebar_opacity" not in st.session_state: 
+    st.session_state.sidebar_opacity = float(db_settings.get("sidebar_opacity", 0.9))
+if "text_color" not in st.session_state: 
+    st.session_state.text_color = db_settings.get("text_color", "#31333F")
+if "bg_image_base64" not in st.session_state: 
+    st.session_state.bg_image_base64 = db_settings.get("bg_image_base64", None)
+if "avatar_base64" not in st.session_state: 
+    st.session_state.avatar_base64 = db_settings.get("avatar_base64", None)
+
 if "current_menu" not in st.session_state: st.session_state.current_menu = "1. Nhập Sản Lượng"
 
 bg_style = f"background-color: {st.session_state.bg_color};"
@@ -463,6 +508,18 @@ with st.sidebar:
                 if compressed_avatar:
                     st.session_state.avatar_base64 = compressed_avatar
                     st.session_state["last_processed_avatar"] = current_file_sig
+                    
+                    # Lưu avatar vào Database ngay lập tức
+                    save_app_settings_db({
+                        "primary_color": st.session_state.primary_color,
+                        "bg_color": st.session_state.bg_color,
+                        "sidebar_bg": st.session_state.sidebar_bg,
+                        "sidebar_opacity": st.session_state.sidebar_opacity,
+                        "text_color": st.session_state.text_color,
+                        "bg_image_base64": st.session_state.bg_image_base64,
+                        "avatar_base64": st.session_state.avatar_base64
+                    })
+                    
                     st.success("Đã cập nhật ảnh đại diện!")
                     st.rerun()
             
@@ -471,6 +528,18 @@ with st.sidebar:
             if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True, key="btn_remove_avatar_unique"):
                 st.session_state.avatar_base64 = None
                 st.session_state["last_processed_avatar"] = None
+                
+                # Cập nhật DB xóa avatar
+                save_app_settings_db({
+                    "primary_color": st.session_state.primary_color,
+                    "bg_color": st.session_state.bg_color,
+                    "sidebar_bg": st.session_state.sidebar_bg,
+                    "sidebar_opacity": st.session_state.sidebar_opacity,
+                    "text_color": st.session_state.text_color,
+                    "bg_image_base64": st.session_state.bg_image_base64,
+                    "avatar_base64": None
+                })
+                
                 st.success("Đã xóa ảnh đại diện!")
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -615,7 +684,6 @@ if feature == "input_production":
         if filter_staff != "Tất cả": filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
             
         if not filtered_df.empty:
-            # Nút xóa tất cả các dòng đang hiển thị nhanh chóng
             col_del_all_1, col_del_all_2 = st.columns([3, 1])
             with col_del_all_2:
                 if st.button("🗑️ Xóa Tất Cả Dòng Đang Lọc", use_container_width=True, type="primary"):
@@ -926,12 +994,35 @@ elif feature == "settings_ui":
                 if compressed_bg:
                     st.session_state.bg_image_base64 = compressed_bg
             
-            st.success("Đã lưu cài đặt giao diện thành công!")
+            # Lưu trực tiếp vào Database
+            save_app_settings_db({
+                "primary_color": st.session_state.primary_color,
+                "bg_color": st.session_state.bg_color,
+                "sidebar_bg": st.session_state.sidebar_bg,
+                "sidebar_opacity": st.session_state.sidebar_opacity,
+                "text_color": st.session_state.text_color,
+                "bg_image_base64": st.session_state.bg_image_base64,
+                "avatar_base64": st.session_state.avatar_base64
+            })
+            
+            st.success("Đã lưu cài đặt giao diện thành công xuống Database!")
             st.rerun()
             
         if st.session_state.bg_image_base64:
             if st.form_submit_button("🗑️ Xóa Hình Nền Hiện Tại", use_container_width=True):
                 st.session_state.bg_image_base64 = None
+                
+                # Cập nhật xóa hình nền trên DB
+                save_app_settings_db({
+                    "primary_color": st.session_state.primary_color,
+                    "bg_color": st.session_state.bg_color,
+                    "sidebar_bg": st.session_state.sidebar_bg,
+                    "sidebar_opacity": st.session_state.sidebar_opacity,
+                    "text_color": st.session_state.text_color,
+                    "bg_image_base64": None,
+                    "avatar_base64": st.session_state.avatar_base64
+                })
+                
                 st.success("Đã xóa hình nền!")
                 st.rerun()
 
