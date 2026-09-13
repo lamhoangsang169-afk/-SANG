@@ -17,7 +17,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
