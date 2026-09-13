@@ -616,10 +616,11 @@ if feature == "input_production":
             
         if not filtered_df.empty:
             with st.form("input_delete_form"):
-                # Ô tích chọn tất cả
+                # Ô tích chọn tất cả nằm bên trong form
                 select_all = st.checkbox("☑️ Chọn tất cả các bản ghi")
                 st.markdown("---")
                 
+                selected_db_ids = []
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -631,9 +632,10 @@ if feature == "input_production":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Nếu chọn "Chọn tất cả", mặc định tick True, ngược lại giữ trạng thái checkbox riêng lẻ
+                        # Sử dụng trực tiếp giá trị của nút select_all để đồng bộ trạng thái
                         is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", value=select_all, key=f"chk_{row['db_id']}")
-                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
+                        if is_selected:
+                            selected_db_ids.append(row['db_id'])
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
                         if isinstance(img_url_val, dict):
@@ -647,7 +649,6 @@ if feature == "input_production":
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
-                    selected_db_ids = filtered_df[filtered_df["Chọn_Xóa"] == True]["db_id"].tolist()
                     if selected_db_ids:
                         update_production_log_deleted_status(selected_db_ids, True)
                         st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
