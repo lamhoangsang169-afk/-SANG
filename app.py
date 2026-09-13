@@ -870,11 +870,12 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ PLOTLY CHỈ HIỆN % ====================
+    # ==================== PHẦN BIỂU ĐỒ PLOTLY ĐÃ THU NHỎ & TĂNG FONT CHỮ % ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        chart_col1, chart_col2 = st.columns([0.6, 1.2])
+        # Chia cột hẹp hơn ở phần chứa biểu đồ để biểu đồ thu nhỏ lại gọn gàng
+        chart_col1, chart_col2 = st.columns([0.45, 1.35])
         
         with chart_col1:
             fig_plotly = px.pie(
@@ -884,17 +885,20 @@ elif feature == "report":
                 hole=0,
                 color_discrete_sequence=default_chart_colors
             )
-            # Chỉ hiển thị % trên biểu đồ tròn, ẩn tên nhân sự đi vì đã có bảng chú thích bên phải
+            # Tăng kích thước chữ phần trăm lên 20px cho thật to, rõ ràng và cân đối
             fig_plotly.update_traces(
                 textposition='inside', 
                 textinfo='percent',
+                textfont=dict(size=20, color='white', family='Arial Black'),
                 pull=[0.03] * len(summary)
             )
+            # Thiết lập margin rộng xung quanh để thu nhỏ kích thước biểu đồ lại
             fig_plotly.update_layout(
-                margin=dict(t=10, b=10, l=10, r=10),
+                margin=dict(t=30, b=30, l=30, r=30),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                showlegend=False
+                showlegend=False,
+                height=320
             )
             st.plotly_chart(fig_plotly, use_container_width=True)
             
