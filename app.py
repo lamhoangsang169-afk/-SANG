@@ -563,7 +563,7 @@ if feature == "input_production":
                 if req_qty and so_luong <= 0: is_valid = False
 
                 if not is_valid:
-                    st.error("⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
                 else:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
                     he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
@@ -574,8 +574,16 @@ if feature == "input_production":
                     current_time_str = datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S")
                     
                     add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_url, don_vi, so_luong, he_so, tong_diem, ghi_chu)
-                    st.success(f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
-                    st.rerun()
+                    st.session_state["form_msg"] = ("success", f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+
+        # Hiển thị thông báo ngay bên dưới nút Báo Cáo Sản Lượng
+        if "form_msg" in st.session_state:
+            m_type, m_text = st.session_state["form_msg"]
+            if m_type == "success":
+                st.success(m_text)
+            else:
+                st.error(m_text)
+            del st.session_state["form_msg"]
 
     st.markdown("---")
     st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
