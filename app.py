@@ -616,6 +616,10 @@ if feature == "input_production":
             
         if not filtered_df.empty:
             with st.form("input_delete_form"):
+                # Ô tích chọn tất cả
+                select_all = st.checkbox("☑️ Chọn tất cả các bản ghi")
+                st.markdown("---")
+                
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -626,14 +630,15 @@ if feature == "input_production":
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
                         """, unsafe_allow_html=True)
-                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
+                        
+                        # Nếu chọn "Chọn tất cả", mặc định tick True, ngược lại giữ trạng thái checkbox riêng lẻ
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", value=select_all, key=f"chk_{row['db_id']}")
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
                         if isinstance(img_url_val, dict):
                             img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
                         if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                            # Dùng popover cho phép bấm vào xem/phóng to ảnh rõ nét
                             with st.popover("🔍 Xem ảnh"):
                                 st.image(img_url_val, use_container_width=True)
                             st.image(img_url_val, width=70)
