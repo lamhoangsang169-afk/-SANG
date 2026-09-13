@@ -870,16 +870,16 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ & KHUNG NỀN TRẮNG RIÊNG CHO BIỂU ĐỒ ====================
+    # ==================== PHẦN BIỂU ĐỒ & KHUNG Ô VUÔNG NỀN TRẮNG BAO TRỌN ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
         chart_col1, chart_col2 = st.columns([0.6, 1.2])
         
         with chart_col1:
-            # Tạo ô vuông nền trắng riêng bao quanh biểu đồ hình tròn nhỏ gọn, sắc nét (dpi=300)
+            # Tạo ô vuông nền trắng hoàn chỉnh, có khoảng đệm (padding) rộng rãi để bao trọn biểu đồ nhỏ gọn
             st.markdown("""
-            <div style="background-color: #ffffff; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; text-align: center; display: inline-block; width: 100%;">
+            <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; text-align: center; display: flex; justify-content: center; align-items: center; width: 100%;">
             """, unsafe_allow_html=True)
             
             fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=300)
@@ -900,7 +900,7 @@ elif feature == "report":
             for autotext in autotexts:
                 autotext.set_color('#000000')
                 autotext.set_weight('bold')
-                autotext.set_fontsize(9.5)  # Chữ % sắc nét, rõ ràng
+                autotext.set_fontsize(9.5)  # Chữ % to rõ, sắc nét hoàn hảo
                 
             ax.axis('equal')
             st.pyplot(fig)
