@@ -613,20 +613,9 @@ if feature == "input_production":
         filtered_df = input_df.copy()
         if filter_date != "Tất cả": filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
         if filter_staff != "Tất cả": filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
-        
-        st.session_state["current_filtered_ids"] = filtered_df["db_id"].tolist()
-
-        def toggle_all_cb():
-            val = st.session_state.get("select_all_toggle", False)
-            for db_id in st.session_state.get("current_filtered_ids", []):
-                st.session_state[f"chk_{db_id}"] = val
             
         if not filtered_df.empty:
             with st.form("input_delete_form"):
-                select_all = st.checkbox("☑️ Chọn tất cả các bản ghi", key="select_all_toggle", on_change=toggle_all_cb)
-                st.markdown("---")
-                
-                selected_db_ids = []
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -637,10 +626,8 @@ if feature == "input_production":
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
                         """, unsafe_allow_html=True)
-                        
                         is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
-                        if is_selected:
-                            selected_db_ids.append(row['db_id'])
+                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
                         if isinstance(img_url_val, dict):
@@ -654,6 +641,7 @@ if feature == "input_production":
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
+                    selected_db_ids = filtered_df[filtered_df["Chọn_Xóa"] == True]["db_id"].tolist()
                     if selected_db_ids:
                         update_production_log_deleted_status(selected_db_ids, True)
                         st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
