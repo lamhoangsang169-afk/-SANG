@@ -633,6 +633,9 @@ if feature == "input_production":
                         if isinstance(img_url_val, dict):
                             img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
                         if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                            # Dùng popover cho phép bấm vào xem/phóng to ảnh rõ nét
+                            with st.popover("🔍 Xem ảnh"):
+                                st.image(img_url_val, use_container_width=True)
                             st.image(img_url_val, width=70)
                         else:
                             st.text("Không có ảnh")
