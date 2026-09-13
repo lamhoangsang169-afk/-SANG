@@ -607,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã đổi tên thành Số ngày làm việc)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm tính năng xuất báo cáo)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -965,6 +965,32 @@ elif feature == "report":
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
+        # Nút xuất file báo cáo nằm ngay trên biểu đồ
+        exp_col1, exp_col2, exp_col3 = st.columns([1, 1, 2])
+        with exp_col1:
+            # Tạo file CSV
+            csv_data = summary_display.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 Xuất File CSV",
+                data=csv_data,
+                file_name=f"bao_cao_san_luong_{datetime.date.today()}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        with exp_col2:
+            # Tạo file Excel sử dụng pandas to_excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                summary_display.to_excel(writer, index=False, sheet_name='BaoCao')
+            excel_data = output.getvalue()
+            st.download_button(
+                label="📥 Xuất File Excel",
+                data=excel_data,
+                file_name=f"bao_cao_san_luong_{datetime.date.today()}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+
         chart_col1, chart_col2 = st.columns([0.45, 1.35])
         
         with chart_col1:
@@ -1167,7 +1193,7 @@ elif feature == "settings_ui":
                 save_app_settings_db({
                     "primary_color": st.session_state.primary_color,
                     "bg_color": st.session_state.bg_color,
-                    "sidebar_bg": st.session_state.sidebar_bg,
+                    "sidebar_sidebar": st.session_state.sidebar_bg,
                     "sidebar_opacity": st.session_state.sidebar_opacity,
                     "text_color": st.session_state.text_color,
                     "bg_image_base64": None,
