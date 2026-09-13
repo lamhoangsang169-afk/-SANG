@@ -17,7 +17,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkiYwnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -67,8 +67,8 @@ default_folders = [
     }
 ]
 
-# Hàm nén ảnh Avatar
-def compress_image_to_base64(uploaded_file, max_size=(300, 300), quality=60):
+# Hàm nén ảnh tổng quát (cho ảnh nền hoặc avatar)
+def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     try:
         if uploaded_file is None:
             return None
@@ -318,8 +318,6 @@ if "bg_color" not in st.session_state: st.session_state.bg_color = "#ffffff"
 if "sidebar_bg" not in st.session_state: st.session_state.sidebar_bg = "#f0f2f6"
 if "sidebar_opacity" not in st.session_state: st.session_state.sidebar_opacity = 0.9
 if "text_color" not in st.session_state: st.session_state.text_color = "#31333F"
-if "require_image" not in st.session_state: st.session_state.require_image = True
-if "require_quantity" not in st.session_state: st.session_state.require_quantity = True
 if "bg_image_base64" not in st.session_state: st.session_state.bg_image_base64 = None
 if "avatar_base64" not in st.session_state: st.session_state.avatar_base64 = None
 if "current_menu" not in st.session_state: st.session_state.current_menu = "1. Nhập Sản Lượng"
@@ -884,6 +882,43 @@ elif feature == "manage_folders":
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
     st.header("Cài Đặt Giao Diện & Nhân Sự")
+    
+    st.markdown("### 🎨 Tùy Chỉnh Giao Diện Ứng Dụng")
+    with st.form("ui_settings_form"):
+        c_col1, c_col2 = st.columns(2)
+        with c_col1:
+            picker_bg = st.color_picker("Màu nền ứng dụng", value=st.session_state.bg_color)
+            picker_text = st.color_picker("Màu chữ / văn bản", value=st.session_state.text_color)
+        with c_col2:
+            picker_primary = st.color_picker("Màu chủ đạo (Tiêu đề, điểm nhấn)", value=st.session_state.primary_color)
+            picker_sidebar = st.color_picker("Màu nền thanh bên (Sidebar)", value=st.session_state.sidebar_bg)
+            
+        st.markdown("---")
+        bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng (Tuỳ chọn)", type=["png", "jpg", "jpeg"])
+        
+        submitted_ui = st.form_submit_button("💾 Lưu Cài Đặt Giao Diện", use_container_width=True)
+        if submitted_ui:
+            st.session_state.bg_color = picker_bg
+            st.session_state.text_color = picker_text
+            st.session_state.primary_color = picker_primary
+            st.session_state.sidebar_bg = picker_sidebar
+            
+            if bg_file_upload is not None:
+                compressed_bg = compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80)
+                if compressed_bg:
+                    st.session_state.bg_image_base64 = compressed_bg
+            
+            st.success("Đã lưu cài đặt giao diện thành công!")
+            st.rerun()
+            
+        if st.session_state.bg_image_base64:
+            if st.form_submit_button("🗑️ Xóa Hình Nền Hiện Tại", use_container_width=True):
+                st.session_state.bg_image_base64 = None
+                st.success("Đã xóa hình nền!")
+                st.rerun()
+
+    st.markdown("---")
+    st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
     with st.form("staff_form"):
         staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
         edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True)
