@@ -744,6 +744,27 @@ if feature == "input_production":
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn ít nhất một dòng cần xóa trên bảng!")
+
+            # Bổ sung tính năng xem lại ảnh đính kèm chi tiết
+            st.markdown("---")
+            st.markdown("##### 🔍 Tra cứu & Xem ảnh đính kèm bản ghi")
+            selected_stt_for_img = st.selectbox(
+                "Chọn STT bản ghi để xem ảnh", 
+                options=["-- Chọn bản ghi --"] + filtered_df["STT"].tolist(),
+                key="select_stt_img_view"
+            )
+            
+            if selected_stt_for_img != "-- Chọn bản ghi --":
+                row_selected_data = filtered_df[filtered_df["STT"] == selected_stt_for_img].iloc[0]
+                img_url_val = row_selected_data.get("Hình Ảnh", "")
+                
+                if isinstance(img_url_val, dict):
+                    img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                    
+                if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                    st.image(img_url_val, caption=f"Ảnh đính kèm bản ghi STT {selected_stt_for_img} - Nhân sự: {row_selected_data['Nhân Sự']}", width=400)
+                else:
+                    st.info(f"Bản ghi STT {selected_stt_for_img} không có hình ảnh đính kèm.")
         else:
             st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
     else:
@@ -1048,6 +1069,24 @@ elif feature == "trash":
                     st.rerun()
                 else:
                     st.warning("Vui lòng tích chọn dòng cần xóa vĩnh viễn!")
+
+        # Bổ sung xem ảnh thùng rác
+        st.markdown("---")
+        st.markdown("##### 🔍 Tra cứu ảnh bản ghi trong thùng rác")
+        selected_trash_stt = st.selectbox(
+            "Chọn STT trong thùng rác để xem ảnh",
+            options=["-- Chọn bản ghi --"] + trash_df["STT"].tolist(),
+            key="select_trash_stt_img"
+        )
+        if selected_trash_stt != "-- Chọn bản ghi --":
+            t_row = trash_df[trash_df["STT"] == selected_trash_stt].iloc[0]
+            t_img = t_row.get("Hình Ảnh", "")
+            if isinstance(t_img, dict):
+                t_img = t_img.get("publicUrl") or t_img.get("url", "")
+            if t_img and isinstance(t_img, str) and t_img.startswith("http"):
+                st.image(t_img, caption=f"Ảnh thùng rác STT {selected_trash_stt}", width=400)
+            else:
+                st.info("Bản ghi này không có ảnh đính kèm.")
     else:
         st.info("Thùng rác trống.")
 
