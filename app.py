@@ -17,7 +17,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiYwnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -171,7 +171,6 @@ def upload_image_to_storage(uploaded_file):
         file_bytes = uploaded_file.getvalue()
         file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{uploaded_file.name}"
         supabase.storage.from_("production-images").upload(file_name, file_bytes, {"content-type": uploaded_file.type})
-        # Tạo trực tiếp URL public chuẩn của Supabase Storage để đảm bảo luôn trả về chuỗi URL hợp lệ
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/production-images/{file_name}"
         return public_url
     except Exception:
@@ -618,25 +617,15 @@ if feature == "input_production":
         if not filtered_df.empty:
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
-                    row_c1, row_c2 = st.columns([4, 1])
-                    with row_c1:
-                        st.markdown(f"""
-                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
-                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
-                    with row_c2:
-                        img_url_val = row.get("Hình Ảnh", "")
-                        if isinstance(img_url_val, dict):
-                            img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
-                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                            st.image(img_url_val, width=80)
-                        else:
-                            st.text("Không có ảnh")
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
+                    filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
