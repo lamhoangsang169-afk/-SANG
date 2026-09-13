@@ -125,6 +125,7 @@ def save_data():
         "sidebar_opacity": st.session_state.sidebar_opacity if "sidebar_opacity" in st.session_state else 0.9,
         "text_color": st.session_state.text_color if "text_color" in st.session_state else "#31333F",
         "require_image": st.session_state.get("require_image", True),
+        "require_quantity": st.session_state.get("require_quantity", True),
         "bg_image_base64": st.session_state.get("bg_image_base64", None),
         "avatar_base64": st.session_state.get("avatar_base64", None),
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
@@ -178,6 +179,7 @@ st.session_state.sidebar_bg = saved_data.get("sidebar_bg", "#f0f2f6")
 st.session_state.sidebar_opacity = saved_data.get("sidebar_opacity", 0.9)
 st.session_state.text_color = saved_data.get("text_color", "#31333F")
 st.session_state.require_image = saved_data.get("require_image", True)
+st.session_state.require_quantity = saved_data.get("require_quantity", True)
 st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 
@@ -486,6 +488,8 @@ if feature == "input_production":
         st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
         req_img = st.session_state.get("require_image", True)
+        req_qty = st.session_state.get("require_quantity", True)
+        
         if req_img:
             st.info("💡 Mẹo trên điện thoại: Có thể chụp ảnh trực tiếp từ camera điện thoại hoặc tải ảnh có sẵn.")
         else:
@@ -512,7 +516,8 @@ if feature == "input_production":
                     
             f_col4, f_col5 = st.columns(2)
             with f_col4:
-                so_luong = st.number_input("Số lượng thực tế", min_value=1, value=100, step=1)
+                qty_label = "Số lượng thực tế (Bắt buộc > 0)" if req_qty else "Số lượng thực tế (Tùy chọn)"
+                so_luong = st.number_input(qty_label, min_value=0, value=100, step=1)
             with f_col5:
                 ghi_chu = st.text_input("Ghi chú", "")
                 
@@ -530,6 +535,9 @@ if feature == "input_production":
                 if req_img and record_image is None:
                     is_valid = False
                     missing_fields.append("Ảnh đính kèm / Chụp ảnh công việc")
+                if req_qty and so_luong <= 0:
+                    is_valid = False
+                    missing_fields.append("Số lượng thực tế (phải lớn hơn 0)")
 
                 if not is_valid:
                     st.error(f"⚠️ Vui lòng hoàn thành các mục bắt buộc: {', '.join(missing_fields)}")
@@ -837,7 +845,6 @@ elif feature == "report":
             
     summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
     
-    # Đổi tên cột 'Tổng_Số_Lượng' thành 'Số Lượng Thực Tế' để hiển thị rõ ràng hơn
     summary_display = summary[["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Xếp_Loại"]].copy()
     summary_display.columns = ["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"]
     
@@ -910,7 +917,7 @@ elif feature == "report":
     
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
-        csv_summary = summary_to_export = summary_display.to_csv(index=False).encode('utf-8-sig')
+        csv_summary = summary_display.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 Tải Bảng Tổng Kết (CSV)",
             data=csv_summary,
@@ -1176,6 +1183,14 @@ elif feature == "settings_ui":
         st.session_state.require_image = new_req_img
         save_data()
         st.success(f"Đã cập nhật: {'Bắt buộc' if new_req_img else 'Không bắt buộc'} tải ảnh khi báo cáo!")
+        st.rerun()
+
+    current_req_qty = st.session_state.get("require_quantity", True)
+    new_req_qty = st.checkbox("🔢 Bắt buộc nhập số lượng thực tế (> 0) khi báo cáo sản lượng", value=current_req_qty, key="chk_require_qty")
+    if new_req_qty != current_req_qty:
+        st.session_state.require_quantity = new_req_qty
+        save_data()
+        st.success(f"Đã cập nhật: {'Bắt buộc' if new_req_qty else 'Không bắt buộc'} nhập số lượng thực tế khi báo cáo!")
         st.rerun()
 
     st.markdown("---")
