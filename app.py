@@ -82,11 +82,11 @@ def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     except Exception:
         return None
 
-def calculate_minutes(time_in_str, time_out_str):
+def calculate_exact_minutes(date_in_str, time_in_str, date_out_str, time_out_str):
     try:
-        t1 = datetime.datetime.strptime(time_in_str, "%H:%M:%S")
-        t2 = datetime.datetime.strptime(time_out_str, "%H:%M:%S")
-        delta = t2 - t1
+        dt1 = datetime.datetime.strptime(f"{date_in_str} {time_in_str}", "%Y-%m-%d %H:%M:%S")
+        dt2 = datetime.datetime.strptime(f"{date_out_str} {time_out_str}", "%Y-%m-%d %H:%M:%S")
+        delta = dt2 - dt1
         minutes = int(delta.total_seconds() / 60)
         return max(0, minutes)
     except Exception:
@@ -349,23 +349,6 @@ def add_attendance_db(ngay, nhan_su, gio_vao, gio_ra, phut, ghi_chu):
             "ghi_chu": ghi_chu
         }
         supabase.table("attendance").insert(payload).execute()
-    except Exception:
-        pass
-
-def update_attendance_checkout_db(nhan_su, ngay, gio_ra, phut, ghi_chu_moi):
-    if supabase is None:
-        return
-    try:
-        res = supabase.table("attendance").select("*").eq("nhan_su", nhan_su).eq("ngay", str(ngay)).eq("gio_ra_ca", "Chưa kết thúc").execute()
-        if res.data:
-            row_id = res.data[0]["id"]
-            old_note = res.data[0].get("ghi_chu", "")
-            final_note = f"{old_note} | {ghi_chu_moi}" if old_note else ghi_chu_moi
-            supabase.table("attendance").update({
-                "gio_ra_ca": gio_ra,
-                "so_phut_lam_viec": int(phut),
-                "ghi_chu": final_note
-            }).eq("id", row_id).execute()
     except Exception:
         pass
 
@@ -639,7 +622,6 @@ if feature == "input_production":
     att_df_check = get_attendance_db()
     checked_in_set = set()
     if not att_df_check.empty:
-        # Sửa logic: Quét toàn bộ các bản ghi chưa kết thúc để nhận diện nhân sự đang làm việc chuẩn xác hơn
         checked_in_set = set(att_df_check[att_df_check["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
 
     active_staff = [s for s in st.session_state.staff_list if s in checked_in_set]
@@ -771,7 +753,6 @@ elif feature == "attendance":
     today_str = str(now_vn.date())
     
     att_df = get_attendance_db()
-    # Quét toàn bộ các ca chưa kết thúc để hiển thị trạng thái chính xác
     checked_in_set = set(att_df[att_df["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist()) if not att_df.empty else set()
 
     staff_lines = ""
@@ -799,21 +780,16 @@ elif feature == "attendance":
                 st.session_state["att_msg"] = ("success", f"Đã Vào ca cho {att_staff} lúc {time_str}!")
                 st.rerun()
         if check_out:
-            # Tìm bản ghi chưa kết thúc của nhân sự này (ưu tiên ngày hiện tại hoặc các ngày trước đó)
             res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
             
             if res_check and res_check.data:
-                # Lấy bản ghi chưa kết thúc gần nhất của nhân sự
                 target_row = res_check.data[0]
                 row_id = target_row["id"]
                 ngay_vao = target_row["ngay"]
                 gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
                 
-                # Nếu cùng ngày thì tính phút trực tiếp, khác ngày có thể quy ước gán tạm hoặc tính tương đối
-                if str(att_date) == ngay_vao:
-                    so_phut_thuc_te = calculate_minutes(gio_vao_ca, time_str)
-                else:
-                    so_phut_thuc_te = 480 # Mặc định ca chuẩn nếu quên checkout qua ngày hôm sau
+                # Tính toán chính xác thời gian thực tế qua đêm/khác ngày
+                so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
                 
                 old_note = target_row.get("ghi_chu", "")
                 final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
@@ -840,7 +816,6 @@ elif feature == "attendance":
     if not att_df.empty:
         st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
         
-        # Thêm nút hỗ trợ xóa nhanh các dòng chấm công lỗi/treo
         with st.form("delete_att_form"):
             st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
             att_ids_to_del = []
