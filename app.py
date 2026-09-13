@@ -870,37 +870,53 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN ====================
+    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH GIỐNG ẢNH ====================
     st.markdown("---")
-    st.subheader("📊 Biểu Đồ Tỷ Lệ Đóng Góp Điểm Số Theo Nhân Sự")
     
     if not summary.empty and total_all_points > 0:
-        fig, ax = plt.subplots(figsize=(7, 4.5))
+        chart_col1, chart_col2 = st.columns([1.3, 1])
         
-        # Thiết lập màu nền trong suốt cho biểu đồ phù hợp với giao diện
-        fig.patch.set_facecolor('none')
-        ax.set_facecolor('none')
-        
-        wedges, texts, autotexts = ax.pie(
-            summary["Tổng_Điểm"], 
-            labels=summary["Nhân Sự"], 
-            autopct='%1.1f%%', 
-            startangle=140,
-            colors=default_chart_colors[:len(summary)],
-            wedgeprops=dict(width=0.4, edgecolor='white', linewidth=2) # Donut chart style
-        )
-        
-        # Tùy chỉnh màu chữ hiển thị trên biểu đồ theo màu chữ hệ thống
-        for text in texts:
-            text.set_color(st.session_state.text_color)
-            text.set_fontsize(10)
-        for autotext in autotexts:
-            autotext.set_color('#ffffff')
-            autotext.set_weight('bold')
-            autotext.set_fontsize(9)
+        with chart_col1:
+            fig, ax = plt.subplots(figsize=(5, 5))
+            fig.patch.set_facecolor('none')
+            ax.set_facecolor('none')
             
-        ax.axis('equal')
-        st.pyplot(fig)
+            # Tách múi (explode) nhẹ để tạo khoảng cách giữa các phần giống mẫu
+            explode = [0.03] * len(summary)
+            
+            wedges, texts, autotexts = ax.pie(
+                summary["Tổng_Điểm"], 
+                autopct='%1.1f%%', 
+                startangle=140,
+                explode=explode,
+                colors=default_chart_colors[:len(summary)],
+                shadow=False
+            )
+            
+            for autotext in autotexts:
+                autotext.set_color('#000000')
+                autotext.set_weight('bold')
+                autotext.set_fontsize(13)
+                
+            ax.axis('equal')
+            st.pyplot(fig)
+            
+        with chart_col2:
+            st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
+            for idx, row in summary.iterrows():
+                staff_name = row["Nhân Sự"]
+                # Lấy tên ngắn gọn trước khoảng trắng đầu tiên hoặc giữ nguyên nếu ngắn
+                short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
+                pts = row["Tổng_Điểm"]
+                pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                color_code = default_chart_colors[idx % len(default_chart_colors)]
+                
+                st.markdown(f"""
+                <div style="background-color: rgba(255,255,255,0.7); padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; border-left: 6px solid {color_code}; font-size: 0.95rem;">
+                    <span style="display:inline-block; width:12px; height:12px; background-color:{color_code}; border-radius:3px; margin-right:6px;"></span>
+                    <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
+                </div>
+                """, unsafe_allow_html=True)
     else:
         st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
 
