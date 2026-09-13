@@ -4,7 +4,6 @@ import datetime
 import matplotlib.pyplot as plt
 import io
 import json
-import os
 import base64
 from PIL import Image
 
@@ -22,18 +21,19 @@ except ImportError:
 
 st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page_icon="📊", layout="wide")
 
-# ==================== KẾT NỐI SUPABASE & CƠ CHẾ AN TOÀN ====================
+# ==================== KẾT NỐI SUPABASE ====================
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
+supabase_error_msg = ""
 if HAS_SUPABASE_LIB and SUPABASE_KEY:
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception:
+    except Exception as e:
+        supabase_error_msg = str(e)
         supabase = None
 
-DATA_FILE = "app_storage.json"
 BUCKET_NAME = "APP_IMAGES"
 
 class VietnamTz(datetime.tzinfo):
@@ -93,6 +93,7 @@ def upload_image_to_supabase(uploaded_file, folder_prefix="uploads"):
 
 def load_data():
     data = {}
+    global supabase_error_msg
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
@@ -102,16 +103,8 @@ def load_data():
                     data = json.loads(raw_data)
                 elif isinstance(raw_data, dict):
                     data = raw_data
-        except Exception:
-            pass
-    
-    if not data and os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception:
-            pass
-            
+        except Exception as e:
+            supabase_error_msg = f"Lỗi đọc Supabase: {str(e)}"
     return data
 
 def save_data():
@@ -160,18 +153,13 @@ def save_data():
     current_all_data["folders"] = st.session_state.folders if "folders" in st.session_state else default_folders
     current_all_data["auto_refresh_minutes"] = st.session_state.get("auto_refresh_minutes", 5)
     
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(current_all_data, f, ensure_ascii=False, default=str, indent=4)
-    except Exception:
-        pass
-
+    global supabase_error_msg
     if supabase is not None:
         try:
             payload = {"id": "main_config", "data": current_all_data}
             supabase.table("app_storage_table").upsert(payload).execute()
-        except Exception:
-            pass
+        except Exception as e:
+            supabase_error_msg = f"Lỗi ghi Supabase: {str(e)}"
 
 def safe_merge_and_save(table_key, new_rows_df):
     latest = load_data()
@@ -241,6 +229,9 @@ if not st.session_state.logged_in:
         </div>
     """, unsafe_allow_html=True)
     
+    if supabase_error_msg:
+        st.error(f"⚠️ Cảnh báo kết nối Supabase: {supabase_error_msg}")
+
     col_center1, col_center2, col_center3 = st.columns([1, 2, 1])
     with col_center2:
         tab_login, tab_register = st.tabs(["🔐 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
@@ -675,8 +666,10 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 🟢 Trạng Thái Hệ Thống")
-    db_status = "🟢 Supabase Đã Kết Nối" if supabase is not None else "🟡 Dùng Bộ Nhớ Cục Bộ"
+    db_status = "🟢 Supabase Đã Kết Nối" if supabase is not None else "🟡 Lỗi Kết Nối Supabase"
     st.markdown(f"<small>{db_status}</small>", unsafe_allow_html=True)
+    if supabase_error_msg:
+        st.markdown(f"<small style='color:red;'>Lỗi: {supabase_error_msg}</small>", unsafe_allow_html=True)
     st.markdown(f"<small>🔗 Ping Health: <a href='./_stcore/health' target='_blank'>Online</a></small>", unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
