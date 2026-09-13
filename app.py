@@ -607,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu nút xem ảnh gọn gàng)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tích hợp icon cạnh ảnh)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -741,9 +741,12 @@ if feature == "input_production":
                         if isinstance(img_url_val, dict):
                             img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
                         if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                            st.image(img_url_val, width=60)
-                            with st.popover("🔍", help="Xem ảnh lớn"):
-                                st.image(img_url_val, use_container_width=True)
+                            sub_c1, sub_c2 = st.columns([1, 1])
+                            with sub_c1:
+                                st.image(img_url_val, width=50)
+                            with sub_c2:
+                                with st.popover("🔍", help="Xem ảnh lớn"):
+                                    st.image(img_url_val, use_container_width=True)
                         else:
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                     st.markdown("---")
@@ -1043,9 +1046,12 @@ elif feature == "trash":
                     if isinstance(img_url_val, dict):
                         img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
                     if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                        st.image(img_url_val, width=60)
-                        with st.popover("🔍", help="Xem ảnh lớn"):
-                            st.image(img_url_val, use_container_width=True)
+                        sub_c1, sub_c2 = st.columns([1, 1])
+                        with sub_c1:
+                            st.image(img_url_val, width=50)
+                        with sub_c2:
+                            with st.popover("🔍", help="Xem ảnh lớn"):
+                                st.image(img_url_val, use_container_width=True)
                     else:
                         st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                 st.markdown("---")
