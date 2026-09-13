@@ -788,7 +788,6 @@ elif feature == "attendance":
                 ngay_vao = target_row["ngay"]
                 gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
                 
-                # Tính toán chính xác thời gian thực tế qua đêm/khác ngày
                 so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
                 
                 old_note = target_row.get("ghi_chu", "")
@@ -1003,25 +1002,48 @@ elif feature == "trash":
     if not trash_df.empty:
         with st.form("trash_form"):
             for idx, row in trash_df.iterrows():
-                st.markdown(f"**{row['Nhân Sự']}** - {row['Hạng Mục Công Việc']} - {row['Số Lượng']} {row['Đơn Vị'] if 'Đơn Vị' in row else ''}")
-                is_sel = st.checkbox(f"Chọn STT {row['STT']}", key=f"t_{row['db_id']}")
-                trash_df.loc[idx, "Chọn"] = is_sel
+                row_c1, row_c2 = st.columns([4, 1])
+                with row_c1:
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    is_sel = st.checkbox(f"Chọn STT {row['STT']}", key=f"t_{row['db_id']}")
+                    trash_df.loc[idx, "Chọn"] = is_sel
+                with row_c2:
+                    img_url_val = row.get("Hình Ảnh", "")
+                    if isinstance(img_url_val, dict):
+                        img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                    if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                        with st.popover("🔍 Xem ảnh"):
+                            st.image(img_url_val, use_container_width=True)
+                        st.image(img_url_val, width=70)
+                    else:
+                        st.text("Không có ảnh")
+                st.markdown("---")
             
             c1, c2 = st.columns(2)
             with c1:
-                if st.form_submit_button("📥 Khôi Phục Đã Chọn", use_container_width=True):
+                if st.form_submit_button("📥 Khôi Phục Các Dòng Đã Chọn", use_container_width=True):
                     ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
                     if ids:
                         update_production_log_deleted_status(ids, False)
                         st.success("Đã khôi phục thành công!")
                         st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần khôi phục!")
             with c2:
-                if st.form_submit_button("🔥 Xóa Vĩnh Viễn", use_container_width=True):
+                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn", use_container_width=True):
                     ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
                     if ids:
                         permanent_delete_db(ids)
                         st.success("Đã xóa vĩnh viễn!")
                         st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần xóa vĩnh viễn!")
     else:
         st.info("Thùng rác trống.")
 
