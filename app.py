@@ -67,7 +67,7 @@ default_folders = [
     }
 ]
 
-# Hàm nén ảnh phụ vụ Avatar
+# Hàm nén ảnh Avatar
 def compress_image_to_base64(uploaded_file, max_size=(300, 300), quality=60):
     try:
         if uploaded_file is None:
