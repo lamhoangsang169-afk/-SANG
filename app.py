@@ -108,7 +108,6 @@ def init_db_data():
             for r in master_rules:
                 supabase.table("rules").insert(r).execute()
                 
-        # Kiểm tra bảng app_settings lưu cấu hình giao diện
         res_settings = supabase.table("app_settings").select("id").limit(1).execute()
         if not res_settings.data:
             default_settings = {
@@ -128,26 +127,68 @@ def init_db_data():
 init_db_data()
 
 # ==================== CÁC HÀM CRUD SUPABASE ====================
-def get_staff_list_db():
+def get_staff_df_db():
     if supabase is None:
-        return default_staff_list
+        return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
     try:
-        res = supabase.table("staff").select("name").execute()
+        res = supabase.table("staff").select("*").execute()
         if res.data:
-            return [row["name"] for row in res.data]
+            df = pd.DataFrame(res.data)
+            if "name" in df.columns:
+                df = df.rename(columns={"name": "Nhân Sự"})
+            if "id" not in df.columns:
+                df.insert(0, "id", range(1, len(df) + 1))
+            return df[["id", "Nhân Sự"]]
     except Exception:
         pass
+    return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
+
+def get_staff_list_db():
+    df = get_staff_df_db()
+    if not df.empty and "Nhân Sự" in df.columns:
+        return [str(x).strip() for x in df["Nhân Sự"].tolist() if str(x).strip()]
     return default_staff_list
 
-def save_staff_list_db(new_staffs):
+def save_staff_list_db(edited_df):
     if supabase is None:
         return
     try:
-        supabase.table("staff").delete().neq("id", 0).execute()
-        for s in new_staffs:
-            supabase.table("staff").insert({"name": s}).execute()
-    except Exception:
-        pass
+        # Lấy danh sách nhân sự hiện tại trên Database kèm Tên và ID
+        res_old = supabase.table("staff").select("id, name").execute()
+        old_staffs = {row["id"]: row["name"] for row in res_old.data} if res_old.data else {}
+        old_ids = list(old_staffs.keys())
+        
+        current_ids_in_editor = []
+        for _, row in edited_df.iterrows():
+            name = str(row.get("Nhân Sự", "")).strip()
+            row_id = row.get("id")
+            
+            if not name:
+                continue
+                
+            if pd.notna(row_id) and int(row_id) in old_ids:
+                supabase.table("staff").update({"name": name}).eq("id", int(row_id)).execute()
+                current_ids_in_editor.append(int(row_id))
+            else:
+                res_ins = supabase.table("staff").insert({"name": name}).execute()
+                if res_ins.data:
+                    current_ids_in_editor.append(res_ins.data[0]["id"])
+                    
+        # Xác định nhân sự bị xóa vĩnh viễn
+        ids_to_delete = [oid for oid in old_ids if oid not in current_ids_in_editor]
+        for del_id in ids_to_delete:
+            deleted_name = old_staffs.get(del_id)
+            # 1. Xóa vĩnh viễn nhân sự khỏi bảng staff
+            supabase.table("staff").delete().eq("id", del_id).execute()
+            
+            if deleted_name:
+                # 2. Xóa vĩnh viễn toàn bộ báo cáo sản lượng của nhân sự này (cả trong thùng rác hoặc danh sách hoạt động)
+                supabase.table("production_logs").delete().eq("nhan_su", deleted_name).execute()
+                # 3. Xóa vĩnh viễn toàn bộ lịch sử chấm công của nhân sự này
+                supabase.table("attendance").delete().eq("nhan_su", deleted_name).execute()
+            
+    except Exception as e:
+        st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
 def get_rules_df_db():
     if supabase is None:
@@ -347,7 +388,6 @@ st.session_state.chart_colors = default_chart_colors
 if "folders" not in st.session_state or not st.session_state.folders:
     st.session_state.folders = default_folders
 
-# Tải cấu hình giao diện từ Supabase
 db_settings = load_app_settings_db()
 
 if "primary_color" not in st.session_state: 
@@ -509,7 +549,6 @@ with st.sidebar:
                     st.session_state.avatar_base64 = compressed_avatar
                     st.session_state["last_processed_avatar"] = current_file_sig
                     
-                    # Lưu avatar vào Database ngay lập tức
                     save_app_settings_db({
                         "primary_color": st.session_state.primary_color,
                         "bg_color": st.session_state.bg_color,
@@ -529,7 +568,6 @@ with st.sidebar:
                 st.session_state.avatar_base64 = None
                 st.session_state["last_processed_avatar"] = None
                 
-                # Cập nhật DB xóa avatar
                 save_app_settings_db({
                     "primary_color": st.session_state.primary_color,
                     "bg_color": st.session_state.bg_color,
@@ -657,7 +695,6 @@ if feature == "input_production":
                     add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_url, don_vi, so_luong, he_so, tong_diem, ghi_chu)
                     st.session_state["form_msg"] = ("success", f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
 
-        # Hiển thị thông báo ngay bên dưới nút Báo Cáo Sản Lượng
         if "form_msg" in st.session_state:
             m_type, m_text = st.session_state["form_msg"]
             if m_type == "success":
@@ -778,7 +815,6 @@ elif feature == "attendance":
                 st.session_state["att_msg"] = ("warning", f"Đã kết thúc ca nhưng không tìm thấy mốc Vào ca tương ứng trong ngày!")
             st.rerun()
 
-    # Hiển thị thông báo chấm công ngay dưới form
     if "att_msg" in st.session_state:
         m_type, m_text = st.session_state["att_msg"]
         if m_type == "success": st.success(m_text)
@@ -994,7 +1030,6 @@ elif feature == "settings_ui":
                 if compressed_bg:
                     st.session_state.bg_image_base64 = compressed_bg
             
-            # Lưu trực tiếp vào Database
             save_app_settings_db({
                 "primary_color": st.session_state.primary_color,
                 "bg_color": st.session_state.bg_color,
@@ -1012,7 +1047,6 @@ elif feature == "settings_ui":
             if st.form_submit_button("🗑️ Xóa Hình Nền Hiện Tại", use_container_width=True):
                 st.session_state.bg_image_base64 = None
                 
-                # Cập nhật xóa hình nền trên DB
                 save_app_settings_db({
                     "primary_color": st.session_state.primary_color,
                     "bg_color": st.session_state.bg_color,
@@ -1028,13 +1062,16 @@ elif feature == "settings_ui":
 
     st.markdown("---")
     st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
+    st.warning("⚠️ **Lưu ý quan trọng:** Khi bạn xóa nhân sự khỏi danh sách và bấm lưu, hệ thống sẽ **xóa vĩnh viễn** nhân sự đó cùng **toàn bộ dữ liệu báo cáo sản lượng và lịch sử chấm công** gắn liền với tên họ.")
+    
     with st.form("staff_form"):
-        staff_df = pd.DataFrame({"Nhân Sự": st.session_state.staff_list})
-        edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+        staff_df = get_staff_df_db()
+        edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["id"])
+        
         if st.form_submit_button("💾 Lưu Danh Sách Nhân Sự", use_container_width=True):
-            new_list = [str(x).strip() for x in edited_staff["Nhân Sự"].tolist() if str(x).strip()]
-            save_staff_list_db(new_list)
-            st.success("Đã lưu danh sách nhân sự!")
+            save_staff_list_db(edited_staff)
+            st.session_state.staff_list = get_staff_list_db()
+            st.success("Đã cập nhật, xóa vĩnh viễn nhân sự và các dữ liệu liên quan thành công!")
             st.rerun()
 
 # ==================== LÀM SẠCH DỮ LIỆU ====================
