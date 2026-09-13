@@ -89,7 +89,6 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         return None
 
 def load_data():
-    # 1. Thử tải dữ liệu từ Supabase Cloud trước
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
@@ -102,7 +101,6 @@ def load_data():
         except Exception:
             pass
     
-    # 2. Fallback sang file cục bộ nếu Supabase chưa sẵn sàng hoặc lỗi kết nối
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -131,14 +129,12 @@ def save_data():
         "current_menu": st.session_state.get("current_menu", "1. Nhập Sản Lượng")
     }
     
-    # 1. Luôn lưu dự phòng xuống file cục bộ trước để đảm bảo ứng dụng không bao giờ bị đứng thao tác
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, default=str, indent=4)
     except Exception:
         pass
 
-    # 2. Đồng thời đẩy lên Supabase Cloud Database nếu đã kết nối thành công
     if supabase is not None:
         try:
             json_str = json.dumps(data, ensure_ascii=False, default=str)
@@ -369,7 +365,6 @@ with st.sidebar:
     with st.popover(" "):
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
         
-        # ĐÃ KHẮC PHỤC: Sử dụng key phân biệt riêng và cơ chế kiểm tra chữ ký file để chặn lỗi rerun vòng lặp liên tục
         avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover_unique", label_visibility="collapsed")
         
         if avatar_file is not None:
@@ -431,7 +426,6 @@ with st.sidebar:
         save_data()
         st.rerun()
 
-    # ==================== TÍCH HỢP KIỂM TRA SỨC KHỎE (UPTIME MONITOR) ====================
     st.markdown("---")
     st.markdown("### 🟢 Trạng Thái Hệ Thống")
     db_status = "🟢 Supabase Đã Kết Nối" if supabase is not None else "🟡 Dùng Bộ Nhớ Cục Bộ"
@@ -563,15 +557,13 @@ if feature == "input_production":
     if not st.session_state.input_df.empty:
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
         
-        s_col1, s_col2, s_col3 = st.columns(3)
+        s_col1, s_col2 = st.columns(2)
         with s_col1:
             all_dates = ["Tất cả"] + sorted(st.session_state.input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
             all_staff = ["Tất cả"] + sorted(st.session_state.input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
-        with s_col3:
-            zoom_level = st.slider("🔍 Kích thước ảnh:", min_value=50, max_value=200, value=80, step=10)
         
         filtered_df = st.session_state.input_df.copy()
         if filter_date != "Tất cả":
@@ -606,7 +598,8 @@ if feature == "input_production":
                                 pure_b64 += "=" * (-len(pure_b64) % 4)
                                 img_bytes = base64.b64decode(pure_b64)
                                 
-                                st.image(img_bytes, width=zoom_level)
+                                # Cố định kích thước hiển thị ảnh là 50 pixel đúng theo yêu cầu
+                                st.image(img_bytes, width=50)
                                 with st.popover("🔍 Phóng to"):
                                     st.image(img_bytes, use_container_width=True)
                             except Exception:
