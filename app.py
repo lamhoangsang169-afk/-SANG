@@ -163,17 +163,37 @@ def save_data():
 
 def safe_merge_and_save(table_key, new_rows_df):
     latest = load_data()
+    
     if table_key == "input_df":
         existing = latest.get("input_df", [])
         df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Thời Gian", "Tài Khoản Tạo", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
-        st.session_state.input_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
-        st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
+        
+        if not new_rows_df.empty:
+            combined_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
+        else:
+            combined_df = df_existing
+            
+        if not combined_df.empty:
+            combined_df["STT"] = range(1, len(combined_df) + 1)
+        st.session_state.input_df = combined_df
+        current_all_data = latest if isinstance(latest, dict) else {}
+        current_all_data["input_df"] = st.session_state.input_df.to_dict(orient="records")
+
     elif table_key == "attendance_df":
         existing = latest.get("attendance_df", [])
         df_existing = pd.DataFrame(existing) if existing else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
-        st.session_state.attendance_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
-        st.session_state.attendance_df["STT"] = range(1, len(st.session_state.attendance_df) + 1)
-    
+        
+        if not new_rows_df.empty:
+            combined_df = pd.concat([df_existing, new_rows_df], ignore_index=True)
+        else:
+            combined_df = df_existing
+            
+        if not combined_df.empty:
+            combined_df["STT"] = range(1, len(combined_df) + 1)
+        st.session_state.attendance_df = combined_df
+        current_all_data = latest if isinstance(latest, dict) else {}
+        current_all_data["attendance_df"] = st.session_state.attendance_df.to_dict(orient="records")
+
     if "accounts" in latest:
         raw_accs = latest["accounts"]
         norm_accs = {}
@@ -1398,7 +1418,6 @@ elif feature == "rules":
     st.header(menu)
     st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây. Tích chọn cột **Xóa** ở dòng tương ứng để xóa hạng mục công việc.")
     
-    # Ép buộc khung dữ liệu chuẩn với các cột bắt buộc nếu bị trống hoặc thiếu cột
     if st.session_state.rules_df is None or st.session_state.rules_df.empty or "Hạng Mục Công Việc" not in st.session_state.rules_df.columns:
         st.session_state.rules_df = pd.DataFrame(
             columns=["Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"],
