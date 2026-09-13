@@ -149,7 +149,7 @@ saved_data = load_data()
 
 st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 
-default_input_columns = ["STT", "Ngày", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
+default_input_columns = ["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
 if "input_df" in saved_data and saved_data["input_df"]:
     st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
 else:
@@ -562,11 +562,13 @@ if feature == "input_production":
                     tong_diem = so_luong * he_so
                     
                     img_base64 = compress_image_to_base64(record_image, max_size=(800, 800), quality=65) if record_image is not None else ""
+                    current_time_str = datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S")
                     
                     new_stt = len(st.session_state.input_df) + 1
                     new_row = {
                         "STT": new_stt,
                         "Ngày": today_str,
+                        "Thời Gian": current_time_str,
                         "Nhân Sự": nhan_su,
                         "Hạng Mục Công Việc": hang_muc,
                         "Hình Ảnh": img_base64,
@@ -579,7 +581,7 @@ if feature == "input_production":
                     st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    st.session_state["last_success_msg"] = f"✅ Hệ thống đã ghi nhận báo cáo thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**"
+                    st.session_state["last_success_msg"] = f"✅ Hệ thống đã ghi nhận báo cáo thành công cho **{nhan_su}** lúc {current_time_str}! Tổng điểm: **{tong_diem} điểm**"
                     st.rerun()
 
             if update_clicked:
@@ -593,6 +595,8 @@ if feature == "input_production":
     st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
     
     if not st.session_state.input_df.empty:
+        if "Thời Gian" not in st.session_state.input_df.columns:
+            st.session_state.input_df["Thời Gian"] = "00:00:00"
         st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
         
         s_col1, s_col2 = st.columns(2)
@@ -617,9 +621,11 @@ if feature == "input_production":
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
+                        time_val = row.get('Thời Gian', '')
+                        time_display = f" ⏰ {time_val}" if time_val else ""
                         st.markdown(f"""
                         <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']}{time_display} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
                             📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                             💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                         </div>
@@ -1087,9 +1093,11 @@ elif feature == "trash":
             for idx, row in st.session_state.deleted_input_df.iterrows():
                 row_c1, row_c2 = st.columns([4, 1])
                 with row_c1:
+                    time_val = row.get('Thời Gian', '')
+                    time_display = f" ⏰ {time_val}" if time_val else ""
                     st.markdown(f"""
                     <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem; line-height: 1.3;">
-                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']}{time_display} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
                         📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                         💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                     </div>
