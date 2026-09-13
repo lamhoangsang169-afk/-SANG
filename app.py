@@ -17,7 +17,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -613,11 +613,17 @@ if feature == "input_production":
         filtered_df = input_df.copy()
         if filter_date != "Tất cả": filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
         if filter_staff != "Tất cả": filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
+        
+        st.session_state["current_filtered_ids"] = filtered_df["db_id"].tolist()
+
+        def toggle_all_cb():
+            val = st.session_state.get("select_all_toggle", False)
+            for db_id in st.session_state.get("current_filtered_ids", []):
+                st.session_state[f"chk_{db_id}"] = val
             
         if not filtered_df.empty:
             with st.form("input_delete_form"):
-                # Ô tích chọn tất cả nằm bên trong form
-                select_all = st.checkbox("☑️ Chọn tất cả các bản ghi")
+                select_all = st.checkbox("☑️ Chọn tất cả các bản ghi", key="select_all_toggle", on_change=toggle_all_cb)
                 st.markdown("---")
                 
                 selected_db_ids = []
@@ -632,8 +638,7 @@ if feature == "input_production":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Sử dụng trực tiếp giá trị của nút select_all để đồng bộ trạng thái
-                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", value=select_all, key=f"chk_{row['db_id']}")
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
                         if is_selected:
                             selected_db_ids.append(row['db_id'])
                     with row_c2:
