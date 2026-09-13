@@ -870,56 +870,7 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ PLOTLY ĐÃ THU NHỎ & TĂNG FONT CHỮ % ====================
-    st.markdown("---")
-    
-    if not summary.empty and total_all_points > 0:
-        # Chia cột hẹp hơn ở phần chứa biểu đồ để biểu đồ thu nhỏ lại gọn gàng
-        chart_col1, chart_col2 = st.columns([0.45, 1.35])
-        
-        with chart_col1:
-            fig_plotly = px.pie(
-                summary, 
-                names="Nhân Sự", 
-                values="Tổng_Điểm", 
-                hole=0,
-                color_discrete_sequence=default_chart_colors
-            )
-            # Tăng kích thước chữ phần trăm lên 20px cho thật to, rõ ràng và cân đối
-            fig_plotly.update_traces(
-                textposition='inside', 
-                textinfo='percent',
-                textfont=dict(size=20, color='white', family='Arial Black'),
-                pull=[0.03] * len(summary)
-            )
-            # Thiết lập margin rộng xung quanh để thu nhỏ kích thước biểu đồ lại
-            fig_plotly.update_layout(
-                margin=dict(t=30, b=30, l=30, r=30),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                showlegend=False,
-                height=320
-            )
-            st.plotly_chart(fig_plotly, use_container_width=True)
-            
-        with chart_col2:
-            st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
-            for idx, row in summary.iterrows():
-                staff_name = row["Nhân Sự"]
-                short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
-                pts = row["Tổng_Điểm"]
-                pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-                color_code = default_chart_colors[idx % len(default_chart_colors)]
-                
-                st.markdown(f"""
-                <div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;">
-                    <span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span>
-                    <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
-
+    # ==================== ĐÃ ĐƯA BẢNG ĐỐI CHIẾU LÊN PHÍA TRÊN ĐỒ THỊ ====================
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -981,6 +932,53 @@ elif feature == "report":
             st.info("Chưa có dữ liệu chấm công hoặc sản lượng hợp lệ từ nhân sự trong danh sách.")
     else:
         st.info("Chưa có dữ liệu đối chiếu.")
+
+    # ==================== PHẦN BIỂU ĐỒ PLOTLY Ở PHÍA DƯỚI ====================
+    st.markdown("---")
+    
+    if not summary.empty and total_all_points > 0:
+        chart_col1, chart_col2 = st.columns([0.45, 1.35])
+        
+        with chart_col1:
+            fig_plotly = px.pie(
+                summary, 
+                names="Nhân Sự", 
+                values="Tổng_Điểm", 
+                hole=0,
+                color_discrete_sequence=default_chart_colors
+            )
+            fig_plotly.update_traces(
+                textposition='inside', 
+                textinfo='percent',
+                textfont=dict(size=20, color='white', family='Arial Black'),
+                pull=[0.03] * len(summary)
+            )
+            fig_plotly.update_layout(
+                margin=dict(t=30, b=30, l=30, r=30),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False,
+                height=320
+            )
+            st.plotly_chart(fig_plotly, use_container_width=True)
+            
+        with chart_col2:
+            st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
+            for idx, row in summary.iterrows():
+                staff_name = row["Nhân Sự"]
+                short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
+                pts = row["Tổng_Điểm"]
+                pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                color_code = default_chart_colors[idx % len(default_chart_colors)]
+                
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                    <span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span>
+                    <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
