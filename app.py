@@ -1146,8 +1146,40 @@ elif feature == "trash":
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
     st.header("📁 Quản Lý Thư Mục & Mục Menu Tùy Chỉnh")
-    st.markdown("Cấu hình trực tiếp các mục trên hệ thống.")
-    st.info("Hệ thống đang sử dụng menu điều hướng trực quan ở thanh bên.")
+    st.markdown("Thay đổi tên thư mục hiển thị trên thanh bên của hệ thống.")
+    
+    with st.form("folder_manage_form"):
+        updated_folders = []
+        for f_idx, folder in enumerate(st.session_state.folders):
+            st.markdown(f"#### Thư mục #{f_idx + 1}")
+            new_f_name = st.text_input(f"Tên hiển thị Thư Mục #{f_idx + 1}", folder["folder_name"], key=f"fname_{f_idx}")
+            
+            st.markdown("Các mục con trong thư mục này:")
+            updated_items = []
+            for i_idx, item in enumerate(folder["items"]):
+                c_id = item["id"]
+                c_name = item["name"]
+                new_i_name = st.text_input(f"Tên mục ({c_id})", c_name, key=f"iname_{f_idx}_{i_idx}")
+                updated_items.append({"id": c_id, "name": new_i_name})
+                
+            updated_folders.append({
+                "folder_name": new_f_name,
+                "items": updated_items
+            })
+            st.markdown("---")
+            
+        save_folder_btn = st.form_submit_button("💾 Lưu Thay Đổi Thư Mục & Menu", use_container_width=True)
+        if save_folder_btn:
+            st.session_state.folders = updated_folders
+            save_data()
+            st.success("Đã cập nhật tên thư mục và menu thành công!")
+            st.rerun()
+
+    if st.button("🔄 Khôi Phục Mặc Định Thư Mục", use_container_width=True):
+        st.session_state.folders = default_folders
+        save_data()
+        st.success("Đã khôi phục tên thư mục mặc định!")
+        st.rerun()
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
