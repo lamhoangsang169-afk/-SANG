@@ -1000,6 +1000,15 @@ elif feature == "trash":
     st.header(menu)
     trash_df = get_production_logs_db(is_deleted=True)
     if not trash_df.empty:
+        col_del_all_1, col_del_all_2 = st.columns([3, 1])
+        with col_del_all_2:
+            if st.button("🔥 Xóa Vĩnh Viễn Tất Cả", use_container_width=True, type="primary"):
+                all_trash_ids = trash_df["db_id"].tolist()
+                if all_trash_ids:
+                    permanent_delete_db(all_trash_ids)
+                    st.success("Đã xóa vĩnh viễn toàn bộ thùng rác!")
+                    st.rerun()
+
         with st.form("trash_form"):
             for idx, row in trash_df.iterrows():
                 row_c1, row_c2 = st.columns([4, 1])
