@@ -870,19 +870,14 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ & KHUNG NỀN TRẮNG TOÀN CỘT ====================
+    # ==================== PHẦN BIỂU ĐỒ TRỰC TIẾP (KHÔNG KHUNG TRẮNG) ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
         chart_col1, chart_col2 = st.columns([0.6, 1.2])
         
         with chart_col1:
-            # Đặt toàn bộ cột trái có nền trắng tràn rộng như hình mẫu
-            st.markdown("""
-            <div style="background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; text-align: center;">
-            """, unsafe_allow_html=True)
-            
-            fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=300)
+            fig, ax = plt.subplots(figsize=(2.2, 2.2), dpi=300)
             fig.patch.set_facecolor('none')
             ax.set_facecolor('none')
             
@@ -900,12 +895,10 @@ elif feature == "report":
             for autotext in autotexts:
                 autotext.set_color('#000000')
                 autotext.set_weight('bold')
-                autotext.set_fontsize(9.5)  # Chữ % to rõ, sắc nét
+                autotext.set_fontsize(9.5)
                 
             ax.axis('equal')
             st.pyplot(fig)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
             
         with chart_col2:
             st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
