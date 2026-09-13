@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import matplotlib.pyplot as plt
+import plotly.express as px
 import io
 import base64
 import os
@@ -18,7 +18,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkijwnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -870,35 +870,32 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ TRỰC TIẾP (KHÔNG KHUNG TRẮNG) ====================
+    # ==================== PHẦN BIỂU ĐỒ PLOTLY (TỰ ĐỘNG CO GIÃN MỌI MÀN HÌNH) ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
         chart_col1, chart_col2 = st.columns([0.6, 1.2])
         
         with chart_col1:
-            fig, ax = plt.subplots(figsize=(2.2, 2.2), dpi=300)
-            fig.patch.set_facecolor('none')
-            ax.set_facecolor('none')
-            
-            explode = [0.03] * len(summary)
-            
-            wedges, texts, autotexts = ax.pie(
-                summary["Tổng_Điểm"], 
-                autopct='%1.1f%%', 
-                startangle=140,
-                explode=explode,
-                colors=default_chart_colors[:len(summary)],
-                shadow=False
+            fig_plotly = px.pie(
+                summary, 
+                names="Nhân Sự", 
+                values="Tổng_Điểm", 
+                hole=0,
+                color_discrete_sequence=default_chart_colors
             )
-            
-            for autotext in autotexts:
-                autotext.set_color('#000000')
-                autotext.set_weight('bold')
-                autotext.set_fontsize(9.5)
-                
-            ax.axis('equal')
-            st.pyplot(fig)
+            fig_plotly.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                pull=[0.03] * len(summary)
+            )
+            fig_plotly.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False
+            )
+            st.plotly_chart(fig_plotly, use_container_width=True)
             
         with chart_col2:
             st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
