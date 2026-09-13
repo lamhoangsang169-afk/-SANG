@@ -82,6 +82,17 @@ def compress_image_to_base64(uploaded_file, max_size=(300, 300), quality=60):
     except Exception:
         return None
 
+# Hàm tính số phút thực tế từ giờ vào và giờ ra
+def calculate_minutes(time_in_str, time_out_str):
+    try:
+        t1 = datetime.datetime.strptime(time_in_str, "%H:%M:%S")
+        t2 = datetime.datetime.strptime(time_out_str, "%H:%M:%S")
+        delta = t2 - t1
+        minutes = int(delta.total_seconds() / 60)
+        return max(0, minutes)
+    except Exception:
+        return 0
+
 # Khởi tạo dữ liệu an toàn
 def init_db_data():
     if supabase is None:
@@ -665,15 +676,31 @@ elif feature == "attendance":
         time_str = now_vn.strftime("%H:%M:%S")
         if check_in:
             if att_staff in checked_in_set:
-                st.warning(f"Nhân sự {att_staff} đang trong ca làm việc!")
+                st.session_state["att_msg"] = ("warning", f"Nhân sự {att_staff} đang trong ca làm việc!")
             else:
                 add_attendance_db(att_date, att_staff, time_str, "Chưa kết thúc", 0, att_note)
-                st.success(f"Đã Vào ca cho {att_staff} lúc {time_str}!")
+                st.session_state["att_msg"] = ("success", f"Đã Vào ca cho {att_staff} lúc {time_str}!")
                 st.rerun()
         if check_out:
-            update_attendance_checkout_db(att_staff, att_date, time_str, 480, att_note)
-            st.success(f"Đã Kết thúc ca cho {att_staff} lúc {time_str}!")
+            res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("ngay", str(att_date)).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
+            
+            if res_check and res_check.data:
+                gio_vao_ca = res_check.data[0].get("gio_vao_ca", "00:00:00")
+                so_phut_thuc_te = calculate_minutes(gio_vao_ca, time_str)
+                
+                update_attendance_checkout_db(att_staff, att_date, time_str, so_phut_thuc_te, att_note)
+                st.session_state["att_msg"] = ("success", f"Đã Kết thúc ca cho {att_staff} lúc {time_str} (Tổng thời gian: {so_phut_thuc_te} phút)!")
+            else:
+                update_attendance_checkout_db(att_staff, att_date, time_str, 0, att_note)
+                st.session_state["att_msg"] = ("warning", f"Đã kết thúc ca nhưng không tìm thấy mốc Vào ca tương ứng trong ngày!")
             st.rerun()
+
+    # Hiển thị thông báo chấm công ngay dưới form
+    if "att_msg" in st.session_state:
+        m_type, m_text = st.session_state["att_msg"]
+        if m_type == "success": st.success(m_text)
+        else: st.warning(m_text)
+        del st.session_state["att_msg"]
 
     st.markdown("---")
     st.subheader("📋 Lịch Sử Chấm Công")
