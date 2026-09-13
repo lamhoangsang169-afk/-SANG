@@ -63,7 +63,8 @@ default_folders = [
             {"id": "menu_1", "name": "1. Nhập Sản Lượng"},
             {"id": "menu_2", "name": "2. Báo Cáo & Biểu Đồ"},
             {"id": "menu_3", "name": "3. Tham Chiếu Công Việc"},
-            {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"}
+            {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"},
+            {"id": "menu_5", "name": "5. Thư Mục Báo Cáo"}
         ]
     }
 ]
@@ -375,6 +376,60 @@ def delete_attendance_db(db_ids):
     except Exception:
         pass
 
+# Các hàm quản lý thư mục báo cáo lưu cloud
+def save_export_report_db(ten_file, csv_content):
+    if supabase is None:
+        return
+    try:
+        payload = {
+            "ten_file": ten_file,
+            "ngay_tao": datetime.datetime.now(VN_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"),
+            "noi_dung_csv": csv_content,
+            "is_deleted": False
+        }
+        supabase.table("export_reports").insert(payload).execute()
+    except Exception:
+        pass
+
+def get_export_reports_db(is_deleted=False):
+    if supabase is None:
+        return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Nội Dung"])
+    try:
+        res = supabase.table("export_reports").select("*").eq("is_deleted", is_deleted).order("id", desc=True).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df = df.rename(columns={
+                "id": "db_id",
+                "ten_file": "Tên File",
+                "ngay_tao": "Ngày Tạo",
+                "noi_dung_csv": "Nội Dung"
+            })
+            df.insert(0, "STT", range(1, len(df) + 1))
+            return df
+    except Exception:
+        pass
+    return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Nội Dung"])
+
+def update_export_report_deleted_status(db_ids, is_deleted_val):
+    if supabase is None:
+        return
+    try:
+        for db_id in db_ids:
+            supabase.table("export_reports").update({"is_deleted": is_deleted_val}).eq("id", db_id).execute()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+def permanent_delete_export_report_db(db_ids):
+    if supabase is None:
+        return
+    try:
+        for db_id in db_ids:
+            supabase.table("export_reports").delete().eq("id", db_id).execute()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
 # ==================== GÁN SESSION STATE TỪ DATABASE ====================
 st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
@@ -607,7 +662,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm hạng mục vào file CSV)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm Thư Mục Báo Cáo)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -624,6 +679,7 @@ def get_feature_type(menu_name):
                 if item["id"] == "menu_2": return "report"
                 if item["id"] == "menu_3": return "rules"
                 if item["id"] == "menu_4": return "trash"
+                if item["id"] == "menu_5": return "report_folder"
                 return "input_production"
     return "input_production"
 
@@ -965,16 +1021,13 @@ elif feature == "report":
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        # Chuẩn bị dữ liệu xuất CSV có thêm cột chi tiết các hạng mục công việc đã làm
+        # Chuẩn bị dữ liệu xuất CSV kèm hạng mục công việc
         export_csv_df = summary_display.copy()
-        
-        # Gom các hạng mục và số lượng tương ứng cho từng nhân sự từ input_df
         if not input_df.empty:
             task_details = []
             for staff_name in export_csv_df["Nhân Sự"]:
                 staff_logs = input_df[input_df["Nhân Sự"] == staff_name]
                 if not staff_logs.empty:
-                    # Tổng hợp số lượng theo từng hạng mục công việc
                     grouped_tasks = staff_logs.groupby("Hạng Mục Công Việc")["Số Lượng"].sum()
                     task_str_list = [f"{task}: {qty}" for task, qty in grouped_tasks.items()]
                     task_details.append(" | ".join(task_str_list))
@@ -984,14 +1037,22 @@ elif feature == "report":
         else:
             export_csv_df["Chi Tiết Hạng Mục Công Việc"] = ""
 
-        # Nút xuất file báo cáo định dạng CSV tối ưu nằm ngay trên biểu đồ
+        # Nút xuất file báo cáo, đồng thời tự động lưu vào Thư Mục Báo Cáo trên Cloud
         exp_col1, exp_col2 = st.columns([1, 3])
         with exp_col1:
-            csv_data = export_csv_df.to_csv(index=False).encode('utf-8-sig')
+            csv_str = export_csv_df.to_csv(index=False)
+            csv_data = csv_str.encode('utf-8-sig')
+            file_name_val = f"bao_cao_san_luong_{datetime.date.today()}.csv"
+            
+            # Tự động lưu vào thư mục báo cáo (nếu bấm nút)
+            if st.button("📥 Xuất File & Lưu Vào Thư Mục", use_container_width=True):
+                save_export_report_db(file_name_val, csv_str)
+                st.success("Đã xuất file và tự động lưu vào '5. Thư Mục Báo Cáo'!")
+
             st.download_button(
-                label="📥 Xuất File Báo Cáo (CSV)",
+                label="💾 Tải File Về Máy",
                 data=csv_data,
-                file_name=f"bao_cao_san_luong_{datetime.date.today()}.csv",
+                file_name=file_name_val,
                 mime="text/csv",
                 use_container_width=True
             )
@@ -1039,6 +1100,54 @@ elif feature == "report":
     else:
         st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
 
+# ==================== 5. THƯ MỤC BÁO CÁO ====================
+elif feature == "report_folder":
+    st.header(menu)
+    st.markdown("📂 Nơi lưu trữ tất cả các file báo cáo đã được xuất tự động. Bạn có thể tải lại file, chuyển vào thùng rác hoặc xóa vĩnh viễn.")
+    
+    reports_df = get_export_reports_db(is_deleted=False)
+    if not reports_df.empty:
+        col_del_all_1, col_del_all_2 = st.columns([3, 1])
+        with col_del_all_2:
+            if st.button("🗑️ Chuyển Tất Cả Vào Thùng Rác", use_container_width=True, type="primary"):
+                all_ids = reports_df["db_id"].tolist()
+                if all_ids:
+                    update_export_report_deleted_status(all_ids, True)
+                    st.success("Đã chuyển toàn bộ báo cáo vào thùng rác!")
+                    st.rerun()
+
+        with st.form("reports_folder_form"):
+            for idx, row in reports_df.iterrows():
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📁 Tên File: <b>{row['Tên File']}</b> &nbsp;|&nbsp; 📅 Ngày tạo: {row['Ngày Tạo']}
+                </div>
+                """, unsafe_allow_html=True)
+                is_sel = st.checkbox(f"Chọn báo cáo STT {row['STT']} ({row['Tên File']})", key=f"rep_{row['db_id']}")
+                reports_df.loc[idx, "Chọn"] = is_sel
+                st.markdown("---")
+            
+            if st.form_submit_button("🗑️ Chuyển Các Báo Cáo Đã Chọn Vào Thùng Rác", use_container_width=True):
+                selected_ids = reports_df[reports_df["Chọn"] == True]["db_id"].tolist()
+                if selected_ids:
+                    update_export_report_deleted_status(selected_ids, True)
+                    st.success("Đã chuyển các báo cáo đã chọn vào thùng rác!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn báo cáo cần chuyển!")
+                    
+        st.markdown("### 📥 Tải Nhanh Các Báo Cáo Đã Lưu")
+        for _, row in reports_df.iterrows():
+            st.download_button(
+                label=f"📥 Tải xuống: {row['Tên File']} ({row['Ngày Tạo']})",
+                data=str(row['Nội Dung']).encode('utf-8-sig'),
+                file_name=row['Tên File'],
+                mime="text/csv",
+                key=f"download_rep_{row['db_id']}"
+            )
+    else:
+        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất báo cáo mới.")
+
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
     st.header(menu)
@@ -1053,47 +1162,25 @@ elif feature == "rules":
 elif feature == "trash":
     st.header(menu)
     trash_df = get_production_logs_db(is_deleted=True)
+    
+    # Thêm phần quản lý thùng rác của Thư mục báo cáo bên dưới
+    trash_reports_df = get_export_reports_db(is_deleted=True)
+    
+    st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
     if not trash_df.empty:
-        col_del_all_1, col_del_all_2 = st.columns([3, 1])
-        with col_del_all_2:
-            if st.button("🔥 Xóa Vĩnh Viễn Tất Cả", use_container_width=True, type="primary"):
-                all_trash_ids = trash_df["db_id"].tolist()
-                if all_trash_ids:
-                    permanent_delete_db(all_trash_ids)
-                    st.success("Đã xóa vĩnh viễn toàn bộ thùng rác!")
-                    st.rerun()
-
         with st.form("trash_form"):
             for idx, row in trash_df.iterrows():
-                row_c1, row_c2 = st.columns([4, 1])
-                with row_c1:
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    is_sel = st.checkbox(f"Chọn STT {row['STT']}", key=f"t_{row['db_id']}")
-                    trash_df.loc[idx, "Chọn"] = is_sel
-                with row_c2:
-                    img_url_val = row.get("Hình Ảnh", "")
-                    if isinstance(img_url_val, dict):
-                        img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
-                    if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                        sub_c1, sub_c2 = st.columns([1, 2], gap="small")
-                        with sub_c1:
-                            st.image(img_url_val, width=50)
-                        with sub_c2:
-                            with st.popover("🔍", help="Xem ảnh lớn"):
-                                st.image(img_url_val, use_container_width=True)
-                    else:
-                        st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
-                st.markdown("---")
-            
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b> &nbsp;|&nbsp; 📌 {row['Hạng Mục Công Việc']} ({row['Số Lượng']} {row['Đơn Vị']})
+                </div>
+                """, unsafe_allow_html=True)
+                is_sel = st.checkbox(f"Chọn sản lượng STT {row['STT']}", key=f"t_{row['db_id']}")
+                trash_df.loc[idx, "Chọn"] = is_sel
+                
             c1, c2 = st.columns(2)
             with c1:
-                if st.form_submit_button("📥 Khôi Phục Các Dòng Đã Chọn", use_container_width=True):
+                if st.form_submit_button("📥 Khôi Phục Sản Lượng Đã Chọn", use_container_width=True):
                     ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
                     if ids:
                         update_production_log_deleted_status(ids, False)
@@ -1102,7 +1189,7 @@ elif feature == "trash":
                     else:
                         st.warning("Vui lòng tích chọn dòng cần khôi phục!")
             with c2:
-                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn", use_container_width=True):
+                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Sản Lượng Đã Chọn", use_container_width=True):
                     ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
                     if ids:
                         permanent_delete_db(ids)
@@ -1111,7 +1198,42 @@ elif feature == "trash":
                     else:
                         st.warning("Vui lòng tích chọn dòng cần xóa vĩnh viễn!")
     else:
-        st.info("Thùng rác trống.")
+        st.info("Thùng rác sản lượng trống.")
+
+    st.markdown("---")
+    st.subheader("🗑️ Thùng Rác: Báo Cáo Đã Xóa")
+    if not trash_reports_df.empty:
+        with st.form("trash_reports_form"):
+            for idx, row in trash_reports_df.iterrows():
+                st.markdown(f"""
+                <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                    📁 File: <b>{row['Tên File']}</b> &nbsp;|&nbsp; Ngày tạo: {row['Ngày Tạo']}
+                </div>
+                """, unsafe_allow_html=True)
+                is_sel_rep = st.checkbox(f"Chọn báo cáo {row['Tên File']}", key=f"tr_rep_{row['db_id']}")
+                trash_reports_df.loc[idx, "Chọn"] = is_sel_rep
+                
+            rc1, rc2 = st.columns(2)
+            with rc1:
+                if st.form_submit_button("📥 Khôi Phục Báo Cáo Đã Chọn", use_container_width=True):
+                    rep_ids = trash_reports_df[trash_reports_df["Chọn"] == True]["db_id"].tolist()
+                    if rep_ids:
+                        update_export_report_deleted_status(rep_ids, False)
+                        st.success("Đã khôi phục báo cáo thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn báo cáo cần khôi phục!")
+            with rc2:
+                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Báo Cáo Đã Chọn", use_container_width=True):
+                    rep_ids = trash_reports_df[trash_reports_df["Chọn"] == True]["db_id"].tolist()
+                    if rep_ids:
+                        permanent_delete_export_report_db(rep_ids)
+                        st.success("Đã xóa vĩnh viễn báo cáo!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn báo cáo cần xóa vĩnh viễn!")
+    else:
+        st.info("Thùng rác báo cáo trống.")
 
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
