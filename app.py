@@ -6,6 +6,7 @@ import io
 import base64
 import os
 from PIL import Image
+import json
 
 # Thử import supabase
 try:
@@ -211,11 +212,30 @@ def save_app_settings_db(settings_dict):
     if supabase is None:
         return
     try:
-        # Sử dụng upsert để đảm bảo dù có hay chưa có bản ghi id=1 thì lệnh vẫn ghi thành công lên Cloud
         payload = {"id": 1, **settings_dict}
         supabase.table("app_settings").upsert(payload).execute()
     except Exception as e:
         st.error(f"Lỗi lưu cấu hình: {e}")
+
+def load_folders_db():
+    if supabase is None:
+        return default_folders
+    try:
+        res = supabase.table("app_folders").select("folders_json").eq("id", 1).execute()
+        if res.data and len(res.data) > 0 and res.data[0].get("folders_json"):
+            return res.data[0]["folders_json"]
+    except Exception:
+        pass
+    return default_folders
+
+def save_folders_db(folders_list):
+    if supabase is None:
+        return
+    try:
+        payload = {"id": 1, "folders_json": folders_list}
+        supabase.table("app_folders").upsert(payload).execute()
+    except Exception as e:
+        st.error(f"Lỗi lưu thư mục: {e}")
 
 def upload_image_to_storage(uploaded_file):
     if supabase is None or uploaded_file is None:
@@ -362,11 +382,8 @@ def delete_attendance_db(db_ids):
 st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
 st.session_state.chart_colors = default_chart_colors
+st.session_state.folders = load_folders_db()
 
-if "folders" not in st.session_state or not st.session_state.folders:
-    st.session_state.folders = default_folders
-
-# Tải cấu hình từ bảng app_settings trên Supabase
 db_settings = load_app_settings_db()
 
 if "primary_color" not in st.session_state: 
@@ -960,20 +977,30 @@ elif feature == "manage_folders":
     
     with st.form("manage_menu_form"):
         st.markdown("##### Tên thư mục")
-        new_folder_name = st.text_input("Tên thư mục", value=st.session_state.folders[0]["folder_name"], label_visibility="collapsed")
+        current_folder_name = st.session_state.folders[0]["folder_name"] if st.session_state.folders else "📌 Quản Lý Nghiệp Vụ"
+        new_folder_name = st.text_input("Tên thư mục", value=current_folder_name, label_visibility="collapsed")
         
         st.markdown("##### Danh sách mục menu bên trong:")
         
+        current_items = st.session_state.folders[0]["items"] if st.session_state.folders else []
         updated_items = []
-        for i_idx, item in enumerate(st.session_state.folders[0]["items"]):
-            new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item["name"], key=f"edit_name_{i_idx}")
-            updated_items.append({"id": item["id"], "name": new_name})
+        for i_idx, item in enumerate(current_items):
+            item_name = item.get("name", "")
+            item_id = item.get("id", f"menu_{i_idx+1}")
+            new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item_name, key=f"edit_name_{i_idx}")
+            updated_items.append({"id": item_id, "name": new_name})
             
         submitted_menu = st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True)
         if submitted_menu:
-            st.session_state.folders[0]["folder_name"] = new_folder_name
-            st.session_state.folders[0]["items"] = updated_items
-            st.success("Đã cập nhật tên thư mục và tên hiển thị menu thành công!")
+            new_folders_structure = [
+                {
+                    "folder_name": new_folder_name,
+                    "items": updated_items
+                }
+            ]
+            st.session_state.folders = new_folders_structure
+            save_folders_db(new_folders_structure)
+            st.success("Đã lưu tên thư mục và menu xuống Cloud thành công!")
             st.rerun()
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
