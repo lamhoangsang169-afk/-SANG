@@ -607,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tinh chỉnh icon sát ảnh)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm cột quy đổi ngày)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -939,12 +939,16 @@ elif feature == "report":
             
             comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
             
-            comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
-            comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
+            # Quy đổi ngày: 1 ngày = 8 tiếng = 480 phút
+            comparison_df["Tổng_Ngày"] = comparison_df["Tổng Phút Làm Việc"] / 480.0
+            
+            comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tổng_Ngày", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+            comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tổng Thời Gian (Ngày)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
             
             st.dataframe(
                 comparison_table.style.format({
                     "Tổng Thời Gian (Phút)": "{:,.0f}",
+                    "Tổng Thời Gian (Ngày)": "{:,.2f}",
                     "Tỷ Lệ Thời Gian (%)": "{:.2%}",
                     "Tổng Điểm": "{:,.1f}",
                     "Tỷ Lệ Sản Lượng (%)": "{:.2%}",
