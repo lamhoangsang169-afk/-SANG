@@ -309,7 +309,9 @@ def delete_attendance_db(db_ids):
 st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
 st.session_state.chart_colors = default_chart_colors
-st.session_state.folders = default_folders
+
+if "folders" not in st.session_state or not st.session_state.folders:
+    st.session_state.folders = default_folders
 
 if "primary_color" not in st.session_state: st.session_state.primary_color = "#ff4b4b"
 if "bg_color" not in st.session_state: st.session_state.bg_color = "#ffffff"
@@ -523,6 +525,7 @@ def get_feature_type(menu_name):
                 if item["id"] == "menu_2": return "report"
                 if item["id"] == "menu_3": return "rules"
                 if item["id"] == "menu_4": return "trash"
+                return "input_production"
     return "input_production"
 
 feature = get_feature_type(menu)
@@ -858,8 +861,86 @@ elif feature == "trash":
 
 # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
 elif feature == "manage_folders":
-    st.header("Quản Lý Thư Mục & Menu")
-    st.info("Tính năng tùy chỉnh menu đang hoạt động ở chế độ mặc định.")
+    st.header("Quản Lý Thư Mục & Menu Hệ Thống")
+    
+    if st.button("🔄 Khôi Phục Cấu Trúc Mặc Định", use_container_width=True):
+        st.session_state.folders = [
+            {
+                "folder_name": "📌 Quản Lý Nghiệp Vụ",
+                "items": [
+                    {"id": "menu_1", "name": "1. Nhập Sản Lượng"},
+                    {"id": "menu_2", "name": "2. Báo Cáo & Biểu Đồ"},
+                    {"id": "menu_3", "name": "3. Tham Chiếu Công Việc"},
+                    {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"}
+                ]
+            }
+        ]
+        st.success("Đã khôi phục cấu trúc thư mục & menu mặc định thành công!")
+        st.rerun()
+        
+    st.markdown("---")
+    st.subheader("Tùy Chỉnh Các Thư Mục & Menu")
+    
+    folders_data = st.session_state.folders
+    updated_folders = []
+    
+    for f_idx, folder in enumerate(folders_data):
+        with st.expander(f"📁 Thư mục: {folder['folder_name']}", expanded=True):
+            col_f1, col_f2 = st.columns([3, 1])
+            with col_f1:
+                new_f_name = st.text_input(f"Tên thư mục", value=folder["folder_name"], key=f"f_name_{f_idx}")
+            with col_f2:
+                remove_folder = st.checkbox(f"Xóa thư mục", key=f"del_f_{f_idx}")
+                
+            if remove_folder:
+                continue
+                
+            st.markdown("##### Danh sách mục menu bên trong:")
+            new_items = []
+            for i_idx, item in enumerate(folder["items"]):
+                c_i1, c_i2, c_i3 = st.columns([2, 3, 1])
+                with c_i1:
+                    st.text_input(f"ID", value=item["id"], key=f"i_id_{f_idx}_{i_idx}", disabled=True)
+                with c_i2:
+                    i_name = st.text_input(f"Tên hiển thị", value=item["name"], key=f"i_name_{f_idx}_{i_idx}")
+                with c_i3:
+                    del_item = st.checkbox(f"Xóa", key=f"del_i_{f_idx}_{i_idx}")
+                
+                if not del_item:
+                    new_items.append({"id": item["id"], "name": i_name})
+            
+            with st.form(f"add_item_form_{f_idx}"):
+                st.markdown("Thêm mục mới vào thư mục này")
+                new_item_name = st.text_input("Tên mục menu mới", key=f"new_i_name_{f_idx}")
+                add_sub = st.form_submit_button("➕ Thêm mục")
+                if add_sub and new_item_name.strip():
+                    new_id = f"menu_custom_{f_idx}_{int(datetime.datetime.now().timestamp())}"
+                    new_items.append({"id": new_id, "name": new_item_name.strip()})
+                    st.success(f"Đã thêm mục {new_item_name.strip()}!")
+                    st.rerun()
+            
+            updated_folders.append({
+                "folder_name": new_f_name,
+                "items": new_items
+            })
+            
+    if st.button("💾 Lưu Thay Đổi Cấu Trúc Menu", use_container_width=True):
+        st.session_state.folders = updated_folders
+        st.success("Đã cập nhật thành công cấu trúc menu!")
+        st.rerun()
+        
+    st.markdown("---")
+    with st.form("add_new_folder_form"):
+        st.subheader("➕ Tạo Thư Mục Mới")
+        new_folder_name = st.text_input("Tên thư mục mới")
+        submitted_new_folder = st.form_submit_button("Tạo Thư Mục")
+        if submitted_new_folder and new_folder_name.strip():
+            st.session_state.folders.append({
+                "folder_name": new_folder_name.strip(),
+                "items": []
+            })
+            st.success(f"Đã tạo thư mục '{new_folder_name.strip()}' thành công!")
+            st.rerun()
 
 # ==================== CÀI ĐẶT GIAO DIỆN ====================
 elif feature == "settings_ui":
