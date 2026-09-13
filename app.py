@@ -201,7 +201,7 @@ def load_app_settings_db():
         return {}
     try:
         res = supabase.table("app_settings").select("*").eq("id", 1).execute()
-        if res.data:
+        if res.data and len(res.data) > 0:
             return res.data[0]
     except Exception:
         pass
@@ -211,9 +211,11 @@ def save_app_settings_db(settings_dict):
     if supabase is None:
         return
     try:
-        supabase.table("app_settings").update(settings_dict).eq("id", 1).execute()
-    except Exception:
-        pass
+        # Sử dụng upsert để đảm bảo dù có hay chưa có bản ghi id=1 thì lệnh vẫn ghi thành công lên Cloud
+        payload = {"id": 1, **settings_dict}
+        supabase.table("app_settings").upsert(payload).execute()
+    except Exception as e:
+        st.error(f"Lỗi lưu cấu hình: {e}")
 
 def upload_image_to_storage(uploaded_file):
     if supabase is None or uploaded_file is None:
@@ -368,19 +370,19 @@ if "folders" not in st.session_state or not st.session_state.folders:
 db_settings = load_app_settings_db()
 
 if "primary_color" not in st.session_state: 
-    st.session_state.primary_color = db_settings.get("primary_color", "#ff4b4b")
+    st.session_state.primary_color = db_settings.get("primary_color") or "#ff4b4b"
 if "bg_color" not in st.session_state: 
-    st.session_state.bg_color = db_settings.get("bg_color", "#ffffff")
+    st.session_state.bg_color = db_settings.get("bg_color") or "#ffffff"
 if "sidebar_bg" not in st.session_state: 
-    st.session_state.sidebar_bg = db_settings.get("sidebar_bg", "#f0f2f6")
+    st.session_state.sidebar_bg = db_settings.get("sidebar_bg") or "#f0f2f6"
 if "sidebar_opacity" not in st.session_state: 
-    st.session_state.sidebar_opacity = float(db_settings.get("sidebar_opacity", 0.9))
+    st.session_state.sidebar_opacity = float(db_settings.get("sidebar_opacity") or 0.9)
 if "text_color" not in st.session_state: 
-    st.session_state.text_color = db_settings.get("text_color", "#31333F")
+    st.session_state.text_color = db_settings.get("text_color") or "#31333F"
 if "bg_image_base64" not in st.session_state: 
-    st.session_state.bg_image_base64 = db_settings.get("bg_image_base64", None)
+    st.session_state.bg_image_base64 = db_settings.get("bg_image_base64")
 if "avatar_base64" not in st.session_state: 
-    st.session_state.avatar_base64 = db_settings.get("avatar_base64", None)
+    st.session_state.avatar_base64 = db_settings.get("avatar_base64")
 
 if "current_menu" not in st.session_state: st.session_state.current_menu = "1. Nhập Sản Lượng"
 
