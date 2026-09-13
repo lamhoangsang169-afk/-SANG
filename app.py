@@ -837,12 +837,16 @@ elif feature == "report":
             
     summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(rank_func)
     
+    # Đổi tên cột 'Tổng_Số_Lượng' thành 'Số Lượng Thực Tế' để hiển thị rõ ràng hơn
+    summary_display = summary[["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Xếp_Loại"]].copy()
+    summary_display.columns = ["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"]
+    
     st.subheader("Bảng Tổng Kết Theo Nhân Sự")
     st.dataframe(
-        summary.style.format({
-            "Tổng_Số_Lượng": "{:,.0f}",
-            "Tổng_Điểm": "{:,.1f}",
-            "Tỷ_Lệ_Đóng_Góp": "{:.2%}"
+        summary_display.style.format({
+            "Số Lượng Thực Tế": "{:,.0f}",
+            "Tổng Điểm": "{:,.1f}",
+            "Tỷ Lệ Đóng Góp": "{:.2%}"
         }),
         use_container_width=True,
         hide_index=True
@@ -886,7 +890,7 @@ elif feature == "report":
     comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
     comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
     
-    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]].copy()
+    comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
     comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch (Sản Lượng - Thời Gian)"]
     
     st.dataframe(
@@ -906,7 +910,7 @@ elif feature == "report":
     
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
-        csv_summary = summary.to_csv(index=False).encode('utf-8-sig')
+        csv_summary = summary_to_export = summary_display.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 Tải Bảng Tổng Kết (CSV)",
             data=csv_summary,
