@@ -617,15 +617,25 @@ if feature == "input_production":
         if not filtered_df.empty:
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
-                    filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
+                    row_c1, row_c2 = st.columns([4, 1])
+                    with row_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
+                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
+                    with row_c2:
+                        img_url_val = row.get("Hình Ảnh", "")
+                        if isinstance(img_url_val, dict):
+                            img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                            st.image(img_url_val, width=70)
+                        else:
+                            st.text("Không có ảnh")
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
