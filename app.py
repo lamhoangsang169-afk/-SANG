@@ -639,15 +639,15 @@ if feature == "input_production":
     att_df_check = get_attendance_db()
     checked_in_set = set()
     if not att_df_check.empty:
-        today_att = att_df_check[att_df_check["Ngày"] == today_str]
-        checked_in_set = set(today_att[today_att["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
+        # Sửa logic: Quét toàn bộ các bản ghi chưa kết thúc để nhận diện nhân sự đang làm việc chuẩn xác hơn
+        checked_in_set = set(att_df_check[att_df_check["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
 
     active_staff = [s for s in st.session_state.staff_list if s in checked_in_set]
 
     st.subheader(f"{menu} ({today_str})")
 
     if not active_staff:
-        st.warning(f"⚠️ Hôm nay ({today_str}) chưa có nhân sự nào **Check-in (Vào ca)** hoặc đã Check-out. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
+        st.warning(f"⚠️ Hiện tại chưa có nhân sự nào **Check-in (Vào ca)** hoặc các ca trước chưa kết thúc. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
     else:
         req_img = st.session_state.get("require_image", True)
         req_qty = st.session_state.get("require_quantity", True)
@@ -771,7 +771,8 @@ elif feature == "attendance":
     today_str = str(now_vn.date())
     
     att_df = get_attendance_db()
-    checked_in_set = set(att_df[(att_df["Ngày"] == today_str) & (att_df["Giờ Ra Ca"] == "Chưa kết thúc")]["Nhân Sự"].tolist()) if not att_df.empty else set()
+    # Quét toàn bộ các ca chưa kết thúc để hiển thị trạng thái chính xác
+    checked_in_set = set(att_df[att_df["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist()) if not att_df.empty else set()
 
     staff_lines = ""
     for s in st.session_state.staff_list:
@@ -798,17 +799,34 @@ elif feature == "attendance":
                 st.session_state["att_msg"] = ("success", f"Đã Vào ca cho {att_staff} lúc {time_str}!")
                 st.rerun()
         if check_out:
-            res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("ngay", str(att_date)).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
+            # Tìm bản ghi chưa kết thúc của nhân sự này (ưu tiên ngày hiện tại hoặc các ngày trước đó)
+            res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
             
             if res_check and res_check.data:
-                gio_vao_ca = res_check.data[0].get("gio_vao_ca", "00:00:00")
-                so_phut_thuc_te = calculate_minutes(gio_vao_ca, time_str)
+                # Lấy bản ghi chưa kết thúc gần nhất của nhân sự
+                target_row = res_check.data[0]
+                row_id = target_row["id"]
+                ngay_vao = target_row["ngay"]
+                gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
                 
-                update_attendance_checkout_db(att_staff, att_date, time_str, so_phut_thuc_te, att_note)
+                # Nếu cùng ngày thì tính phút trực tiếp, khác ngày có thể quy ước gán tạm hoặc tính tương đối
+                if str(att_date) == ngay_vao:
+                    so_phut_thuc_te = calculate_minutes(gio_vao_ca, time_str)
+                else:
+                    so_phut_thuc_te = 480 # Mặc định ca chuẩn nếu quên checkout qua ngày hôm sau
+                
+                old_note = target_row.get("ghi_chu", "")
+                final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
+                
+                supabase.table("attendance").update({
+                    "gio_ra_ca": time_str,
+                    "so_phut_lam_viec": int(so_phut_thuc_te),
+                    "ghi_chu": final_note
+                }).eq("id", row_id).execute()
+                
                 st.session_state["att_msg"] = ("success", f"Đã Kết thúc ca cho {att_staff} lúc {time_str} (Tổng thời gian: {so_phut_thuc_te} phút)!")
             else:
-                update_attendance_checkout_db(att_staff, att_date, time_str, 0, att_note)
-                st.session_state["att_msg"] = ("warning", f"Đã kết thúc ca nhưng không tìm thấy mốc Vào ca tương ứng trong ngày!")
+                st.session_state["att_msg"] = ("warning", f"Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho {att_staff}!")
             st.rerun()
 
     if "att_msg" in st.session_state:
@@ -821,6 +839,21 @@ elif feature == "attendance":
     st.subheader("📋 Lịch Sử Chấm Công")
     if not att_df.empty:
         st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
+        
+        # Thêm nút hỗ trợ xóa nhanh các dòng chấm công lỗi/treo
+        with st.form("delete_att_form"):
+            st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
+            att_ids_to_del = []
+            for idx, r in att_df.iterrows():
+                if st.checkbox(f"Xóa dòng STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Giờ Vào Ca']} -> {r['Giờ Ra Ca']})", key=f"del_att_{r['db_id']}"):
+                    att_ids_to_del.append(r['db_id'])
+            if st.form_submit_button("Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True):
+                if att_ids_to_del:
+                    delete_attendance_db(att_ids_to_del)
+                    st.success("Đã xóa các bản ghi chấm công thành công!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn dòng cần xóa!")
 
 # ==================== BÁO CÁO & BIỂU ĐỒ ====================
 elif feature == "report":
@@ -870,7 +903,6 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== ĐÃ ĐƯA BẢNG ĐỐI CHIẾU LÊN PHÍA TRÊN ĐỒ THỊ ====================
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
@@ -933,7 +965,6 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu đối chiếu.")
 
-    # ==================== PHẦN BIỂU ĐỒ PLOTLY Ở PHÍA DƯỚI ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
