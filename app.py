@@ -28,7 +28,7 @@ SUPABASE_KEY = "DÁN_KEY_ANON_PUBLIC_VÀO_ĐÂY"
 
 supabase = None
 supabase_error_msg = ""
-if HAS_SUPABASE_LIB and SUPABASE_KEY and SUPABASE_KEY != "DÁN_KEY_ANON_PUBLIC_VÀO_ĐÂY":
+if HAS_SUPABASE_LIB and SUPABASE_KEY and SUPABASE_KEY != "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc":
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
