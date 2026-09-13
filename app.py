@@ -23,7 +23,6 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 # ==================== KẾT NỐI SUPABASE ====================
 SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
-# Dán chuỗi mã "anon public" vừa copy từ ô trên vào trong ngoặc kép bên dưới:
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -1399,8 +1398,14 @@ elif feature == "rules":
     st.header(menu)
     st.markdown("Chỉnh sửa trực tiếp tên công việc, đơn vị hoặc hệ số điểm ngay trên bảng dưới đây. Tích chọn cột **Xóa** ở dòng tương ứng để xóa hạng mục công việc.")
     
-    if not st.session_state.rules_df.empty:
-        st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
+    # Ép buộc khung dữ liệu chuẩn với các cột bắt buộc nếu bị trống hoặc thiếu cột
+    if st.session_state.rules_df is None or st.session_state.rules_df.empty or "Hạng Mục Công Việc" not in st.session_state.rules_df.columns:
+        st.session_state.rules_df = pd.DataFrame(
+            columns=["Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"],
+            data=[["Ví dụ: May áo polo", "Cái", 1.0, "Mẫu mặc định"]]
+        )
+    
+    st.session_state.rules_df["STT"] = range(1, len(st.session_state.rules_df) + 1)
         
     rules_display_df = st.session_state.rules_df.copy()
     if "Xóa" not in rules_display_df.columns:
@@ -1416,9 +1421,9 @@ elif feature == "rules":
             column_config={
                 "Xóa": st.column_config.CheckboxColumn("Xóa dòng", default=False),
                 "STT": st.column_config.NumberColumn("STT", disabled=True),
-                "Hạng Mục Công Việc": st.column_config.TextColumn("Hạng Mục Công Việc"),
-                "Đơn Vị": st.column_config.TextColumn("Đơn Vị"),
-                "Hệ Số Điểm": st.column_config.NumberColumn("Hệ Số Điểm", format="%.2f"),
+                "Hạng Mục Công Việc": st.column_config.TextColumn("Hạng Mục Công Việc", required=True),
+                "Đơn Vị": st.column_config.TextColumn("Đơn Vị", required=True),
+                "Hệ Số Điểm": st.column_config.NumberColumn("Hệ Số Điểm", format="%.2f", min_value=0.0, step=0.1),
                 "Ghi Chú": st.column_config.TextColumn("Ghi Chú")
             }
         )
