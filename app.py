@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import matplotlib.pyplot as plt
+import plotly.express as px
 import io
 import base64
 import os
@@ -870,49 +870,33 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ CHỈ HIỂN THỊ % ====================
+    # ==================== PHẦN BIỂU ĐỒ PLOTLY CHỈ HIỆN % ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
         chart_col1, chart_col2 = st.columns([0.6, 1.2])
         
         with chart_col1:
-            fig, ax = plt.subplots(figsize=(2.5, 2.5), dpi=300)
-            fig.patch.set_facecolor('none')
-            ax.set_facecolor('none')
-            
-            explode = [0.03] * len(summary)
-            
-            # Chỉ truyền autopct để hiển thị phần trăm, bỏ labels để không hiện tên nhân sự lên mặt bánh
-            wedges, texts, autotexts = ax.pie(
-                summary["Tổng_Điểm"], 
-                labels=None,
-                autopct='%1.1f%%', 
-                startangle=140,
-                explode=explode,
-                colors=default_chart_colors[:len(summary)],
-                shadow=False
+            fig_plotly = px.pie(
+                summary, 
+                names="Nhân Sự", 
+                values="Tổng_Điểm", 
+                hole=0,
+                color_discrete_sequence=default_chart_colors
             )
-            
-            for autotext in autotexts:
-                autotext.set_color('#000000')
-                autotext.set_weight('bold')
-                autotext.set_fontsize(10)
-                
-            ax.axis('equal')
-            
-            # Xuất biểu đồ thành ảnh base64 để tự động scale co giãn theo khung màn hình
-            buf = io.BytesIO()
-            plt.savefig(buf, format="png", bbox_inches="tight", transparent=True)
-            buf.seek(0)
-            chart_base64 = base64.b64encode(buf.read()).decode("utf-8")
-            plt.close(fig)
-            
-            st.markdown(f"""
-            <div style="text-align: center; width: 100%;">
-                <img src="data:image/png;base64,{chart_base64}" style="width: 100%; max-width: 100%; height: auto;" />
-            </div>
-            """, unsafe_allow_html=True)
+            # Chỉ hiển thị % trên biểu đồ tròn, ẩn tên nhân sự đi vì đã có bảng chú thích bên phải
+            fig_plotly.update_traces(
+                textposition='inside', 
+                textinfo='percent',
+                pull=[0.03] * len(summary)
+            )
+            fig_plotly.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=False
+            )
+            st.plotly_chart(fig_plotly, use_container_width=True)
             
         with chart_col2:
             st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
