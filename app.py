@@ -535,6 +535,7 @@ if feature == "input_production":
                 ghi_chu = st.text_input("Ghi chú", "")
                 
             submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
+            update_clicked = st.form_submit_button("🔄 Cập Nhật", use_container_width=True)
 
             if submitted:
                 is_valid = True
@@ -578,14 +579,14 @@ if feature == "input_production":
                     st.session_state.input_df = pd.concat([st.session_state.input_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.input_df["STT"] = range(1, len(st.session_state.input_df) + 1)
                     save_data()
-                    # Lưu thông báo thành công tạm thời vào session_state để hiển thị ngay bên dưới nút
                     st.session_state["last_success_msg"] = f"✅ Hệ thống đã ghi nhận báo cáo thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**"
                     st.rerun()
 
-        # Hiển thị thông báo xác nhận ngay bên dưới form báo cáo sản lượng nếu vừa gửi xong
+            if update_clicked:
+                st.rerun()
+
         if "last_success_msg" in st.session_state and st.session_state["last_success_msg"]:
             st.success(st.session_state["last_success_msg"])
-            # Xóa trạng thái tạm để không lặp lại vĩnh viễn khi tải lại trang
             st.session_state["last_success_msg"] = None
 
     st.markdown("---")
