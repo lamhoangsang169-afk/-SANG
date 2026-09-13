@@ -870,60 +870,59 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & KHUNG NỀN TRẮNG ====================
+    # ==================== PHẦN BIỂU ĐỒ & KHUNG Ô VUÔNG NỀN TRẮNG ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        # Bọc toàn bộ biểu đồ và chú thích trong một khối hình chữ nhật nền trắng (`container`)
-        with st.container():
-            st.markdown("""
-            <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; margin-bottom: 20px;">
-            """, unsafe_allow_html=True)
+        # Tạo khung hình chữ nhật nền trắng bao quanh
+        st.markdown("""
+        <div style="background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; margin-bottom: 20px;">
+        """, unsafe_allow_html=True)
+        
+        chart_col1, chart_col2 = st.columns([0.6, 1.2])
+        
+        with chart_col1:
+            # Giữ kích thước biểu đồ nhỏ gọn (1.8x1.8) nhưng tăng mạnh dpi=300 để cực kỳ sắc nét, chữ % to rõ
+            fig, ax = plt.subplots(figsize=(1.8, 1.8), dpi=300)
+            fig.patch.set_facecolor('none')
+            ax.set_facecolor('none')
             
-            chart_col1, chart_col2 = st.columns([1.1, 1.3])
+            explode = [0.03] * len(summary)
             
-            with chart_col1:
-                # Tăng kích thước khung vẽ một chút và tăng mạnh cỡ chữ phần trăm bên trong (fontsize=13)
-                fig, ax = plt.subplots(figsize=(2.3, 2.3), dpi=300)
-                fig.patch.set_facecolor('none')
-                ax.set_facecolor('none')
+            wedges, texts, autotexts = ax.pie(
+                summary["Tổng_Điểm"], 
+                autopct='%1.1f%%', 
+                startangle=140,
+                explode=explode,
+                colors=default_chart_colors[:len(summary)],
+                shadow=False
+            )
+            
+            for autotext in autotexts:
+                autotext.set_color('#000000')
+                autotext.set_weight('bold')
+                autotext.set_fontsize(9.5)  # Phóng to cỡ chữ phần trăm bên trong rõ ràng
                 
-                explode = [0.03] * len(summary)
+            ax.axis('equal')
+            st.pyplot(fig)
+            
+        with chart_col2:
+            st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
+            for idx, row in summary.iterrows():
+                staff_name = row["Nhân Sự"]
+                short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
+                pts = row["Tổng_Điểm"]
+                pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
+                color_code = default_chart_colors[idx % len(default_chart_colors)]
                 
-                wedges, texts, autotexts = ax.pie(
-                    summary["Tổng_Điểm"], 
-                    autopct='%1.1f%%', 
-                    startangle=140,
-                    explode=explode,
-                    colors=default_chart_colors[:len(summary)],
-                    shadow=False
-                )
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                    <span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span>
+                    <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
+                </div>
+                """, unsafe_allow_html=True)
                 
-                for autotext in autotexts:
-                    autotext.set_color('#000000')
-                    autotext.set_weight('bold')
-                    autotext.set_fontsize(13)  # Đã phóng to cỡ chữ % bên trong biểu đồ lên rõ nét
-                    
-                ax.axis('equal')
-                st.pyplot(fig)
-                
-            with chart_col2:
-                st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
-                for idx, row in summary.iterrows():
-                    staff_name = row["Nhân Sự"]
-                    short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
-                    pts = row["Tổng_Điểm"]
-                    pct = row["Tỷ_Lệ_Đóng_Góp"] * 100
-                    color_code = default_chart_colors[idx % len(default_chart_colors)]
-                    
-                    st.markdown(f"""
-                    <div style="background-color: #f8fafc; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.95rem;">
-                        <span style="display:inline-block; width:9px; height:9px; background-color:{color_code}; border-radius:2px; margin-right:6px;"></span>
-                        <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("Chưa đủ dữ liệu để vẽ biểu đồ.")
 
