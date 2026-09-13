@@ -88,8 +88,8 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     except Exception:
         return None
 
-@st.cache_data(ttl=2)
-def fetch_supabase_data():
+def load_data():
+    # 1. Thử lấy từ Supabase trực tiếp không qua cache gây lỗi treo
     if supabase is not None:
         try:
             response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
@@ -101,13 +101,8 @@ def fetch_supabase_data():
                     return raw_data
         except Exception:
             pass
-    return None
-
-def load_data():
-    cloud_data = fetch_supabase_data()
-    if cloud_data:
-        return cloud_data
     
+    # 2. Nếu Supabase lỗi hoặc chưa có, đọc từ file cục bộ
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
