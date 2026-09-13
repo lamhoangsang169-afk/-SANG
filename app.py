@@ -67,7 +67,6 @@ default_folders = [
     }
 ]
 
-# Hàm nén ảnh tổng quát
 def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     try:
         if uploaded_file is None:
@@ -82,7 +81,6 @@ def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     except Exception:
         return None
 
-# Hàm tính số phút thực tế từ giờ vào và giờ ra
 def calculate_minutes(time_in_str, time_out_str):
     try:
         t1 = datetime.datetime.strptime(time_in_str, "%H:%M:%S")
@@ -93,7 +91,6 @@ def calculate_minutes(time_in_str, time_out_str):
     except Exception:
         return 0
 
-# Khởi tạo dữ liệu an toàn & Bảng cài đặt hệ thống trên Supabase
 def init_db_data():
     if supabase is None:
         return
@@ -107,22 +104,8 @@ def init_db_data():
         if not res_rules.data:
             for r in master_rules:
                 supabase.table("rules").insert(r).execute()
-                
-        res_settings = supabase.table("app_settings").select("id").limit(1).execute()
-        if not res_settings.data:
-            default_settings = {
-                "id": 1,
-                "primary_color": "#ff4b4b",
-                "bg_color": "#ffffff",
-                "sidebar_bg": "#f0f2f6",
-                "sidebar_opacity": 0.9,
-                "text_color": "#31333F",
-                "bg_image_base64": None,
-                "avatar_base64": None
-            }
-            supabase.table("app_settings").insert(default_settings).execute()
-    except Exception as e:
-        st.warning(f"⚠️ Cảnh báo kết nối Supabase: {e}")
+    except Exception:
+        pass
 
 init_db_data()
 
@@ -153,7 +136,6 @@ def save_staff_list_db(edited_df):
     if supabase is None:
         return
     try:
-        # Lấy danh sách nhân sự hiện tại trên Database kèm Tên và ID
         res_old = supabase.table("staff").select("id, name").execute()
         old_staffs = {row["id"]: row["name"] for row in res_old.data} if res_old.data else {}
         old_ids = list(old_staffs.keys())
@@ -174,19 +156,13 @@ def save_staff_list_db(edited_df):
                 if res_ins.data:
                     current_ids_in_editor.append(res_ins.data[0]["id"])
                     
-        # Xác định nhân sự bị xóa vĩnh viễn
         ids_to_delete = [oid for oid in old_ids if oid not in current_ids_in_editor]
         for del_id in ids_to_delete:
             deleted_name = old_staffs.get(del_id)
-            # 1. Xóa vĩnh viễn nhân sự khỏi bảng staff
             supabase.table("staff").delete().eq("id", del_id).execute()
-            
             if deleted_name:
-                # 2. Xóa vĩnh viễn toàn bộ báo cáo sản lượng của nhân sự này (cả trong thùng rác hoặc danh sách hoạt động)
                 supabase.table("production_logs").delete().eq("nhan_su", deleted_name).execute()
-                # 3. Xóa vĩnh viễn toàn bộ lịch sử chấm công của nhân sự này
                 supabase.table("attendance").delete().eq("nhan_su", deleted_name).execute()
-            
     except Exception as e:
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
@@ -388,6 +364,7 @@ st.session_state.chart_colors = default_chart_colors
 if "folders" not in st.session_state or not st.session_state.folders:
     st.session_state.folders = default_folders
 
+# Tải cấu hình từ bảng app_settings trên Supabase
 db_settings = load_app_settings_db()
 
 if "primary_color" not in st.session_state: 
