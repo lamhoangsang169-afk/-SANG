@@ -607,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu Cache & Data Editor)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu cấu trúc ảnh cũ)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -723,48 +723,39 @@ if feature == "input_production":
                         st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
                         st.rerun()
 
-            display_df = filtered_df[["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Số Lượng", "Đơn Vị", "Tổng Điểm", "Ghi Chú", "db_id"]].copy()
-            display_df.insert(0, "Chọn", False)
-
-            st.markdown("💡 *Tích chọn vào cột 'Chọn' ở bảng dưới đây rồi bấm nút phía dưới để chuyển vào thùng rác:*")
-            
-            edited_table = st.data_editor(
-                display_df,
-                column_config={"Chọn": st.column_config.CheckboxColumn("Chọn Xóa", required=True)},
-                disabled=["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Số Lượng", "Đơn Vị", "Tổng Điểm", "Ghi Chú", "db_id"],
-                hide_index=True,
-                use_container_width=True
-            )
-
-            if st.button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True, type="primary"):
-                selected_db_ids = edited_table[edited_table["Chọn"] == True]["db_id"].tolist()
-                if selected_db_ids:
-                    update_production_log_deleted_status(selected_db_ids, True)
-                    st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn ít nhất một dòng cần xóa trên bảng!")
-
-            # Bổ sung tính năng xem lại ảnh đính kèm chi tiết
-            st.markdown("---")
-            st.markdown("##### 🔍 Tra cứu & Xem ảnh đính kèm bản ghi")
-            selected_stt_for_img = st.selectbox(
-                "Chọn STT bản ghi để xem ảnh", 
-                options=["-- Chọn bản ghi --"] + filtered_df["STT"].tolist(),
-                key="select_stt_img_view"
-            )
-            
-            if selected_stt_for_img != "-- Chọn bản ghi --":
-                row_selected_data = filtered_df[filtered_df["STT"] == selected_stt_for_img].iloc[0]
-                img_url_val = row_selected_data.get("Hình Ảnh", "")
-                
-                if isinstance(img_url_val, dict):
-                    img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+            with st.form("input_delete_form"):
+                for idx, row in filtered_df.iterrows():
+                    row_c1, row_c2 = st.columns([4, 1])
+                    with row_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}")
+                        filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
+                    with row_c2:
+                        img_url_val = row.get("Hình Ảnh", "")
+                        if isinstance(img_url_val, dict):
+                            img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                            with st.popover("🔍 Xem ảnh"):
+                                st.image(img_url_val, use_container_width=True)
+                            st.image(img_url_val, width=70)
+                        else:
+                            st.text("Không có ảnh")
+                    st.markdown("---")
                     
-                if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                    st.image(img_url_val, caption=f"Ảnh đính kèm bản ghi STT {selected_stt_for_img} - Nhân sự: {row_selected_data['Nhân Sự']}", width=400)
-                else:
-                    st.info(f"Bản ghi STT {selected_stt_for_img} không có hình ảnh đính kèm.")
+                if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
+                    selected_db_ids = filtered_df[filtered_df["Chọn_Xóa"] == True]["db_id"].tolist()
+                    if selected_db_ids:
+                        update_production_log_deleted_status(selected_db_ids, True)
+                        st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần xóa!")
         else:
             st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
     else:
@@ -838,26 +829,21 @@ elif feature == "attendance":
     st.markdown("---")
     st.subheader("📋 Lịch Sử Chấm Công")
     if not att_df.empty:
-        att_display_df = att_df.drop(columns=["db_id"]).copy()
-        att_display_df.insert(0, "Chọn", False)
+        st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
         
-        edited_att = st.data_editor(
-            att_display_df,
-            column_config={"Chọn": st.column_config.CheckboxColumn("Chọn Xóa", required=True)},
-            disabled=[c for c in att_display_df.columns if c != "Chọn"],
-            hide_index=True,
-            use_container_width=True
-        )
-        
-        if st.button("🗑️ Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True, type="primary"):
-            selected_att_indices = edited_att[edited_att["Chọn"] == True].index.tolist()
-            if selected_att_indices:
-                att_ids_to_del = att_df.iloc[selected_att_indices]["db_id"].tolist()
-                delete_attendance_db(att_ids_to_del)
-                st.success("Đã xóa các bản ghi chấm công thành công!")
-                st.rerun()
-            else:
-                st.warning("Vui lòng tích chọn dòng cần xóa trên bảng!")
+        with st.form("delete_att_form"):
+            st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
+            att_ids_to_del = []
+            for idx, r in att_df.iterrows():
+                if st.checkbox(f"Xóa dòng STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Giờ Vào Ca']} -> {r['Giờ Ra Ca']})", key=f"del_att_{r['db_id']}"):
+                    att_ids_to_del.append(r['db_id'])
+            if st.form_submit_button("Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True):
+                if att_ids_to_del:
+                    delete_attendance_db(att_ids_to_del)
+                    st.success("Đã xóa các bản ghi chấm công thành công!")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng tích chọn dòng cần xóa!")
 
 # ==================== BÁO CÁO & BIỂU ĐỒ ====================
 elif feature == "report":
@@ -1039,54 +1025,50 @@ elif feature == "trash":
                     st.success("Đã xóa vĩnh viễn toàn bộ thùng rác!")
                     st.rerun()
 
-        trash_display_df = trash_df[["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Số Lượng", "Đơn Vị", "Tổng Điểm", "Ghi Chú", "db_id"]].copy()
-        trash_display_df.insert(0, "Chọn", False)
-
-        edited_trash = st.data_editor(
-            trash_display_df,
-            column_config={"Chọn": st.column_config.CheckboxColumn("Chọn Thao Tác", required=True)},
-            disabled=["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Số Lượng", "Đơn Vị", "Tổng Điểm", "Ghi Chú", "db_id"],
-            hide_index=True,
-            use_container_width=True
-        )
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📥 Khôi Phục Các Dòng Đã Chọn", use_container_width=True):
-                ids = edited_trash[edited_trash["Chọn"] == True]["db_id"].tolist()
-                if ids:
-                    update_production_log_deleted_status(ids, False)
-                    st.success("Đã khôi phục thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn dòng cần khôi phục!")
-        with c2:
-            if st.button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn", use_container_width=True, type="primary"):
-                ids = edited_trash[edited_trash["Chọn"] == True]["db_id"].tolist()
-                if ids:
-                    permanent_delete_db(ids)
-                    st.success("Đã xóa vĩnh viễn thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn dòng cần xóa vĩnh viễn!")
-
-        # Bổ sung xem ảnh thùng rác
-        st.markdown("---")
-        st.markdown("##### 🔍 Tra cứu ảnh bản ghi trong thùng rác")
-        selected_trash_stt = st.selectbox(
-            "Chọn STT trong thùng rác để xem ảnh",
-            options=["-- Chọn bản ghi --"] + trash_df["STT"].tolist(),
-            key="select_trash_stt_img"
-        )
-        if selected_trash_stt != "-- Chọn bản ghi --":
-            t_row = trash_df[trash_df["STT"] == selected_trash_stt].iloc[0]
-            t_img = t_row.get("Hình Ảnh", "")
-            if isinstance(t_img, dict):
-                t_img = t_img.get("publicUrl") or t_img.get("url", "")
-            if t_img and isinstance(t_img, str) and t_img.startswith("http"):
-                st.image(t_img, caption=f"Ảnh thùng rác STT {selected_trash_stt}", width=400)
-            else:
-                st.info("Bản ghi này không có ảnh đính kèm.")
+        with st.form("trash_form"):
+            for idx, row in trash_df.iterrows():
+                row_c1, row_c2 = st.columns([4, 1])
+                with row_c1:
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    is_sel = st.checkbox(f"Chọn STT {row['STT']}", key=f"t_{row['db_id']}")
+                    trash_df.loc[idx, "Chọn"] = is_sel
+                with row_c2:
+                    img_url_val = row.get("Hình Ảnh", "")
+                    if isinstance(img_url_val, dict):
+                        img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
+                    if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
+                        with st.popover("🔍 Xem ảnh"):
+                            st.image(img_url_val, use_container_width=True)
+                        st.image(img_url_val, width=70)
+                    else:
+                        st.text("Không có ảnh")
+                st.markdown("---")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.form_submit_button("📥 Khôi Phục Các Dòng Đã Chọn", use_container_width=True):
+                    ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                    if ids:
+                        update_production_log_deleted_status(ids, False)
+                        st.success("Đã khôi phục thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần khôi phục!")
+            with c2:
+                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Các Dòng Đã Chọn", use_container_width=True):
+                    ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                    if ids:
+                        permanent_delete_db(ids)
+                        st.success("Đã xóa vĩnh viễn!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần xóa vĩnh viễn!")
     else:
         st.info("Thùng rác trống.")
 
