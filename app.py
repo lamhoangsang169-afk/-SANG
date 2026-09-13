@@ -110,7 +110,8 @@ def init_db_data():
 
 init_db_data()
 
-# ==================== CÁC HÀM CRUD SUPABASE ====================
+# ==================== CÁC HÀM CRUD & CACHING SUPABASE ====================
+@st.cache_data(show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
         return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
@@ -164,9 +165,12 @@ def save_staff_list_db(edited_df):
             if deleted_name:
                 supabase.table("production_logs").delete().eq("nhan_su", deleted_name).execute()
                 supabase.table("attendance").delete().eq("nhan_su", deleted_name).execute()
+        
+        st.cache_data.clear()
     except Exception as e:
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
+@st.cache_data(show_spinner=False)
 def get_rules_df_db():
     if supabase is None:
         return pd.DataFrame(master_rules)
@@ -194,9 +198,11 @@ def save_rules_df_db(df):
                 "ghi_chu": row.get("Ghi Chú", "")
             }
             supabase.table("rules").insert(payload).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
+@st.cache_data(show_spinner=False)
 def load_app_settings_db():
     if supabase is None:
         return {}
@@ -214,9 +220,11 @@ def save_app_settings_db(settings_dict):
     try:
         payload = {"id": 1, **settings_dict}
         supabase.table("app_settings").upsert(payload).execute()
+        st.cache_data.clear()
     except Exception as e:
         st.error(f"Lỗi lưu cấu hình: {e}")
 
+@st.cache_data(show_spinner=False)
 def load_folders_db():
     if supabase is None:
         return default_folders
@@ -234,6 +242,7 @@ def save_folders_db(folders_list):
     try:
         payload = {"id": 1, "folders_json": folders_list}
         supabase.table("app_folders").upsert(payload).execute()
+        st.cache_data.clear()
     except Exception as e:
         st.error(f"Lỗi lưu thư mục: {e}")
 
@@ -267,6 +276,7 @@ def add_production_log_db(ngay, thoi_gian, nhan_su, hang_muc, hinh_anh_url, don_
             "is_deleted": False
         }
         supabase.table("production_logs").insert(payload).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
@@ -302,6 +312,7 @@ def update_production_log_deleted_status(db_ids, is_deleted_val):
     try:
         for db_id in db_ids:
             supabase.table("production_logs").update({"is_deleted": is_deleted_val}).eq("id", db_id).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
@@ -311,6 +322,7 @@ def permanent_delete_db(db_ids):
     try:
         for db_id in db_ids:
             supabase.table("production_logs").delete().eq("id", db_id).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
@@ -349,6 +361,7 @@ def add_attendance_db(ngay, nhan_su, gio_vao, gio_ra, phut, ghi_chu):
             "ghi_chu": ghi_chu
         }
         supabase.table("attendance").insert(payload).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
@@ -358,6 +371,7 @@ def delete_attendance_db(db_ids):
     try:
         for db_id in db_ids:
             supabase.table("attendance").delete().eq("id", db_id).execute()
+        st.cache_data.clear()
     except Exception:
         pass
 
@@ -565,6 +579,7 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
     if st.button("🔄 Cập Nhập", use_container_width=True):
+        st.cache_data.clear()
         st.rerun()
     if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
         st.session_state.current_menu = "⏱️ Chấm Công Ca Làm Việc"
@@ -592,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu Cache)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -799,6 +814,7 @@ elif feature == "attendance":
                     "ghi_chu": final_note
                 }).eq("id", row_id).execute()
                 
+                st.cache_data.clear()
                 st.session_state["att_msg"] = ("success", f"Đã Kết thúc ca cho {att_staff} lúc {time_str} (Tổng thời gian: {so_phut_thuc_te} phút)!")
             else:
                 st.session_state["att_msg"] = ("warning", f"Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho {att_staff}!")
