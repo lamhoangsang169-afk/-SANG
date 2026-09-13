@@ -17,7 +17,7 @@ except ImportError:
 st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
+SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -67,7 +67,22 @@ default_folders = [
     }
 ]
 
-# Khởi tạo dữ liệu an toàn, chống sập app khi mất kết nối mạng
+# Hàm nén ảnh phụ vụ Avatar
+def compress_image_to_base64(uploaded_file, max_size=(300, 300), quality=60):
+    try:
+        if uploaded_file is None:
+            return None
+        img = Image.open(uploaded_file)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.thumbnail(max_size)
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=quality)
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+    except Exception:
+        return None
+
+# Khởi tạo dữ liệu an toàn
 def init_db_data():
     if supabase is None:
         return
@@ -338,11 +353,119 @@ st.markdown(f"""
     [data-testid="stSidebar"] > div:first-child {{
         display: flex; flex-direction: column; height: 100vh; overflow-y: auto !important; padding: 0px !important;
     }}
-    .sidebar-scrollable-content {{ flex-grow: 1; padding: 1rem; padding-bottom: 50px; }}
+    
+    .fixed-avatar-container {{
+        position: sticky;
+        top: 0;
+        z-index: 999999;
+        background-color: {sidebar_rgba};
+        padding-top: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid {st.session_state.primary_color};
+        margin-bottom: 10px;
+        text-align: center;
+        flex-shrink: 0;
+        backdrop-filter: blur(8px);
+    }}
+    .avatar-wrapper {{
+        position: relative;
+        width: 140px;
+        height: 140px;
+        margin: 0 auto;
+    }}
+    .avatar-popover-wrapper {{
+        position: absolute;
+        bottom: 2px;
+        right: 10px;
+        z-index: 9999999;
+    }}
+    .avatar-popover-wrapper [data-testid="stPopover"] button {{
+        background-color: #ffffff !important;
+        border: 2px solid {st.session_state.primary_color} !important;
+        border-radius: 50% !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }}
+    .avatar-popover-wrapper [data-testid="stPopover"] button p {{
+        display: none !important;
+    }}
+    .avatar-popover-wrapper [data-testid="stPopover"] button::after {{
+        content: "⋮";
+        font-size: 16px;
+        font-weight: bold;
+        color: #333333;
+        line-height: 1;
+    }}
+
+    .sidebar-scrollable-content {{ flex-grow: 1; padding-left: 1rem; padding-right: 1rem; padding-bottom: 50px; }}
 </style>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
+    st.markdown('<div class="fixed-avatar-container">', unsafe_allow_html=True)
+    
+    has_custom_avatar = False
+    avatar_bytes_obj = None
+    if st.session_state.avatar_base64:
+        try:
+            pure_b64 = st.session_state.avatar_base64.split(",")[1] if "," in st.session_state.avatar_base64 else st.session_state.avatar_base64
+            pure_b64 += "=" * (-len(pure_b64) % 4)
+            avatar_bytes_obj = base64.b64decode(pure_b64)
+            has_custom_avatar = True
+        except Exception:
+            pass
+
+    st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
+    
+    if has_custom_avatar:
+        with st.popover(" ", use_container_width=False):
+            st.markdown("##### 🔍 Xem Ảnh Đại Diện")
+            st.image(avatar_bytes_obj, use_container_width=True)
+            
+        encoded_img = base64.b64encode(avatar_bytes_obj).decode("utf-8")
+        st.markdown(f"""
+        <div style="cursor: pointer; text-align: center;">
+            <img src="data:image/jpeg;base64,{encoded_img}" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div style="width:140px; height:140px; border-radius:50%; background:#cbd5e1; display:flex; align-items:center; justify-content:center; font-size:50px; border:3px solid {st.session_state.primary_color}; box-shadow:0 4px 10px rgba(0,0,0,0.3); margin: 0 auto;">
+            👤
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
+    with st.popover(" "):
+        st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
+        avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover_unique", label_visibility="collapsed")
+        
+        if avatar_file is not None:
+            current_file_sig = f"{avatar_file.name}_{avatar_file.size}"
+            if st.session_state.get("last_processed_avatar") != current_file_sig:
+                compressed_avatar = compress_image_to_base64(avatar_file, max_size=(300, 300), quality=60)
+                if compressed_avatar:
+                    st.session_state.avatar_base64 = compressed_avatar
+                    st.session_state["last_processed_avatar"] = current_file_sig
+                    st.success("Đã cập nhật ảnh đại diện!")
+                    st.rerun()
+            
+        if st.session_state.avatar_base64:
+            st.markdown("---")
+            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True, key="btn_remove_avatar_unique"):
+                st.session_state.avatar_base64 = None
+                st.session_state["last_processed_avatar"] = None
+                st.success("Đã xóa ảnh đại diện!")
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
     if st.button("🔄 Cập Nhập", use_container_width=True):
         st.rerun()
@@ -555,7 +678,6 @@ elif feature == "report":
     
     all_staff_current = st.session_state.staff_list
     
-    # 1. Lấy dữ liệu sản lượng
     input_df = get_production_logs_db(is_deleted=False)
     if not input_df.empty:
         summary = input_df.groupby("Nhân Sự").agg(
@@ -601,7 +723,6 @@ elif feature == "report":
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
     
-    # 2. Lấy dữ liệu chấm công
     att_df = get_attendance_db()
     if not att_df.empty:
         att_summary = att_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index()
