@@ -870,15 +870,15 @@ elif feature == "report":
     else:
         st.info("Chưa có dữ liệu sản lượng từ nhân sự nào.")
 
-    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH (THU NHỎ GỌN HƠN NỮA) ====================
+    # ==================== PHẦN BIỂU ĐỒ HÌNH TRÒN & CHÚ THÍCH (THU NHỎ BẰNG MỘT NỬA) ====================
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        chart_col1, chart_col2 = st.columns([0.9, 1])
+        chart_col1, chart_col2 = st.columns([0.5, 1])
         
         with chart_col1:
-            # Giảm kích thước khung vẽ xuống 2.8x2.8 để biểu đồ nhỏ gọn, tinh tế
-            fig, ax = plt.subplots(figsize=(2.8, 2.8))
+            # Thu nhỏ kích thước khung vẽ xuống 1.8x1.8 để biểu đồ nhỏ bằng 1 nửa
+            fig, ax = plt.subplots(figsize=(1.8, 1.8))
             fig.patch.set_facecolor('none')
             ax.set_facecolor('none')
             
@@ -896,7 +896,7 @@ elif feature == "report":
             for autotext in autotexts:
                 autotext.set_color('#000000')
                 autotext.set_weight('bold')
-                autotext.set_fontsize(9.5)
+                autotext.set_fontsize(7.5)
                 
             ax.axis('equal')
             st.pyplot(fig)
@@ -911,8 +911,8 @@ elif feature == "report":
                 color_code = default_chart_colors[idx % len(default_chart_colors)]
                 
                 st.markdown(f"""
-                <div style="background-color: rgba(255,255,255,0.7); padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 5px solid {color_code}; font-size: 0.85rem;">
-                    <span style="display:inline-block; width:8px; height:8px; background-color:{color_code}; border-radius:2px; margin-right:5px;"></span>
+                <div style="background-color: rgba(255,255,255,0.7); padding: 5px 8px; border-radius: 6px; margin-bottom: 5px; border-left: 4px solid {color_code}; font-size: 0.8rem;">
+                    <span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span>
                     <b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)
                 </div>
                 """, unsafe_allow_html=True)
