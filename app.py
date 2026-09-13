@@ -368,19 +368,26 @@ with st.sidebar:
     st.markdown('<div class="avatar-popover-wrapper">', unsafe_allow_html=True)
     with st.popover(" "):
         st.markdown("##### ⚙️ Cài Đặt Ảnh Đại Diện")
-        avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover", label_visibility="collapsed")
+        
+        # ĐÃ KHẮC PHỤC: Sử dụng key phân biệt riêng và cơ chế kiểm tra chữ ký file để chặn lỗi rerun vòng lặp liên tục
+        avatar_file = st.file_uploader("Tải ảnh", type=["png", "jpg", "jpeg"], key="avatar_uploader_popover_unique", label_visibility="collapsed")
+        
         if avatar_file is not None:
-            compressed_avatar = compress_image_to_base64(avatar_file, max_size=(300, 300), quality=60)
-            if compressed_avatar:
-                st.session_state.avatar_base64 = compressed_avatar
-                save_data()
-                st.success("Đã cập nhật ảnh đại diện!")
-                st.rerun()
+            current_file_sig = f"{avatar_file.name}_{avatar_file.size}"
+            if st.session_state.get("last_processed_avatar") != current_file_sig:
+                compressed_avatar = compress_image_to_base64(avatar_file, max_size=(300, 300), quality=60)
+                if compressed_avatar:
+                    st.session_state.avatar_base64 = compressed_avatar
+                    st.session_state["last_processed_avatar"] = current_file_sig
+                    save_data()
+                    st.success("Đã cập nhật ảnh đại diện!")
+                    st.rerun()
             
         if st.session_state.avatar_base64:
             st.markdown("---")
-            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True):
+            if st.button("🗑️ Xóa Ảnh Đại Diện", use_container_width=True, key="btn_remove_avatar_unique"):
                 st.session_state.avatar_base64 = None
+                st.session_state["last_processed_avatar"] = None
                 save_data()
                 st.success("Đã xóa ảnh đại diện!")
                 st.rerun()
