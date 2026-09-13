@@ -607,7 +607,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Tối ưu xuất file CSV)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm hạng mục vào file CSV)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -965,10 +965,29 @@ elif feature == "report":
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
+        # Chuẩn bị dữ liệu xuất CSV có thêm cột chi tiết các hạng mục công việc đã làm
+        export_csv_df = summary_display.copy()
+        
+        # Gom các hạng mục và số lượng tương ứng cho từng nhân sự từ input_df
+        if not input_df.empty:
+            task_details = []
+            for staff_name in export_csv_df["Nhân Sự"]:
+                staff_logs = input_df[input_df["Nhân Sự"] == staff_name]
+                if not staff_logs.empty:
+                    # Tổng hợp số lượng theo từng hạng mục công việc
+                    grouped_tasks = staff_logs.groupby("Hạng Mục Công Việc")["Số Lượng"].sum()
+                    task_str_list = [f"{task}: {qty}" for task, qty in grouped_tasks.items()]
+                    task_details.append(" | ".join(task_str_list))
+                else:
+                    task_details.append("")
+            export_csv_df["Chi Tiết Hạng Mục Công Việc"] = task_details
+        else:
+            export_csv_df["Chi Tiết Hạng Mục Công Việc"] = ""
+
         # Nút xuất file báo cáo định dạng CSV tối ưu nằm ngay trên biểu đồ
         exp_col1, exp_col2 = st.columns([1, 3])
         with exp_col1:
-            csv_data = summary_display.to_csv(index=False).encode('utf-8-sig')
+            csv_data = export_csv_df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
                 label="📥 Xuất File Báo Cáo (CSV)",
                 data=csv_data,
