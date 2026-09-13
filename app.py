@@ -259,6 +259,19 @@ def upload_image_to_storage(uploaded_file):
     except Exception:
         return ""
 
+# Hàm tải file báo cáo lên Supabase Storage
+def upload_report_to_storage(file_name, csv_bytes):
+    if supabase is None:
+        return ""
+    try:
+        unique_file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{file_name}"
+        # Tải file lên bucket "reports-storage"
+        supabase.storage.from_("reports-storage").upload(unique_file_name, csv_bytes, {"content-type": "text/csv; charset=utf-8"})
+        public_url = f"{SUPABASE_URL}/storage/v1/object/public/reports-storage/{unique_file_name}"
+        return public_url
+    except Exception:
+        return ""
+
 def add_production_log_db(ngay, thoi_gian, nhan_su, hang_muc, hinh_anh_url, don_vi, so_luong, he_so, tong_diem, ghi_chu):
     if supabase is None:
         return
@@ -376,15 +389,15 @@ def delete_attendance_db(db_ids):
     except Exception:
         pass
 
-# Các hàm quản lý thư mục báo cáo lưu cloud
-def save_export_report_db(ten_file, csv_content):
+# Các hàm quản lý thư mục báo cáo lưu Storage
+def save_export_report_db(ten_file, file_url):
     if supabase is None:
         return
     try:
         payload = {
             "ten_file": ten_file,
             "ngay_tao": datetime.datetime.now(VN_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"),
-            "noi_dung_csv": csv_content,
+            "file_url": file_url,
             "is_deleted": False
         }
         supabase.table("export_reports").insert(payload).execute()
@@ -393,7 +406,7 @@ def save_export_report_db(ten_file, csv_content):
 
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
-        return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Nội Dung"])
+        return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Đường Dẫn URL"])
     try:
         res = supabase.table("export_reports").select("*").eq("is_deleted", is_deleted).order("id", desc=True).execute()
         if res.data:
@@ -402,13 +415,13 @@ def get_export_reports_db(is_deleted=False):
                 "id": "db_id",
                 "ten_file": "Tên File",
                 "ngay_tao": "Ngày Tạo",
-                "noi_dung_csv": "Nội Dung"
+                "file_url": "Đường Dẫn URL"
             })
             df.insert(0, "STT", range(1, len(df) + 1))
             return df
     except Exception:
         pass
-    return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Nội Dung"])
+    return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Đường Dẫn URL"])
 
 def update_export_report_deleted_status(db_ids, is_deleted_val):
     if supabase is None:
@@ -662,7 +675,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã thêm Thư Mục Báo Cáo)</small>", unsafe_allow_html=True)
+    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu Storage)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -1021,7 +1034,6 @@ elif feature == "report":
     st.markdown("---")
     
     if not summary.empty and total_all_points > 0:
-        # Chuẩn bị dữ liệu xuất CSV kèm hạng mục công việc
         export_csv_df = summary_display.copy()
         if not input_df.empty:
             task_details = []
@@ -1037,21 +1049,25 @@ elif feature == "report":
         else:
             export_csv_df["Chi Tiết Hạng Mục Công Việc"] = ""
 
-        # Nút xuất file báo cáo, đồng thời tự động lưu vào Thư Mục Báo Cáo trên Cloud
+        # Nút xuất file báo cáo, tải lên Supabase Storage và lưu URL vào database
         exp_col1, exp_col2 = st.columns([1, 3])
         with exp_col1:
             csv_str = export_csv_df.to_csv(index=False)
-            csv_data = csv_str.encode('utf-8-sig')
+            csv_bytes = csv_str.encode('utf-8-sig')
             file_name_val = f"bao_cao_san_luong_{datetime.date.today()}.csv"
             
-            # Tự động lưu vào thư mục báo cáo (nếu bấm nút)
             if st.button("📥 Xuất File & Lưu Vào Thư Mục", use_container_width=True):
-                save_export_report_db(file_name_val, csv_str)
-                st.success("Đã xuất file và tự động lưu vào '5. Thư Mục Báo Cáo'!")
+                # Tải file lên Supabase Storage bucket "reports-storage"
+                file_url = upload_report_to_storage(file_name_val, csv_bytes)
+                if file_url:
+                    save_export_report_db(file_name_val, file_url)
+                    st.success("Đã tải file lên Storage và lưu vào '5. Thư Mục Báo Cáo'!")
+                else:
+                    st.error("Lỗi khi tải file lên Storage. Vui lòng kiểm tra lại bucket 'reports-storage'!")
 
             st.download_button(
                 label="💾 Tải File Về Máy",
-                data=csv_data,
+                data=csv_bytes,
                 file_name=file_name_val,
                 mime="text/csv",
                 use_container_width=True
@@ -1103,7 +1119,7 @@ elif feature == "report":
 # ==================== 5. THƯ MỤC BÁO CÁO ====================
 elif feature == "report_folder":
     st.header(menu)
-    st.markdown("📂 Nơi lưu trữ tất cả các file báo cáo đã được xuất tự động. Bạn có thể tải lại file, chuyển vào thùng rác hoặc xóa vĩnh viễn.")
+    st.markdown("📂 Kho lưu trữ các file báo cáo trên Cloud Storage. Bạn có thể tải lại file trực tiếp từ đường dẫn, chuyển vào thùng rác hoặc xóa vĩnh viễn.")
     
     reports_df = get_export_reports_db(is_deleted=False)
     if not reports_df.empty:
@@ -1120,7 +1136,8 @@ elif feature == "report_folder":
             for idx, row in reports_df.iterrows():
                 st.markdown(f"""
                 <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📁 Tên File: <b>{row['Tên File']}</b> &nbsp;|&nbsp; 📅 Ngày tạo: {row['Ngày Tạo']}
+                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📁 Tên File: <b>{row['Tên File']}</b> &nbsp;|&nbsp; 📅 Ngày tạo: {row['Ngày Tạo']}<br>
+                    🔗 <a href="{row['Đường Dẫn URL']}" target="_blank">Mở liên kết trực tiếp trên Storage</a>
                 </div>
                 """, unsafe_allow_html=True)
                 is_sel = st.checkbox(f"Chọn báo cáo STT {row['STT']} ({row['Tên File']})", key=f"rep_{row['db_id']}")
@@ -1138,15 +1155,9 @@ elif feature == "report_folder":
                     
         st.markdown("### 📥 Tải Nhanh Các Báo Cáo Đã Lưu")
         for _, row in reports_df.iterrows():
-            st.download_button(
-                label=f"📥 Tải xuống: {row['Tên File']} ({row['Ngày Tạo']})",
-                data=str(row['Nội Dung']).encode('utf-8-sig'),
-                file_name=row['Tên File'],
-                mime="text/csv",
-                key=f"download_rep_{row['db_id']}"
-            )
+            st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất báo cáo mới.")
+        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
@@ -1162,8 +1173,6 @@ elif feature == "rules":
 elif feature == "trash":
     st.header(menu)
     trash_df = get_production_logs_db(is_deleted=True)
-    
-    # Thêm phần quản lý thùng rác của Thư mục báo cáo bên dưới
     trash_reports_df = get_export_reports_db(is_deleted=True)
     
     st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
