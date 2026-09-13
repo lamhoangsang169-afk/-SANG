@@ -18,12 +18,12 @@ st.set_page_config(page_title="Phần Mềm Chấm Điểm Sản Lượng", page
 
 # ==================== KẾT NỐI SUPABASE & CƠ CHẾ AN TOÀN ====================
 SUPABASE_URL = "https://xbozutjkiwnaoiluahq.supabase.co"
-SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"
+SUPABASE_KEY = "sb_publishable_UKjUhq93nc51-dvjE6Xong_DhlJB7FP"[cite: 4]
 
 supabase = None
-if HAS_SUPABASE_LIB and SUPABASE_KEY and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
+if HAS_SUPABASE_LIB and SUPABASE_KEY and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":[cite: 4]
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)[cite: 4]
     except Exception:
         supabase = None
 
@@ -87,29 +87,30 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
     except Exception:
         return None
 
-def load_data():
-    cloud_data = None
+@st.cache_data(ttl=2)
+def fetch_supabase_data():
     if supabase is not None:
         try:
-            response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()
+            response = supabase.table("app_storage_table").select("data").eq("id", "main_config").execute()[cite: 4]
             if response.data and len(response.data) > 0:
-                raw_data = response.data[0].get("data")
+                raw_data = response.data[0]["data"][cite: 4]
                 if isinstance(raw_data, str):
-                    cloud_data = json.loads(raw_data)
+                    return json.loads(raw_data)
                 elif isinstance(raw_data, dict):
-                    cloud_data = raw_data
+                    return raw_data
         except Exception:
-            cloud_data = None
-            
-    if cloud_data and isinstance(cloud_data, dict):
+            pass
+    return None
+
+def load_data():
+    cloud_data = fetch_supabase_data()
+    if cloud_data:
         return cloud_data
-        
+    
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                file_data = json.load(f)
-                if isinstance(file_data, dict):
-                    return file_data
+                return json.load(f)
         except Exception:
             pass
             
@@ -145,21 +146,18 @@ def save_data():
     if supabase is not None:
         try:
             json_str = json.dumps(data, ensure_ascii=False, default=str)
-            payload = {"id": "main_config", "data": json_str}
-            supabase.table("app_storage_table").upsert(payload).execute()
+            payload = {"id": "main_config", "data": json_str}[cite: 4]
+            supabase.table("app_storage_table").upsert(payload).execute()[cite: 4]
         except Exception:
             pass
 
 saved_data = load_data()
 
-st.session_state.rules_df = pd.DataFrame(saved_data.get("rules_df", master_rules)) if saved_data.get("rules_df") else pd.DataFrame(master_rules)
+st.session_state.rules_df = pd.DataFrame(saved_data["rules_df"]) if "rules_df" in saved_data and saved_data["rules_df"] else pd.DataFrame(master_rules)
 
 default_input_columns = ["STT", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"]
-if saved_data.get("input_df"):
-    try:
-        st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
-    except Exception:
-        st.session_state.input_df = pd.DataFrame(columns=default_input_columns)
+if "input_df" in saved_data and saved_data["input_df"]:
+    st.session_state.input_df = pd.DataFrame(saved_data["input_df"])
 else:
     st.session_state.input_df = pd.DataFrame(columns=default_input_columns)
 
@@ -167,19 +165,10 @@ for col in default_input_columns:
     if col not in st.session_state.input_df.columns:
         st.session_state.input_df[col] = ""
 
-if saved_data.get("attendance_df"):
-    try:
-        st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"])
-    except Exception:
-        st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
-else:
-    st.session_state.attendance_df = pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
+st.session_state.attendance_df = pd.DataFrame(saved_data["attendance_df"]) if "attendance_df" in saved_data else pd.DataFrame(columns=["STT", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
 
-if saved_data.get("deleted_input_df"):
-    try:
-        st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
-    except Exception:
-        st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
+if "deleted_input_df" in saved_data and saved_data["deleted_input_df"]:
+    st.session_state.deleted_input_df = pd.DataFrame(saved_data["deleted_input_df"])
 else:
     st.session_state.deleted_input_df = pd.DataFrame(columns=default_input_columns)
 
@@ -201,9 +190,8 @@ st.session_state.bg_image_base64 = saved_data.get("bg_image_base64", None)
 st.session_state.avatar_base64 = saved_data.get("avatar_base64", None)
 
 first_item_name = "1. Nhập Sản Lượng"
-if st.session_state.folders and isinstance(st.session_state.folders, list) and len(st.session_state.folders) > 0:
-    if "items" in st.session_state.folders[0] and st.session_state.folders[0]["items"]:
-        first_item_name = st.session_state.folders[0]["items"][0]["name"]
+if st.session_state.folders and st.session_state.folders[0]["items"]:
+    first_item_name = st.session_state.folders[0]["items"][0]["name"]
 st.session_state.current_menu = saved_data.get("current_menu", first_item_name)
 
 if not st.session_state.input_df.empty:
@@ -238,6 +226,7 @@ st.markdown(f"""
         color: {st.session_state.text_color} !important;
         padding-top: 1rem;
     }}
+    
     p, span, label, div, h1, h2, h3, h4, h5, h6, 
     .stMarkdown, [data-testid="stMarkdownContainer"] *,
     [data-testid="stText"], [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
@@ -250,13 +239,16 @@ st.markdown(f"""
     canvas {{
         color: {st.session_state.text_color} !important;
     }}
+    
     h1 {{
         color: {st.session_state.primary_color} !important;
     }}
+
     [data-testid="stSidebar"] {{
         background-color: {sidebar_rgba} !important;
         backdrop-filter: blur(8px);
     }}
+    
     [data-testid="stSidebar"] > div:first-child {{
         display: flex;
         flex-direction: column;
@@ -264,9 +256,11 @@ st.markdown(f"""
         overflow-y: auto !important;
         padding: 0px !important;
     }}
+    
     [data-testid="stSidebar"] * {{
         color: {st.session_state.text_color} !important;
     }}
+    
     .fixed-avatar-container {{
         position: sticky;
         top: 0;
@@ -280,18 +274,21 @@ st.markdown(f"""
         flex-shrink: 0;
         backdrop-filter: blur(8px);
     }}
+
     .sidebar-scrollable-content {{
         flex-grow: 1;
         padding-left: 1rem;
         padding-right: 1rem;
         padding-bottom: 50px;
     }}
+
     .avatar-wrapper {{
         position: relative;
         width: 140px;
         height: 140px;
         margin: 0 auto;
     }}
+    
     .avatar-popover-wrapper {{
         position: absolute;
         bottom: 2px;
@@ -320,6 +317,7 @@ st.markdown(f"""
         color: #333333;
         line-height: 1;
     }}
+
     @media (max-width: 768px) {{
         .stApp {{
             padding: 4px !important;
@@ -428,14 +426,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
 
-    if isinstance(st.session_state.folders, list):
-        for f_idx, folder in enumerate(st.session_state.folders):
-            with st.expander(folder.get("folder_name", f"Thư mục {f_idx}"), expanded=True):
-                for item in folder.get("items", []):
-                    if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
-                        st.session_state.current_menu = item["name"]
-                        save_data()
-                        st.rerun()
+    for f_idx, folder in enumerate(st.session_state.folders):
+        with st.expander(folder["folder_name"], expanded=True):
+            for item in folder["items"]:
+                if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
+                    st.session_state.current_menu = item["name"]
+                    save_data()
+                    st.rerun()
 
     st.markdown("---")
     st.markdown("### ⚙️ Cấu Hình Hệ Thống")
@@ -472,16 +469,15 @@ def get_feature_type(menu_name):
     if menu_name == "🧹 Làm Sạch Dữ Liệu":
         return "clean_data"
         
-    if isinstance(st.session_state.folders, list):
-        for folder in st.session_state.folders:
-            for item in folder.get("items", []):
-                if item["name"] == menu_name:
-                    item_id = item["id"]
-                    if item_id == "menu_1": return "input_production"
-                    if item_id == "menu_2": return "report"
-                    if item_id == "menu_3": return "rules"
-                    if item_id == "menu_4": return "trash"
-                    return "input_production"
+    for folder in st.session_state.folders:
+        for item in folder["items"]:
+            if item["name"] == menu_name:
+                item_id = item["id"]
+                if item_id == "menu_1": return "input_production"
+                if item_id == "menu_2": return "report"
+                if item_id == "menu_3": return "rules"
+                if item_id == "menu_4": return "trash"
+                return "input_production"
     return "input_production"
 
 feature = get_feature_type(menu)
@@ -493,7 +489,7 @@ if feature == "input_production":
     
     active_staff = []
     inactive_staff = []
-    if not st.session_state.attendance_df.empty and "Ngày" in st.session_state.attendance_df.columns:
+    if not st.session_state.attendance_df.empty:
         today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
         checked_in_set = set(today_att[today_att["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
     else:
@@ -525,7 +521,7 @@ if feature == "input_production":
             with f_col2:
                 nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
             with f_col3:
-                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist()
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                 
             if req_img:
@@ -628,6 +624,9 @@ if feature == "input_production":
             filtered_df = filtered_df.iloc[::-1].reset_index(drop=True)
             
             with st.form("input_delete_form"):
+                select_all_input = st.checkbox("☑️ Chọn tất cả bản ghi sản lượng hiển thị", key="select_all_input_chk")
+                st.markdown("---")
+                
                 for idx, row in filtered_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -641,7 +640,7 @@ if feature == "input_production":
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", key=f"chk_{row['STT']}")
+                        is_selected = st.checkbox(f"Xóa bản ghi STT {row['STT']}", value=select_all_input, key=f"chk_{row['STT']}")
                         filtered_df.loc[idx, "Chọn_Xóa"] = is_selected
                         
                     with row_c2:
@@ -695,7 +694,7 @@ elif feature == "attendance":
     
     active_staff = []
     inactive_staff = []
-    if not st.session_state.attendance_df.empty and "Ngày" in st.session_state.attendance_df.columns:
+    if not st.session_state.attendance_df.empty:
         today_att = st.session_state.attendance_df[st.session_state.attendance_df["Ngày"] == today_str]
         checked_in_set = set(today_att[today_att["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
     else:
@@ -1097,9 +1096,10 @@ elif feature == "trash":
     if not st.session_state.deleted_input_df.empty:
         st.session_state.deleted_input_df["STT"] = range(1, len(st.session_state.deleted_input_df) + 1)
         
-        trash_zoom = st.slider("🔍 Kích thước ảnh trong thùng rác:", min_value=50, max_value=200, value=80, step=10, key="trash_zoom")
-        
         with st.form("trash_form"):
+            select_all_trash = st.checkbox("☑️ Chọn tất cả bản ghi trong thùng rác", key="select_all_trash_chk")
+            st.markdown("---")
+            
             for idx, row in st.session_state.deleted_input_df.iterrows():
                 row_c1, row_c2 = st.columns([4, 1])
                 with row_c1:
@@ -1113,7 +1113,7 @@ elif feature == "trash":
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    is_selected = st.checkbox(f"Chọn bản ghi STT {row['STT']}", key=f"trash_chk_{row['STT']}")
+                    is_selected = st.checkbox(f"Chọn bản ghi STT {row['STT']}", value=select_all_trash, key=f"trash_chk_{row['STT']}")
                     st.session_state.deleted_input_df.loc[idx, "Chọn_Xóa"] = is_selected
                     
                 with row_c2:
@@ -1124,7 +1124,7 @@ elif feature == "trash":
                             pure_b64 += "=" * (-len(pure_b64) % 4)
                             img_bytes = base64.b64decode(pure_b64)
                             
-                            st.image(img_bytes, width=trash_zoom)
+                            st.image(img_bytes, width=50)
                             with st.popover("🔍 Phóng to"):
                                 st.image(img_bytes, use_container_width=True)
                         except Exception:
@@ -1191,11 +1191,11 @@ elif feature == "manage_folders":
         updated_folders = []
         for f_idx, folder in enumerate(st.session_state.folders):
             st.markdown(f"#### Thư mục #{f_idx + 1}")
-            new_f_name = st.text_input(f"Tên hiển thị Thư Mục #{f_idx + 1}", folder.get("folder_name", ""), key=f"fname_{f_idx}")
+            new_f_name = st.text_input(f"Tên hiển thị Thư Mục #{f_idx + 1}", folder["folder_name"], key=f"fname_{f_idx}")
             
             st.markdown("Các mục con trong thư mục này:")
             updated_items = []
-            for i_idx, item in enumerate(folder.get("items", [])):
+            for i_idx, item in enumerate(folder["items"]):
                 c_id = item["id"]
                 c_name = item["name"]
                 new_i_name = st.text_input(f"Tên mục ({c_id})", c_name, key=f"iname_{f_idx}_{i_idx}")
