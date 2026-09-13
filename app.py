@@ -894,6 +894,9 @@ elif feature == "settings_ui":
             picker_sidebar = st.color_picker("Màu nền thanh bên (Sidebar)", value=st.session_state.sidebar_bg)
             
         st.markdown("---")
+        slider_opacity = st.slider("Độ mờ / trong suốt thanh bên (Sidebar Opacity)", min_value=0.1, max_value=1.0, value=float(st.session_state.sidebar_opacity), step=0.05)
+        
+        st.markdown("---")
         bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng (Tuỳ chọn)", type=["png", "jpg", "jpeg"])
         
         submitted_ui = st.form_submit_button("💾 Lưu Cài Đặt Giao Diện", use_container_width=True)
@@ -902,6 +905,7 @@ elif feature == "settings_ui":
             st.session_state.text_color = picker_text
             st.session_state.primary_color = picker_primary
             st.session_state.sidebar_bg = picker_sidebar
+            st.session_state.sidebar_opacity = slider_opacity
             
             if bg_file_upload is not None:
                 compressed_bg = compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80)
