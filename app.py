@@ -902,7 +902,7 @@ if feature == "input_production":
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            filter_hour = st.text_input("Lọc theo Giờ (VD: 15, 15:50)", value="")
+            filter_hour = st.text_input("Lọc theo Giờ (VD: 07:30 tới 08:45)", value="")
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
