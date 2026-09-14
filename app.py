@@ -343,17 +343,20 @@ def save_folders_db(folders_list):
     except Exception as e:
         st.error(f"Lỗi lưu thư mục: {e}")
 
-def upload_image_to_storage(uploaded_file):
-    if supabase is None or uploaded_file is None:
+def upload_multiple_images_to_storage(uploaded_files):
+    if supabase is None or not uploaded_files:
         return ""
-    try:
-        file_bytes = uploaded_file.getvalue()
-        file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{uploaded_file.name}"
-        supabase.storage.from_("production-images").upload(file_name, file_bytes, {"content-type": uploaded_file.type})
-        public_url = f"{SUPABASE_URL}/storage/v1/object/public/production-images/{file_name}"
-        return public_url
-    except Exception:
-        return ""
+    url_list = []
+    for uploaded_file in uploaded_files[:4]:
+        try:
+            file_bytes = uploaded_file.getvalue()
+            file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{uploaded_file.name}"
+            supabase.storage.from_("production-images").upload(file_name, file_bytes, {"content-type": uploaded_file.type})
+            public_url = f"{SUPABASE_URL}/storage/v1/object/public/production-images/{file_name}"
+            url_list.append(public_url)
+        except Exception:
+            pass
+    return ",".join(url_list)
 
 def upload_report_to_storage(file_name, csv_bytes):
     if supabase is None:
@@ -830,7 +833,7 @@ if feature == "input_production":
                 danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                 
-            record_image = st.file_uploader("Tải ảnh đính kèm", type=["png", "jpg", "jpeg"], key="record_img")
+            record_images = st.file_uploader("Tải ảnh đính kèm (Tối đa 4 ảnh)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="record_img")
                     
             f_col4, f_col5 = st.columns(2)
             with f_col4:
@@ -842,22 +845,27 @@ if feature == "input_production":
 
             if submitted:
                 is_valid = True
-                if req_img and record_image is None: is_valid = False
+                if req_img and not record_images: is_valid = False
                 if req_qty and so_luong <= 0: is_valid = False
+                if record_images and len(record_images) > 4:
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
 
-                if not is_valid:
+                if not is_valid and "form_msg" not in st.session_state:
                     st.session_state["form_msg"] = ("error", "⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
-                else:
+
+                if is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
                     he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
                     don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
                     tong_diem = so_luong * he_so
                     
-                    img_url = upload_image_to_storage(record_image) if record_image else ""
+                    img_urls = upload_multiple_images_to_storage(record_images) if record_images else ""
                     current_time_str = datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S")
                     
-                    add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_url, don_vi, so_luong, he_so, tong_diem, ghi_chu)
+                    add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_urls, don_vi, so_luong, he_so, tong_diem, ghi_chu)
                     st.session_state["form_msg"] = ("success", f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                    st.rerun()
 
         if "form_msg" in st.session_state:
             m_type, m_text = st.session_state["form_msg"]
@@ -911,13 +919,16 @@ if feature == "input_production":
                         img_url_val = row.get("Hình Ảnh", "")
                         if isinstance(img_url_val, dict):
                             img_url_val = img_url_val.get("publicUrl") or img_url_val.get("url", "")
-                        if img_url_val and isinstance(img_url_val, str) and img_url_val.startswith("http"):
-                            sub_c1, sub_c2 = st.columns([1, 2], gap="small")
-                            with sub_c1:
-                                st.image(img_url_val, width=50)
-                            with sub_c2:
-                                with st.popover("🔍", help="Xem ảnh lớn"):
-                                    st.image(img_url_val, use_container_width=True)
+                        
+                        if img_url_val and isinstance(img_url_val, str):
+                            urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                            if urls:
+                                sub_cols = st.columns(min(len(urls), 4), gap="small")
+                                for i, u in enumerate(urls):
+                                    with sub_cols[i]:
+                                        with st.popover("🔍", help="Xem ảnh lớn"):
+                                            st.image(u, use_container_width=True)
+                                        st.image(u, width=40)
                         else:
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                     st.markdown("---")
