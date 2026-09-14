@@ -902,8 +902,7 @@ if feature == "input_production":
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            all_hours = ["Tất cả"] + sorted(list(set([str(t).split(":")[0] + "h" for t in input_df["Thời Gian"].dropna()])))
-            filter_hour = st.selectbox("Lọc theo Giờ", all_hours)
+            filter_hour = st.text_input("Lọc theo Giờ (VD: 15, 15:50)", value="")
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -914,9 +913,8 @@ if feature == "input_production":
         filtered_df = input_df.copy()
         if filter_date != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
-        if filter_hour != "Tất cả": 
-            hour_prefix = filter_hour.replace("h", "")
-            filtered_df = filtered_df[filtered_df["Thời Gian"].astype(str).str.startswith(hour_prefix)]
+        if filter_hour.strip(): 
+            filtered_df = filtered_df[filtered_df["Thời Gian"].astype(str).str.contains(filter_hour.strip())]
         if filter_staff != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
         if filter_task != "Tất cả": 
