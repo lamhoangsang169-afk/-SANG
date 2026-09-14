@@ -231,13 +231,13 @@ def get_rules_df_db():
         pass
     return pd.DataFrame(master_rules)
 
-# HÀM LƯU ĐỊNH MỨC THÔNG MINH - CẬP NHẬT TRỰC TIẾP DỰA TRÊN ID VÀ ĐỒNG BỘ 30 NGÀY GẦN NHẤT
+# HÀM LƯU ĐỊNH MỨC THÔNG MINH - ĐỒNG BỘ TÊN VÀ TỰ ĐỘNG TÍNH LẠI ĐIỂM SỐ 30 NGÀY GẦN NHẤT
 def save_rules_df_db(df):
     if supabase is None:
         return
     try:
-        res_old = supabase.table("rules").select("id, hang_muc").execute()
-        old_rules_map = {row["id"]: row["hang_muc"] for row in res_old.data} if res_old.data else {}
+        res_old = supabase.table("rules").select("id, hang_muc, he_so_diem").execute()
+        old_rules_map = {row["id"]: {"hang_muc": row["hang_muc"], "he_so_diem": row["he_so_diem"]} for row in res_old.data} if res_old.data else {}
         old_ids = list(old_rules_map.keys())
         
         current_ids_in_editor = []
@@ -258,17 +258,33 @@ def save_rules_df_db(df):
             
             if pd.notna(row_id) and int(row_id) in old_ids:
                 rid = int(row_id)
-                old_hang_muc = old_rules_map.get(rid, "")
+                old_info = old_rules_map.get(rid, {"hang_muc": "", "he_so_diem": 1.0})
+                old_hang_muc = old_info["hang_muc"]
+                old_he_so = old_info["he_so_diem"]
                 
-                # Cập nhật trực tiếp theo id (giữ nguyên id cũ)
+                # Cập nhật trực tiếp theo id
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
-                # Đồng bộ tên hạng mục thay đổi vào production_logs trong 30 ngày gần nhất
+                # 1. Nếu tên hạng mục thay đổi -> Cập nhật lại tên mới trong production_logs 30 ngày gần nhất
                 if old_hang_muc and old_hang_muc != new_hang_muc:
                     supabase.table("production_logs").update({
                         "hang_muc_cong_viec": new_hang_muc
                     }).eq("hang_muc_cong_viec", old_hang_muc).gte("ngay", thirty_days_ago).execute()
+                
+                # 2. Nếu hệ số điểm thay đổi -> Tự động quét và nhân lại tổng điểm mới trong 30 ngày gần nhất
+                target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
+                if old_he_so != new_he_so:
+                    res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).gte("ngay", thirty_days_ago).eq("is_deleted", False).execute()
+                    if res_logs.data:
+                        for lg in res_logs.data:
+                            lg_id = lg["id"]
+                            qty = lg["so_luong"]
+                            new_total_points = qty * new_he_so
+                            supabase.table("production_logs").update({
+                                "he_so_diem": new_he_so,
+                                "tong_diem": new_total_points
+                            }).eq("id", lg_id).execute()
             else:
                 res_ins = supabase.table("rules").insert(payload).execute()
                 if res_ins.data:
@@ -279,7 +295,7 @@ def save_rules_df_db(df):
             supabase.table("rules").delete().eq("id", del_id).execute()
             
         st.cache_data.clear()
-        st.success("Đã đồng bộ định mức và cập nhật các bản ghi 30 ngày gần nhất thành công!")
+        st.success("Đã đồng bộ định mức, tự động cập nhật tên và tính lại điểm số 30 ngày gần nhất thành công!")
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
