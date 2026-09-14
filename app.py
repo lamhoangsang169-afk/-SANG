@@ -15,7 +15,7 @@ try:
 except ImportError:
     HAS_SUPABASE_LIB = False
 
-st.set_page_config(page_title="POSS", page_icon="📊", layout="wide")
+st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
 SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
@@ -68,6 +68,52 @@ default_folders = [
         ]
     }
 ]
+
+# ==================== KIỂM TRA ĐĂNG NHẬP SESSION ====================
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+
+# Nếu chưa đăng nhập, hiển thị giao diện đăng nhập
+if not st.session_state.logged_in:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
+    with col_l2:
+        st.markdown("""
+        <div style="background: rgba(255, 255, 255, 0.9); padding: 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
+            <h2 style="text-align: center; color: #ff4b4b; margin-bottom: 20px;">🔐 ĐĂNG NHẬP HỆ THỐNG POSS</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            email_input = st.text_input("📧 Email tài khoản", placeholder="Nhập email của bạn...")
+            password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
+            submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
+            
+            if submitted_login:
+                if not email_input or not password_input:
+                    st.error("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!")
+                elif supabase is None:
+                    st.error("⚠️ Chưa kết nối được tới Supabase!")
+                else:
+                    try:
+                        res = supabase.auth.sign_in_with_password({
+                            "email": email_input.strip(),
+                            "password": password_input.strip()
+                        })
+                        if res and res.user:
+                            st.session_state.logged_in = True
+                            st.session_state.user_email = res.user.email
+                            st.success("✅ Đăng nhập thành công!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Email hoặc mật khẩu không chính xác!")
+                    except Exception as e:
+                        st.error(f"❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
+    st.stop()
+
+# ==================== PHẦN CHỨC NĂNG SAU KHI ĐĂNG NHẬP ====================
 
 def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
     try:
@@ -185,23 +231,57 @@ def get_rules_df_db():
         pass
     return pd.DataFrame(master_rules)
 
+# HÀM LƯU ĐỊNH MỨC THÔNG MINH - CẬP NHẬT TRỰC TIẾP DỰA TRÊN ID VÀ ĐỒNG BỘ 30 NGÀY GẦN NHẤT
 def save_rules_df_db(df):
     if supabase is None:
         return
     try:
-        supabase.table("rules").delete().neq("id", 0).execute()
+        res_old = supabase.table("rules").select("id, hang_muc").execute()
+        old_rules_map = {row["id"]: row["hang_muc"] for row in res_old.data} if res_old.data else {}
+        old_ids = list(old_rules_map.keys())
+        
+        current_ids_in_editor = []
+        thirty_days_ago = (datetime.datetime.now(VN_TIMEZONE) - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
+        
         for _, row in df.iterrows():
+            row_id = row.get("id")
+            new_hang_muc = str(row.get("Hạng Mục Công Việc", "")).strip()
+            new_he_so = float(row.get("Hệ Số Điểm", 1.0)) if pd.notna(row.get("Hệ Số Điểm")) else 1.0
+            
             payload = {
-                "stt": int(row.get("STT", 1)),
-                "hang_muc": row.get("Hạng Mục Công Việc", ""),
-                "don_vi": row.get("Đơn Vị", "Cái"),
-                "he_so_diem": float(row.get("Hệ Số Điểm", 1.0)),
-                "ghi_chu": row.get("Ghi Chú", "")
+                "stt": int(row.get("stt", 1)) if pd.notna(row.get("stt")) else 1,
+                "hang_muc": new_hang_muc,
+                "don_vi": str(row.get("Đơn Vị", "Cái")).strip(),
+                "he_so_diem": new_he_so,
+                "ghi_chu": str(row.get("Ghi Chú", "")).strip()
             }
-            supabase.table("rules").insert(payload).execute()
+            
+            if pd.notna(row_id) and int(row_id) in old_ids:
+                rid = int(row_id)
+                old_hang_muc = old_rules_map.get(rid, "")
+                
+                # Cập nhật trực tiếp theo id (giữ nguyên id cũ)
+                supabase.table("rules").update(payload).eq("id", rid).execute()
+                current_ids_in_editor.append(rid)
+                
+                # Đồng bộ tên hạng mục thay đổi vào production_logs trong 30 ngày gần nhất
+                if old_hang_muc and old_hang_muc != new_hang_muc:
+                    supabase.table("production_logs").update({
+                        "hang_muc_cong_viec": new_hang_muc
+                    }).eq("hang_muc_cong_viec", old_hang_muc).gte("ngay", thirty_days_ago).execute()
+            else:
+                res_ins = supabase.table("rules").insert(payload).execute()
+                if res_ins.data:
+                    current_ids_in_editor.append(res_ins.data[0]["id"])
+                    
+        ids_to_delete = [oid for oid in old_ids if oid not in current_ids_in_editor]
+        for del_id in ids_to_delete:
+            supabase.table("rules").delete().eq("id", del_id).execute()
+            
         st.cache_data.clear()
-    except Exception:
-        pass
+        st.success("Đã đồng bộ định mức và cập nhật các bản ghi 30 ngày gần nhất thành công!")
+    except Exception as e:
+        st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
 @st.cache_data(show_spinner=False)
 def load_app_settings_db():
@@ -259,13 +339,11 @@ def upload_image_to_storage(uploaded_file):
     except Exception:
         return ""
 
-# Hàm tải file báo cáo lên Supabase Storage
 def upload_report_to_storage(file_name, csv_bytes):
     if supabase is None:
         return ""
     try:
         unique_file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{file_name}"
-        # Tải file lên bucket "reports-storage"
         supabase.storage.from_("reports-storage").upload(unique_file_name, csv_bytes, {"content-type": "text/csv; charset=utf-8"})
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/reports-storage/{unique_file_name}"
         return public_url
@@ -389,9 +467,9 @@ def delete_attendance_db(db_ids):
     except Exception:
         pass
 
-# Các hàm quản lý thư mục báo cáo lưu Storage
 def save_export_report_db(ten_file, file_url):
     if supabase is None:
+        st.error("Chưa kết nối Supabase!")
         return
     try:
         payload = {
@@ -401,8 +479,10 @@ def save_export_report_db(ten_file, file_url):
             "is_deleted": False
         }
         supabase.table("export_reports").insert(payload).execute()
-    except Exception:
-        pass
+        st.success("Đã lưu thông tin báo cáo vào cơ sở dữ liệu thành công!")
+        st.cache_data.clear()
+    except Exception as e:
+        st.error(f"Lỗi khi lưu vào bảng export_reports: {e}")
 
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
@@ -635,8 +715,8 @@ with st.sidebar:
                     "sidebar_bg": st.session_state.sidebar_bg,
                     "sidebar_opacity": st.session_state.sidebar_opacity,
                     "text_color": st.session_state.text_color,
-                    "bg_image_base64": st.session_state.bg_image_base64,
-                    "avatar_base64": None
+                    "bg_image_base64": None,
+                    "avatar_base64": st.session_state.avatar_base64
                 })
                 
                 st.success("Đã xóa ảnh đại diện!")
@@ -646,6 +726,14 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
+    
+    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b></small>", unsafe_allow_html=True)
+    if st.button("🚪 Đăng Xuất", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_email = ""
+        st.rerun()
+
+    st.markdown("---")
     if st.button("🔄 Cập Nhập", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -674,8 +762,6 @@ with st.sidebar:
         st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
         st.rerun()
 
-    st.markdown("---")
-    st.markdown(f"<small>🟢 Supabase Cloud DB (Đã tối ưu Storage)</small>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -1008,7 +1094,6 @@ elif feature == "report":
             
             comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
             
-            # Quy đổi ngày: 1 ngày = 8 tiếng = 480 phút
             comparison_df["Số_Ngày_Làm_Việc"] = comparison_df["Tổng Phút Làm Việc"] / 480.0
             
             comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Số_Ngày_Làm_Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
@@ -1049,7 +1134,6 @@ elif feature == "report":
         else:
             export_csv_df["Chi Tiết Hạng Mục Công Việc"] = ""
 
-        # Nút xuất file báo cáo, tải lên Supabase Storage và lưu URL vào database
         exp_col1, exp_col2 = st.columns([1, 3])
         with exp_col1:
             csv_str = export_csv_df.to_csv(index=False)
@@ -1057,11 +1141,9 @@ elif feature == "report":
             file_name_val = f"bao_cao_san_luong_{datetime.date.today()}.csv"
             
             if st.button("📥 Xuất File & Lưu Vào Thư Mục", use_container_width=True):
-                # Tải file lên Supabase Storage bucket "reports-storage"
                 file_url = upload_report_to_storage(file_name_val, csv_bytes)
                 if file_url:
                     save_export_report_db(file_name_val, file_url)
-                    st.success("Đã tải file lên Storage và lưu vào '5. Thư Mục Báo Cáo'!")
                 else:
                     st.error("Lỗi khi tải file lên Storage. Vui lòng kiểm tra lại bucket 'reports-storage'!")
 
@@ -1341,7 +1423,7 @@ elif feature == "settings_ui":
 
     st.markdown("---")
     st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
-    st.warning("⚠️ **Lưu ý quan trọng:** Khi bạn xóa nhân sự khỏi danh sách và bấm lưu, hệ thống sẽ **xóa vĩnh viễn** nhân sự đó cùng **toàn bộ dữ liệu báo cáo sản lượng và lịch sử chấm công** gắn liền với tên họ.")
+    st.warning("⚠️ **Lưu ý quan trọng:** Khi bạn xóa nhân sự khỏi danh sách và bấm nút lưu, hệ thống sẽ **xóa vĩnh viễn** nhân sự đó cùng **toàn bộ dữ liệu sản lượng và chấm công** gắn liền với tên họ.")
     
     with st.form("staff_form"):
         staff_df = get_staff_df_db()
