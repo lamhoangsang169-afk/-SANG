@@ -902,7 +902,13 @@ if feature == "input_production":
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            filter_hour = st.text_input("Lọc theo Giờ (VD: 07:30 tới 08:45)", value="")
+            time_filter_range = st.slider(
+                "Lọc theo Khoảng Giờ",
+                min_value=datetime.time(0, 0),
+                max_value=datetime.time(23, 59),
+                value=(datetime.time(0, 0), datetime.time(23, 59)),
+                step=datetime.timedelta(minutes=1)
+            )
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -913,8 +919,17 @@ if feature == "input_production":
         filtered_df = input_df.copy()
         if filter_date != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
-        if filter_hour.strip(): 
-            filtered_df = filtered_df[filtered_df["Thời Gian"].astype(str).str.contains(filter_hour.strip())]
+            
+        if time_filter_range:
+            start_t, end_t = time_filter_range
+            def check_time_in_range(t_str):
+                try:
+                    t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
+                    return start_t <= t_val <= end_t
+                except:
+                    return True
+            filtered_df = filtered_df[filtered_df["Thời Gian"].apply(check_time_in_range)]
+            
         if filter_staff != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
         if filter_task != "Tất cả": 
@@ -1298,7 +1313,7 @@ elif feature == "report_folder":
         for _, row in reports_df.iterrows():
             st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
+        st.info("Th thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
