@@ -902,8 +902,7 @@ if feature == "input_production":
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            st.markdown("<b>Lọc theo Khoảng Giờ</b>", unsafe_allow_html=True)
-            enable_hour_filter = st.checkbox("Bật lọc theo giờ", value=False)
+            enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
             if enable_hour_filter:
                 t_col1, t_col2 = st.columns(2)
                 with t_col1:
