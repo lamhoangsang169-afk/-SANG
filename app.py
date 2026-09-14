@@ -75,13 +75,11 @@ if "logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
-# Tự động khôi phục phiên từ query params trên URL để không bao giờ bị đăng xuất khi F5 hoặc mở tab mới
 params = st.query_params
 if not st.session_state.logged_in and "auth_user" in params:
     st.session_state.logged_in = True
     st.session_state.user_email = params["auth_user"]
 
-# Nếu chưa đăng nhập, hiển thị giao diện đăng nhập
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
@@ -111,7 +109,6 @@ if not st.session_state.logged_in:
                         if res and res.user:
                             st.session_state.logged_in = True
                             st.session_state.user_email = res.user.email
-                            # Lưu thông tin vào query params để trình duyệt ghi nhớ phiên vĩnh viễn
                             st.query_params["auth_user"] = res.user.email
                             st.success("✅ Đăng nhập thành công!")
                             st.rerun()
@@ -244,7 +241,6 @@ def get_rules_df_db():
         df["stt"] = range(1, len(df) + 1)
     return df
 
-# HÀM LƯU ĐỊNH MỨC THÔNG MINH - ĐỒNG BỘ TÊN VÀ TỰ ĐỘNG TÍNH LẠI ĐIỂM SỐ 30 NGÀY GẦN NHẤT
 def save_rules_df_db(df):
     if supabase is None:
         return
@@ -278,17 +274,14 @@ def save_rules_df_db(df):
                 old_hang_muc = old_info["hang_muc"]
                 old_he_so = old_info["he_so_diem"]
                 
-                # Cập nhật trực tiếp theo id
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
-                # 1. Nếu tên hạng mục thay đổi -> Cập nhật lại tên mới trong production_logs 30 ngày gần nhất
                 if old_hang_muc and old_hang_muc != new_hang_muc:
                     supabase.table("production_logs").update({
                         "hang_muc_cong_viec": new_hang_muc
                     }).eq("hang_muc_cong_viec", old_hang_muc).gte("ngay", thirty_days_ago).execute()
                 
-                # 2. Nếu hệ số điểm thay đổi -> Tự động quét và nhân lại tổng điểm mới trong 30 ngày gần nhất
                 target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
                 if old_he_so != new_he_so:
                     res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).gte("ngay", thirty_days_ago).eq("is_deleted", False).execute()
@@ -411,7 +404,7 @@ def get_production_logs_db(is_deleted=False):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
     try:
-        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=True).execute()
+        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=False).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
