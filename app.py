@@ -902,13 +902,12 @@ if feature == "input_production":
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
-            time_filter_range = st.slider(
-                "Lọc theo Khoảng Giờ",
-                min_value=datetime.time(0, 0),
-                max_value=datetime.time(23, 59),
-                value=(datetime.time(0, 0), datetime.time(23, 59)),
-                step=datetime.timedelta(minutes=1)
-            )
+            st.markdown("<b>Lọc theo Khoảng Giờ</b>", unsafe_allow_html=True)
+            t_col1, t_col2 = st.columns(2)
+            with t_col1:
+                start_t = st.time_input("Từ giờ", datetime.time(0, 0), label_visibility="collapsed")
+            with t_col2:
+                end_t = st.time_input("Đến giờ", datetime.time(23, 59), label_visibility="collapsed")
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -920,8 +919,7 @@ if feature == "input_production":
         if filter_date != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
             
-        if time_filter_range:
-            start_t, end_t = time_filter_range
+        if start_t and end_t:
             def check_time_in_range(t_str):
                 try:
                     t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
@@ -1313,7 +1311,7 @@ elif feature == "report_folder":
         for _, row in reports_df.iterrows():
             st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Th thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
+        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
