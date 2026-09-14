@@ -230,16 +230,21 @@ def save_staff_list_db(edited_df):
 @st.cache_data(show_spinner=False)
 def get_rules_df_db():
     if supabase is None:
-        return pd.DataFrame(master_rules)
-    try:
-        res = supabase.table("rules").select("*").order("stt").execute()
-        if res.data:
-            df = pd.DataFrame(res.data)
-            df = df.rename(columns={"hang_muc": "Hạng Mục Công Việc", "don_vi": "Đơn Vị", "he_so_diem": "Hệ Số Điểm", "ghi_chu": "Ghi Chú"})
-            return df
-    except Exception:
-        pass
-    return pd.DataFrame(master_rules)
+        df = pd.DataFrame(master_rules)
+    else:
+        try:
+            res = supabase.table("rules").select("*").order("stt").execute()
+            if res.data:
+                df = pd.DataFrame(res.data)
+                df = df.rename(columns={"hang_muc": "Hạng Mục Công Việc", "don_vi": "Đơn Vị", "he_so_diem": "Hệ Số Điểm", "ghi_chu": "Ghi Chú"})
+            else:
+                df = pd.DataFrame(master_rules)
+        except Exception:
+            df = pd.DataFrame(master_rules)
+            
+    if not df.empty:
+        df["stt"] = range(1, len(df) + 1)
+    return df
 
 # HÀM LƯU ĐỊNH MỨC THÔNG MINH - ĐỒNG BỘ TÊN VÀ TỰ ĐỘNG TÍNH LẠI ĐIỂM SỐ 30 NGÀY GẦN NHẤT
 def save_rules_df_db(df):
@@ -253,17 +258,20 @@ def save_rules_df_db(df):
         current_ids_in_editor = []
         thirty_days_ago = (datetime.datetime.now(VN_TIMEZONE) - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
         
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             row_id = row.get("id")
             new_hang_muc = str(row.get("Hạng Mục Công Việc", "")).strip()
             new_he_so = float(row.get("Hệ Số Điểm", 1.0)) if pd.notna(row.get("Hệ Số Điểm")) else 1.0
             
+            if not new_hang_muc:
+                continue
+                
             payload = {
-                "stt": int(row.get("stt", 1)) if pd.notna(row.get("stt")) else 1,
+                "stt": int(idx + 1),
                 "hang_muc": new_hang_muc,
-                "don_vi": str(row.get("Đơn Vị", "Cái")).strip(),
+                "don_vi": str(row.get("Đơn Vị", "Cái")).strip() if pd.notna(row.get("Đơn Vị")) else "Cái",
                 "he_so_diem": new_he_so,
-                "ghi_chu": str(row.get("Ghi Chú", "")).strip()
+                "ghi_chu": str(row.get("Ghi Chú", "")).strip() if pd.notna(row.get("Ghi Chú")) else ""
             }
             
             if pd.notna(row_id) and int(row_id) in old_ids:
@@ -305,7 +313,7 @@ def save_rules_df_db(df):
             supabase.table("rules").delete().eq("id", del_id).execute()
             
         st.cache_data.clear()
-        st.success("Đã đồng bộ định mức, tự động cập nhật tên và tính lại điểm số 30 ngày gần nhất thành công!")
+        st.success("Đã đồng bộ định mức, tự động cập nhật STT và tính lại điểm số 30 ngày gần nhất thành công!")
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
@@ -1287,7 +1295,7 @@ elif feature == "report_folder":
 elif feature == "rules":
     st.header(menu)
     with st.form("rules_form"):
-        edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+        edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
         if st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True):
             save_rules_df_db(edited_rules)
             st.success("Đã lưu định mức thành công!")
