@@ -920,12 +920,16 @@ if feature == "input_production":
         if not filtered_df.empty:
             col_del_all_1, col_del_all_2 = st.columns([3, 1])
             with col_del_all_2:
-                if st.button("🗑️ Xóa Tất Cả Dòng Đang Lọc", use_container_width=True, type="primary"):
-                    all_filtered_ids = filtered_df["db_id"].tolist()
-                    if all_filtered_ids:
-                        update_production_log_deleted_status(all_filtered_ids, True)
-                        st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
-                        st.rerun()
+                confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
+                if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
+                    if confirm_delete_all:
+                        all_filtered_ids = filtered_df["db_id"].tolist()
+                        if all_filtered_ids:
+                            update_production_log_deleted_status(all_filtered_ids, True)
+                            st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
 
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
@@ -1361,7 +1365,7 @@ elif feature == "trash":
                 if st.form_submit_button("📥 Khôi Phục Báo Cáo Đã Chọn", use_container_width=True):
                     rep_ids = trash_reports_df[trash_reports_df["Chọn"] == True]["db_id"].tolist()
                     if rep_ids:
-                        update_export_report_deleted_status(rep_ids, False)
+                        update_production_log_deleted_status(rep_ids, False)
                         st.success("Đã khôi phục báo cáo thành công!")
                         st.rerun()
                     else:
