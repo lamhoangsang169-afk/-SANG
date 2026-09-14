@@ -421,6 +421,7 @@ def get_production_logs_db(is_deleted=False):
                 "ghi_chu": "Ghi Chú"
             })
             df.insert(0, "STT", range(1, len(df) + 1))
+            df = df.iloc[::-1].reset_index(drop=True)
             return df
     except Exception:
         pass
