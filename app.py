@@ -18,7 +18,7 @@ except ImportError:
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
 
 # ==================== KẾT NỐI SUPABASE ====================
-SUPABASE_URL = "https://xbozutjkiywnaoiluahx.supabase.co"
+SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
@@ -69,22 +69,11 @@ default_folders = [
     }
 ]
 
-# ==================== KIỂM TRA ĐĂNG NHẬP & TIMEOUT 160 PHÚT ====================
+# ==================== KIỂM TRA ĐĂNG NHẬP SESSION ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
-if "login_time" not in st.session_state:
-    st.session_state.login_time = None
-
-# Kiểm tra thời gian hết hạn (160 phút) nếu đã đăng nhập
-if st.session_state.logged_in and st.session_state.login_time:
-    elapsed_minutes = (datetime.datetime.now(VN_TIMEZONE) - st.session_state.login_time).total_seconds() / 60
-    if elapsed_minutes > 160:
-        st.session_state.logged_in = False
-        st.session_state.user_email = ""
-        st.session_state.login_time = None
-        st.warning("⚠️ Phiên làm việc đã hết hạn sau 160 phút không hoạt động. Vui lòng đăng nhập lại!")
 
 # Nếu chưa đăng nhập, hiển thị giao diện đăng nhập
 if not st.session_state.logged_in:
@@ -100,12 +89,11 @@ if not st.session_state.logged_in:
         with st.form("login_form"):
             email_input = st.text_input("📧 Email tài khoản", placeholder="Nhập email của bạn...")
             password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
-            remember_me = st.checkbox("📌 Nhớ đăng nhập (Duy trì phiên làm việc)", value=True)
             submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
             
             if submitted_login:
                 if not email_input or not password_input:
-                    st.error("⚠️ Vui lòng điền đầy đủ Email và Mật khẩu!")
+                    st.error("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!")
                 elif supabase is None:
                     st.error("⚠️ Chưa kết nối được tới Supabase!")
                 else:
@@ -117,7 +105,6 @@ if not st.session_state.logged_in:
                         if res and res.user:
                             st.session_state.logged_in = True
                             st.session_state.user_email = res.user.email
-                            st.session_state.login_time = datetime.datetime.now(VN_TIMEZONE)
                             st.success("✅ Đăng nhập thành công!")
                             st.rerun()
                         else:
@@ -275,14 +262,17 @@ def save_rules_df_db(df):
                 old_hang_muc = old_info["hang_muc"]
                 old_he_so = old_info["he_so_diem"]
                 
+                # Cập nhật trực tiếp theo id
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
+                # 1. Nếu tên hạng mục thay đổi -> Cập nhật lại tên mới trong production_logs 30 ngày gần nhất
                 if old_hang_muc and old_hang_muc != new_hang_muc:
                     supabase.table("production_logs").update({
                         "hang_muc_cong_viec": new_hang_muc
                     }).eq("hang_muc_cong_viec", old_hang_muc).gte("ngay", thirty_days_ago).execute()
                 
+                # 2. Nếu hệ số điểm thay đổi -> Tự động quét và nhân lại tổng điểm mới trong 30 ngày gần nhất
                 target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
                 if old_he_so != new_he_so:
                     res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).gte("ngay", thirty_days_ago).eq("is_deleted", False).execute()
@@ -757,7 +747,6 @@ with st.sidebar:
     if st.button("🚪 Đăng Xuất", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_email = ""
-        st.session_state.login_time = None
         st.rerun()
 
     st.markdown("---")
@@ -1469,5 +1458,5 @@ elif feature == "clean_data":
         trash_df = get_production_logs_db(is_deleted=True)
         if not trash_df.empty:
             permanent_delete_db(trash_df["db_id"].tolist())
-            st.success("Đã làm sạch thùng raks!")
+            st.success("Đã làm sạch thùng rác!")
             st.rerun()
