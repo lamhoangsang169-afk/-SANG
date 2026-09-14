@@ -938,18 +938,21 @@ if feature == "input_production":
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
         if not filtered_df.empty:
-            col_del_all_1, col_del_all_2 = st.columns([3, 1])
+            col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
             with col_del_all_2:
-                confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
-                if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
-                    if confirm_delete_all:
-                        all_filtered_ids = filtered_df["db_id"].tolist()
-                        if all_filtered_ids:
-                            update_production_log_deleted_status(all_filtered_ids, True)
-                            st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
-                            st.rerun()
-                    else:
-                        st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
+                del_c1, del_c2 = st.columns([1, 1])
+                with del_c1:
+                    confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
+                with del_c2:
+                    if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
+                        if confirm_delete_all:
+                            all_filtered_ids = filtered_df["db_id"].tolist()
+                            if all_filtered_ids:
+                                update_production_log_deleted_status(all_filtered_ids, True)
+                                st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
+                                st.rerun()
+                        else:
+                            st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
 
             with st.form("input_delete_form"):
                 for idx, row in filtered_df.iterrows():
