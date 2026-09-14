@@ -69,21 +69,17 @@ default_folders = [
     }
 ]
 
-# ==================== KIỂM TRA ĐĂNG NHẬP SESSION ====================
+# ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
-# Tự động khôi phục phiên đăng nhập từ Supabase nếu có sẵn token hợp lệ trước đó
-if not st.session_state.logged_in and supabase is not None:
-    try:
-        current_session = supabase.auth.get_session()
-        if current_session and current_session.user:
-            st.session_state.logged_in = True
-            st.session_state.user_email = current_session.user.email
-    except Exception:
-        pass
+# Tự động khôi phục phiên từ query params trên URL để không bao giờ bị đăng xuất khi F5 hoặc mở tab mới
+params = st.query_params
+if not st.session_state.logged_in and "auth_user" in params:
+    st.session_state.logged_in = True
+    st.session_state.user_email = params["auth_user"]
 
 # Nếu chưa đăng nhập, hiển thị giao diện đăng nhập
 if not st.session_state.logged_in:
@@ -115,6 +111,8 @@ if not st.session_state.logged_in:
                         if res and res.user:
                             st.session_state.logged_in = True
                             st.session_state.user_email = res.user.email
+                            # Lưu thông tin vào query params để trình duyệt ghi nhớ phiên vĩnh viễn
+                            st.query_params["auth_user"] = res.user.email
                             st.success("✅ Đăng nhập thành công!")
                             st.rerun()
                         else:
@@ -773,6 +771,8 @@ with st.sidebar:
                 pass
         st.session_state.logged_in = False
         st.session_state.user_email = ""
+        if "auth_user" in st.query_params:
+            del st.query_params["auth_user"]
         st.rerun()
 
     st.markdown("---")
