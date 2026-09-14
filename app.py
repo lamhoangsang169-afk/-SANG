@@ -903,11 +903,12 @@ if feature == "input_production":
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
         with s_col2:
             st.markdown("<b>Lọc theo Khoảng Giờ</b>", unsafe_allow_html=True)
+            enable_hour_filter = st.checkbox("Bật lọc theo giờ", value=False)
             t_col1, t_col2 = st.columns(2)
             with t_col1:
-                start_t = st.time_input("Từ giờ", datetime.time(0, 0), label_visibility="collapsed")
+                start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed", disabled=not enable_hour_filter)
             with t_col2:
-                end_t = st.time_input("Đến giờ", datetime.time(23, 59), label_visibility="collapsed")
+                end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed", disabled=not enable_hour_filter)
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -919,7 +920,7 @@ if feature == "input_production":
         if filter_date != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Ngày"] == filter_date]
             
-        if start_t and end_t:
+        if enable_hour_filter and start_t and end_t:
             def check_time_in_range(t_str):
                 try:
                     t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
