@@ -75,6 +75,16 @@ if "logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 
+# Tự động khôi phục phiên đăng nhập từ Supabase nếu có sẵn token hợp lệ trước đó
+if not st.session_state.logged_in and supabase is not None:
+    try:
+        current_session = supabase.auth.get_session()
+        if current_session and current_session.user:
+            st.session_state.logged_in = True
+            st.session_state.user_email = current_session.user.email
+    except Exception:
+        pass
+
 # Nếu chưa đăng nhập, hiển thị giao diện đăng nhập
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -748,6 +758,11 @@ with st.sidebar:
     
     st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b></small>", unsafe_allow_html=True)
     if st.button("🚪 Đăng Xuất", use_container_width=True):
+        if supabase is not None:
+            try:
+                supabase.auth.sign_out()
+            except Exception:
+                pass
         st.session_state.logged_in = False
         st.session_state.user_email = ""
         st.rerun()
