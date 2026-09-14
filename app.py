@@ -897,7 +897,7 @@ if feature == "input_production":
     
     input_df = get_production_logs_db(is_deleted=False)
     if not input_df.empty:
-        s_col1, s_col2, s_col3 = st.columns(3)
+        s_col1, s_col2, s_col3, s_col4 = st.columns(4)
         with s_col1:
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
             filter_date = st.selectbox("Lọc theo Ngày", all_dates)
@@ -907,6 +907,9 @@ if feature == "input_production":
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
+        with s_col4:
+            all_tasks = ["Tất cả"] + sorted(input_df["Hạng Mục Công Việc"].unique().tolist())
+            filter_task = st.selectbox("Lọc theo Hạng Mục", all_tasks)
         
         filtered_df = input_df.copy()
         if filter_date != "Tất cả": 
@@ -916,6 +919,8 @@ if feature == "input_production":
             filtered_df = filtered_df[filtered_df["Thời Gian"].astype(str).str.startswith(hour_prefix)]
         if filter_staff != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Nhân Sự"] == filter_staff]
+        if filter_task != "Tất cả": 
+            filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
         if not filtered_df.empty:
             col_del_all_1, col_del_all_2 = st.columns([3, 1])
@@ -1315,6 +1320,32 @@ elif feature == "trash":
     
     st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
     if not trash_df.empty:
+        with st.container():
+            col_t_all_1, col_t_all_2 = st.columns(2)
+            with col_t_all_1:
+                confirm_restore_all = st.checkbox("Xác nhận khôi phục tất cả", key="chk_confirm_restore_all")
+                if st.button("📥 Khôi phục tất cả", use_container_width=True):
+                    if confirm_restore_all:
+                        all_trash_ids = trash_df["db_id"].tolist()
+                        if all_trash_ids:
+                            update_production_log_deleted_status(all_trash_ids, False)
+                            st.success("Đã khôi phục toàn bộ bản ghi thành công!")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Vui lòng tích chọn 'Xác nhận khôi phục tất cả' trước khi bấm!")
+            with col_t_all_2:
+                confirm_perm_del_all = st.checkbox("Xác nhận xóa vĩnh viễn tất cả", key="chk_confirm_perm_del_all")
+                if st.button("🔥 Xóa vĩnh viễn tất cả", use_container_width=True, type="primary"):
+                    if confirm_perm_del_all:
+                        all_trash_ids = trash_df["db_id"].tolist()
+                        if all_trash_ids:
+                            permanent_delete_db(all_trash_ids)
+                            st.success("Đã xóa vĩnh viễn toàn bộ bản ghi trong thùng rác!")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa vĩnh viễn tất cả' trước khi bấm!")
+
+        st.markdown("---")
         with st.form("trash_form"):
             for idx, row in trash_df.iterrows():
                 st.markdown(f"""
@@ -1365,7 +1396,7 @@ elif feature == "trash":
                 if st.form_submit_button("📥 Khôi Phục Báo Cáo Đã Chọn", use_container_width=True):
                     rep_ids = trash_reports_df[trash_reports_df["Chọn"] == True]["db_id"].tolist()
                     if rep_ids:
-                        update_production_log_deleted_status(rep_ids, False)
+                        update_export_report_deleted_status(rep_ids, False)
                         st.success("Đã khôi phục báo cáo thành công!")
                         st.rerun()
                     else:
