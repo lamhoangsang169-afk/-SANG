@@ -904,11 +904,14 @@ if feature == "input_production":
         with s_col2:
             st.markdown("<b>Lọc theo Khoảng Giờ</b>", unsafe_allow_html=True)
             enable_hour_filter = st.checkbox("Bật lọc theo giờ", value=False)
-            t_col1, t_col2 = st.columns(2)
-            with t_col1:
-                start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed", disabled=not enable_hour_filter)
-            with t_col2:
-                end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed", disabled=not enable_hour_filter)
+            if enable_hour_filter:
+                t_col1, t_col2 = st.columns(2)
+                with t_col1:
+                    start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed")
+                with t_col2:
+                    end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed")
+            else:
+                start_t, end_t = None, None
         with s_col3:
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
