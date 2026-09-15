@@ -1137,13 +1137,13 @@ def render_main_content(current_menu_name):
                     st.success("Đã cập nhật danh sách nhân sự!")
                     st.rerun()
 
-    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN VÀ MẬT KHẨU (DÀNH CHO ADMIN) ====================
+    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN TÀI KHOẢN (DÀNH CHO ADMIN) ====================
     elif feature == "manage_roles":
-        st.header("🛡️ Quản Lý Phân Quyền & Tài Khoản")
+        st.header("🛡️ Quản Lý Phân Quyền Tài Khoản")
         if current_user_role != "Admin":
-            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý tài khoản và phân quyền!")
+            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý phân quyền tài khoản!")
         else:
-            st.markdown("Quản lý danh sách tài khoản, phân quyền hạn và hỗ trợ đặt lại mật khẩu cho nhân viên:")
+            st.markdown("Danh sách tất cả các tài khoản đã đăng nhập vào hệ thống. Bạn có thể thay đổi quyền hạn (Admin, Manager, Staff) của từng tài khoản tại đây:")
             
             try:
                 res_roles = supabase.table("user_roles").select("*").execute()
@@ -1174,47 +1174,10 @@ def render_main_content(current_menu_name):
                             st.cache_data.clear()
                             st.success("✅ Đã cập nhật quyền hạn tài khoản thành công!")
                             st.rerun()
-
-                    st.markdown("---")
-                    st.markdown("### 🔑 Đặt Lại Mật Khẩu Cho Nhân Viên")
-                    
-                    with st.form("reset_password_form"):
-                        email_list = roles_df["email"].tolist() if not roles_df.empty else []
-                        target_email = st.selectbox("Chọn tài khoản cần đổi mật khẩu", email_list)
-                        new_password = st.text_input("Nhập mật khẩu mới tạm thời", type="password", placeholder="Tối thiểu 6 ký tự...")
-                        
-                        submitted_reset = st.form_submit_button("🔄 Cập Nhật Mật Khẩu Mới", use_container_width=True)
-                        
-                        if submitted_reset:
-                            if not new_password or len(new_password) < 6:
-                                st.error("⚠️ Mật khẩu mới phải có ít nhất 6 ký tự!")
-                            else:
-                                try:
-                                    users_resp = supabase.auth.admin.list_users()
-                                    target_user_id = None
-                                    
-                                    for user in users_resp:
-                                        if hasattr(user, 'email') and user.email.lower() == target_email.lower():
-                                            target_user_id = user.id
-                                            break
-                                        elif isinstance(user, dict) and user.get("email", "").lower() == target_email.lower():
-                                            target_user_id = user.get("id")
-                                            break
-                                            
-                                    if target_user_id:
-                                        supabase.auth.admin.update_user_by_id(
-                                            target_user_id,
-                                            {"password": new_password}
-                                        )
-                                        st.success(f"✅ Đã đổi mật khẩu thành công cho tài khoản: **{target_email}**!")
-                                    else:
-                                        st.error("❌ Không tìm thấy thông tin định danh (User ID) của email này trên hệ thống Auth!")
-                                except Exception as e:
-                                    st.error(f"❌ Lỗi khi đổi mật khẩu: {e}")
                 else:
                     st.info("Chưa có tài khoản nào khác đăng nhập vào hệ thống.")
             except Exception as e:
-                st.error(f"Lỗi tải danh sách tài khoản: {e}")
+                st.error(f"Lỗi tải danh sách quyền: {e}")
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
