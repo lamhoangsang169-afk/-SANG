@@ -125,7 +125,6 @@ def save_rules_df_db(df):
         old_ids = list(old_rules_map.keys())
         
         current_ids_in_editor = []
-        thirty_days_ago = (datetime.datetime.now(VN_TIMEZONE) - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
         
         for idx, row in df.iterrows():
             row_id = row.get("id")
@@ -149,26 +148,30 @@ def save_rules_df_db(df):
                 old_hang_muc = old_info["hang_muc"]
                 old_he_so = old_info["he_so_diem"]
                 
+                # Cập nhật bảng định mức
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
+                # Nếu thay đổi tên hạng mục công việc
                 if old_hang_muc and old_hang_muc != new_hang_muc:
                     supabase.table("production_logs").update({
                         "hang_muc_cong_viec": new_hang_muc
-                    }).eq("hang_muc_cong_viec", old_hang_muc).gte("ngay", thirty_days_ago).execute()
+                    }).eq("hang_muc_cong_viec", old_hang_muc).eq("is_deleted", False).execute()
                 
                 target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
-                if old_he_so != new_he_so:
-                    res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).gte("ngay", thirty_days_ago).eq("is_deleted", False).execute()
-                    if res_logs.data:
-                        for lg in res_logs.data:
-                            lg_id = lg["id"]
-                            qty = lg["so_luong"]
-                            new_total_points = qty * new_he_so
-                            supabase.table("production_logs").update({
-                                "he_so_diem": new_he_so,
-                                "tong_diem": new_total_points
-                            }).eq("id", lg_id).execute()
+                
+                # TỰ ĐỘNG TRA SOÁT VÀ CẬP NHẬT LẠI TOÀN BỘ LỊCH SỬ SẢN LƯỢNG (Không giới hạn thời gian)
+                res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).eq("is_deleted", False).execute()
+                if res_logs.data:
+                    for lg in res_logs.data:
+                        lg_id = lg["id"]
+                        qty = lg["so_luong"]
+                        new_total_points = qty * new_he_so
+                        # Cập nhật chuẩn cả hệ số điểm mới và tổng điểm mới cho mọi bản ghi cũ
+                        supabase.table("production_logs").update({
+                            "he_so_diem": new_he_so,
+                            "tong_diem": new_total_points
+                        }).eq("id", lg_id).execute()
             else:
                 res_ins = supabase.table("rules").insert(payload).execute()
                 if res_ins.data:
@@ -179,7 +182,7 @@ def save_rules_df_db(df):
             supabase.table("rules").delete().eq("id", del_id).execute()
             
         st.cache_data.clear()
-        st.success("Đã đồng bộ định mức thành công!")
+        st.success("Đã đồng bộ định mức và cập nhật lại toàn bộ điểm số cũ thành công!")
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
@@ -593,7 +596,6 @@ def render_main_content(current_menu_name):
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            # SẮP XẾP CHUẨN 5 CỘT TRÊN MỘT HÀNG NGANG (ĐÚNG NHƯ BẢN PHÁC THẢO)
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.1, 1.3, 1.1, 1.1, 1.2])
             
             with f_col1:
