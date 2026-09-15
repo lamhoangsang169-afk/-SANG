@@ -591,22 +591,25 @@ def render_main_content(current_menu_name):
         st.markdown("---")
         st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
         
-        # Tải nhiều bản ghi hơn (ví dụ 500 bản ghi) để hệ thống có nguồn dữ liệu phân trang đầy đủ mà không làm quá tải RAM
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+            # SẮP XẾP 4 BỘ LỌC NẰM TRÊN CÙNG MỘT HÀNG NGANG
+            s_col1, s_col2, s_col3, s_col4 = st.columns([1.2, 1.3, 1.2, 1.3])
+            
             with s_col1:
                 all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
                 default_index = all_dates.index(today_str) if today_str in all_dates else 0
                 filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
+                
             with s_col2:
                 enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
                 if enable_hour_filter:
                     t_col1, t_col2 = st.columns(2)
-                    with t_col1: start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed")
-                    with t_col2: end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed")
+                    with t_col1: start_t = st.time_input("Từ", datetime.time(7, 30), label_visibility="collapsed")
+                    with t_col2: end_t = st.time_input("Đến", datetime.time(17, 0), label_visibility="collapsed")
                 else:
                     start_t, end_t = None, None
+                    
             with s_col3:
                 all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -644,7 +647,7 @@ def render_main_content(current_menu_name):
 
             if not filtered_df.empty:
                 # --- BƯỚC 4: THỰC HIỆN CƠ CHẾ PHÂN TRANG (PAGINATION) ---
-                rows_per_page = 10  # Số lượng bản ghi hiển thị trên mỗi trang
+                rows_per_page = 10
                 total_rows = len(filtered_df)
                 total_pages = (total_rows - 1) // rows_per_page + 1
 
