@@ -166,8 +166,8 @@ def init_db_data():
 
 init_db_data()
 
-# ==================== CÁC HÀM CRUD & CACHING SUPABASE ====================
-@st.cache_data(ttl=600, show_spinner=False)
+# ==================== CÁC HÀM CRUD & CACHING SUPABASE (GIỚI HẠN RAM AN TOÀN) ====================
+@st.cache_data(ttl=300, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
         return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
@@ -226,7 +226,7 @@ def save_staff_list_db(edited_df):
     except Exception as e:
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_rules_df_db():
     if supabase is None:
         df = pd.DataFrame(master_rules)
@@ -312,7 +312,7 @@ def save_rules_df_db(df):
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_app_settings_db():
     if supabase is None:
         return {}
@@ -334,7 +334,7 @@ def save_app_settings_db(settings_dict):
     except Exception as e:
         st.error(f"Lỗi lưu cấu hình: {e}")
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_folders_db():
     if supabase is None:
         return default_folders
@@ -404,7 +404,7 @@ def add_production_log_db(ngay, thoi_gian, nhan_su, hang_muc, hinh_anh_url, don_
     except Exception:
         pass
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=150, show_spinner=False)
 def get_production_logs_db(is_deleted=False, limit_rows=100):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
@@ -431,7 +431,7 @@ def get_production_logs_db(is_deleted=False, limit_rows=100):
         pass
     return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=150, show_spinner=False)
 def get_total_production_count_db():
     if supabase is None:
         return 0
@@ -463,7 +463,7 @@ def permanent_delete_db(db_ids):
     except Exception:
         pass
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=150, show_spinner=False)
 def get_attendance_db():
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
@@ -530,7 +530,7 @@ def save_export_report_db(ten_file, file_url):
     except Exception as e:
         st.error(f"Lỗi khi lưu vào bảng export_reports: {e}")
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=150, show_spinner=False)
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Đường Dẫn URL"])
@@ -942,7 +942,7 @@ if feature == "input_production":
     st.markdown("---")
     st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
     
-    input_df = get_production_logs_db(is_deleted=False)
+    input_df = get_production_logs_db(is_deleted=False, limit_rows=100)
     if not input_df.empty:
         s_col1, s_col2, s_col3, s_col4 = st.columns(4)
         with s_col1:
@@ -963,28 +963,27 @@ if feature == "input_production":
             all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
             
-        # Bước trung gian lọc theo Ngày, Khoảng Giờ, Nhân Sự để xác định chính xác các hạng mục tương ứng
         temp_filtered_df = input_df.copy()
         if filter_date != "Tất cả": 
             temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
         if filter_staff != "Tất cả": 
             temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
 
+        with s_col4:
+            available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist())
+            filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
+        
+        filtered_df = temp_filtered_df.copy()
+        
         if enable_hour_filter and start_t and end_t:
-            def check_time_in_range_temp(t_str):
+            def check_time_in_range(t_str):
                 try:
                     t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
                     return start_t <= t_val <= end_t
                 except:
                     return True
-            temp_filtered_df = temp_filtered_df[temp_filtered_df["Thời Gian"].apply(check_time_in_range_temp)]
-
-        with s_col4:
-            # Hạng mục lúc này chỉ lấy từ các bản ghi đã lọc qua Ngày, Giờ và Nhân Sự ở trên
-            available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist()) if not temp_filtered_df.empty else ["Tất cả"]
-            filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
-        
-        filtered_df = temp_filtered_df.copy()
+            filtered_df = filtered_df[filtered_df["Thời Gian"].apply(check_time_in_range)]
+            
         if filter_task != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
@@ -1155,7 +1154,7 @@ elif feature == "report":
     
     all_staff_current = st.session_state.staff_list
     
-    input_df = get_production_logs_db(is_deleted=False, limit_rows=1000)
+    input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
     if not input_df.empty:
         summary = input_df.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
