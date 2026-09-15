@@ -41,7 +41,7 @@ def convert_name_to_email(full_name):
     username = "".join(clean_name.lower().split())
     if not username:
         username = "user"
-    return f"{username}@posssystem.local"
+    return f"{username}@posssystem.com"
 
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
