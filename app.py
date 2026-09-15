@@ -79,31 +79,59 @@ if not st.session_state.logged_in:
                         st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
     st.stop()
 
-# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ĐỘNG ====================
-def get_user_role_from_db(email):
-    """Lấy quyền từ database Supabase, nếu chưa có thì tự động tạo mặc định là Staff"""
+# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ĐỘNG & CHI TIẾT ====================
+def get_user_permissions(email):
+    """Lấy quyền chi tiết của user từ database"""
+    default_perms = {
+        "role": "Staff",
+        "perm_input": True,
+        "perm_report": False,
+        "perm_attendance": True,
+        "perm_rules": False
+    }
     if not email or supabase is None:
-        return "Staff"
+        return default_perms
     
     clean_email = email.strip().lower()
     
-    # Email mặc định của bạn luôn là Admin tối cao
+    # Admin tối cao luôn có toàn quyền
     if clean_email == "lamhoangsang169@gmail.com":
-        return "Admin"
+        return {
+            "role": "Admin",
+            "perm_input": True,
+            "perm_report": True,
+            "perm_attendance": True,
+            "perm_rules": True
+        }
 
     try:
-        res = supabase.table("user_roles").select("role").eq("email", clean_email).execute()
+        res = supabase.table("user_roles").select("*").eq("email", clean_email).execute()
         if res.data and len(res.data) > 0:
-            return res.data[0]["role"]
+            row = res.data[0]
+            return {
+                "role": row.get("role", "Staff"),
+                "perm_input": row.get("perm_input", True),
+                "perm_report": row.get("perm_report", False),
+                "perm_attendance": row.get("perm_attendance", True),
+                "perm_rules": row.get("perm_rules", False)
+            }
         else:
-            # Nếu tài khoản mới đăng nhập lần đầu, tự động ghi nhận vào bảng với quyền 'Staff'
-            supabase.table("user_roles").upsert({"email": clean_email, "role": "Staff"}).execute()
-            return "Staff"
+            # Nếu tài khoản mới đăng nhập lần đầu, tự động ghi nhận vào bảng
+            supabase.table("user_roles").upsert({
+                "email": clean_email, 
+                "role": "Staff",
+                "perm_input": True,
+                "perm_report": False,
+                "perm_attendance": True,
+                "perm_rules": False
+            }).execute()
+            return default_perms
     except Exception:
         pass
-    return "Staff"
+    return default_perms
 
-current_user_role = get_user_role_from_db(st.session_state.user_email)
+user_perms = get_user_permissions(st.session_state.user_email)
+current_user_role = user_perms["role"]
 
 # ==================== CÁC HÀM CRUD BỔ SUNG TRONG APP ====================
 def save_staff_list_db(edited_df):
@@ -144,8 +172,8 @@ def save_staff_list_db(edited_df):
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
 def save_rules_df_db(df):
-    if supabase is None or current_user_role != "Admin":
-        st.warning("⚠️ Chỉ Quản trị viên mới có quyền thay đổi định mức!")
+    if supabase is None or not user_perms["perm_rules"] and current_user_role != "Admin":
+        st.warning("⚠️ Bạn không có quyền thay đổi định mức!")
         return
     try:
         res_old = supabase.table("rules").select("id, hang_muc, he_so_diem").execute()
@@ -468,7 +496,7 @@ with st.sidebar:
     st.markdown('</div></div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
-    role_badge = "👑 Quản Trị Viên (Admin)" if current_user_role == "Admin" else "👤 Nhân Viên"
+    role_badge = "👑 Quản Trị Viên (Admin)" if current_user_role == "Admin" else ("🛡️ Quản Lý" if current_user_role == "Manager" else "👤 Nhân Viên")
     st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
     
     if st.button("🚪 Đăng Xuất", use_container_width=True):
@@ -484,18 +512,35 @@ with st.sidebar:
     if st.button("🔄 Cập Nhập", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-    if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
-        st.session_state.current_menu = "⏱️ Chấm Công Ca Làm Việc"
-        st.rerun()
+        
+    # Nút Chấm công hiển thị dựa theo phân quyền chi tiết
+    if user_perms["perm_attendance"] or current_user_role == "Admin":
+        if st.button("⏱️ Chấm Công Ca Làm Việc", use_container_width=True):
+            st.session_state.current_menu = "⏱️ Chấm Công Ca Làm Việc"
+            st.rerun()
 
     st.markdown("---")
     st.markdown("### 📂 CHỨC NĂNG HỆ THỐNG")
     for folder in st.session_state.folders:
-        with st.expander(folder["folder_name"], expanded=True):
-            for item in folder["items"]:
-                if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
-                    st.session_state.current_menu = item["name"]
-                    st.rerun()
+        filtered_items = []
+        for item in folder["items"]:
+            # Lọc menu hiển thị dựa trên quyền hạn chi tiết của tài khoản
+            if current_user_role == "Admin":
+                filtered_items.append(item)
+            else:
+                item_id = item.get("id")
+                if item_id == "menu_1" and user_perms["perm_input"]: filtered_items.append(item)
+                elif item_id == "menu_2" and user_perms["perm_report"]: filtered_items.append(item)
+                elif item_id == "menu_3" and user_perms["perm_rules"]: filtered_items.append(item)
+                elif item_id == "menu_4" and current_user_role == "Admin": filtered_items.append(item)
+                elif item_id == "menu_5" and user_perms["perm_report"]: filtered_items.append(item)
+
+        if filtered_items:
+            with st.expander(folder["folder_name"], expanded=True):
+                for item in filtered_items:
+                    if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
+                        st.session_state.current_menu = item["name"]
+                        st.rerun()
 
     # --- CHỈ ADMIN MỚI THẤY KHU VỰC CẤU HÌNH HỆ THỐNG NÀY ---
     if current_user_role == "Admin":
@@ -1000,8 +1045,8 @@ def render_main_content(current_menu_name):
     # ==================== THAM CHIẾU CÔNG VIỆC ====================
     elif feature == "rules":
         st.header(current_menu_name)
-        if current_user_role != "Admin":
-            st.warning("🔒 Bạn đăng nhập với quyền **Nhân Viên**. Chỉ có **Admin** mới được phép chỉnh sửa định mức công việc!")
+        if current_user_role != "Admin" and not user_perms["perm_rules"]:
+            st.warning("🔒 Bạn không có quyền truy cập hoặc chỉnh sửa định mức công việc!")
             st.dataframe(st.session_state.rules_df, use_container_width=True, hide_index=True)
         else:
             with st.form("rules_form"):
@@ -1137,13 +1182,13 @@ def render_main_content(current_menu_name):
                     st.success("Đã cập nhật danh sách nhân sự!")
                     st.rerun()
 
-    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN TÀI KHOẢN (DÀNH CHO ADMIN) ====================
+    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN CHI TIẾT (DÀNH CHO ADMIN) ====================
     elif feature == "manage_roles":
-        st.header("🛡️ Quản Lý Phân Quyền Tài Khoản")
+        st.header("🛡️ Quản Lý Phân Quyền Chi Tiết Tài Khoản")
         if current_user_role != "Admin":
-            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý phân quyền tài khoản!")
+            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý phân quyền!")
         else:
-            st.markdown("Danh sách tất cả các tài khoản đã đăng nhập vào hệ thống. Bạn có thể thay đổi quyền hạn (Admin, Manager, Staff) của từng tài khoản tại đây:")
+            st.markdown("Tích chọn các quyền hiển thị chức năng cho từng tài khoản nhân viên trực tiếp trên bảng bên dưới:")
             
             try:
                 res_roles = supabase.table("user_roles").select("*").execute()
@@ -1156,11 +1201,11 @@ def render_main_content(current_menu_name):
                             column_config={
                                 "id": "ID",
                                 "email": st.column_config.TextColumn("Email tài khoản", disabled=True),
-                                "role": st.column_config.SelectboxColumn(
-                                    "Quyền hạn",
-                                    options=["Admin", "Manager", "Staff"],
-                                    required=True
-                                )
+                                "role": st.column_config.SelectboxColumn("Vai trò", options=["Admin", "Manager", "Staff"], required=True),
+                                "perm_input": st.column_config.CheckboxColumn("Nhập sản lượng"),
+                                "perm_report": st.column_config.CheckboxColumn("Xem báo cáo"),
+                                "perm_attendance": st.column_config.CheckboxColumn("Chấm công"),
+                                "perm_rules": st.column_config.CheckboxColumn("Sửa định mức")
                             },
                             hide_index=True,
                             use_container_width=True
@@ -1169,13 +1214,18 @@ def render_main_content(current_menu_name):
                         if st.form_submit_button("💾 Lưu Cập Nhật Phân Quyền", use_container_width=True):
                             for _, row in edited_roles_df.iterrows():
                                 r_id = row["id"]
-                                new_role = row["role"]
-                                supabase.table("user_roles").update({"role": new_role}).eq("id", r_id).execute()
+                                supabase.table("user_roles").update({
+                                    "role": row["role"],
+                                    "perm_input": bool(row["perm_input"]),
+                                    "perm_report": bool(row["perm_report"]),
+                                    "perm_attendance": bool(row["perm_attendance"]),
+                                    "perm_rules": bool(row["perm_rules"])
+                                }).eq("id", r_id).execute()
                             st.cache_data.clear()
-                            st.success("✅ Đã cập nhật quyền hạn tài khoản thành công!")
+                            st.success("✅ Đã cập nhật quyền hạn chi tiết thành công!")
                             st.rerun()
                 else:
-                    st.info("Chưa có tài khoản nào khác đăng nhập vào hệ thống.")
+                    st.info("Chưa có tài khoản nào đăng nhập.")
             except Exception as e:
                 st.error(f"Lỗi tải danh sách quyền: {e}")
 
