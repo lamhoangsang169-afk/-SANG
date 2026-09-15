@@ -36,27 +36,54 @@ init_db_data()
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Hàm lấy dung lượng RAM tiến trình app đang dùng (Thuần Python, không cần cài psutil)
+# Hàm đo RAM tiến trình app thuần Python
 def get_app_memory_usage():
     try:
         import sys
-        # Cố gắng dùng psutil nếu có sẵn trong môi trường Cloud
         import psutil
         process = psutil.Process(os.getpid())
         mem_mb = process.memory_info().rss / (1024 ** 2)
-        return f"{mem_mb:.1f} MB (RAM)"
+        return f"{mem_mb:.1f} MB"
     except Exception:
-        # Nếu không có psutil, dùng thư viện resource của hệ điều hành hoặc đo kích thước cơ bản
         try:
             import resource
             rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            if sys.platform == "darwin": # macOS tính bằng bytes
+            if sys.platform == "darwin":
                 mem_mb = rss / (1024 ** 2)
-            else: # Linux tính bằng kilobytes
+            else:
                 mem_mb = rss / 1024
-            return f"{mem_mb:.1f} MB (RAM)"
+            return f"{mem_mb:.1f} MB"
         except Exception:
-            return "Ổn định (Cloud Mode)"
+            return "Ổn định"
+
+# Hàm tính dung lượng Database và File Storage thực tế từ Supabase
+def get_detailed_storage_usage():
+    if supabase is None:
+        return "0 MB / 500 MB", "0 MB / 1 GB"
+    try:
+        logs_count = len(supabase.table("production_logs").select("id", count="exact").execute().data)
+        att_count = len(supabase.table("attendance").select("id", count="exact").execute().data)
+        users_count = len(supabase.table("user_accounts").select("id", count="exact").execute().data)
+        
+        estimated_db_kb = (logs_count + att_count + users_count) * 2.5
+        db_used_str = f"{estimated_db_kb / 1024:.2f} MB" if estimated_db_kb > 1024 else f"{estimated_db_kb:.1f} KB"
+        db_display = f"{db_used_str} / 500 MB"
+
+        storage_mb = 0.0
+        try:
+            files_img = supabase.storage.from_("production-images").list()
+            files_rep = supabase.storage.from_("reports-storage").list()
+            
+            total_files = (files_img if files_img else []) + (files_rep if files_rep else [])
+            for f in total_files:
+                storage_mb += f.get("metadata", {}).get("size", 0) / (1024 * 2)
+        except Exception:
+            pass
+
+        storage_display = f"{storage_mb:.2f} MB / 1 GB"
+        return db_display, storage_display
+    except Exception:
+        return "Đang tính...", "Đang tính..."
 
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
@@ -625,9 +652,13 @@ with st.sidebar:
     else:
         st.markdown('<div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">🔴 Chưa kết nối Supabase</div>', unsafe_allow_html=True)
 
-    # Hiển thị thông số RAM hệ thống
+    # Hiển thị thông số RAM và Lưu trữ thực tế
     ram_usage_str = get_app_memory_usage()
-    st.markdown(f'<div style="background: rgba(147, 51, 234, 0.12); padding: 6px 10px; border-radius: 6px; border: 1px solid #9333ea; text-align: center; font-size: 0.8rem; font-weight: bold; color: #7e22ce; margin-bottom: 6px;">🧠 RAM App: <b>{ram_usage_str}</b></div>', unsafe_allow_html=True)
+    db_usage_str, storage_usage_str = get_detailed_storage_usage()
+
+    st.markdown(f'<div style="background: rgba(147, 51, 234, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #9333ea; text-align: center; font-size: 0.78rem; font-weight: bold; color: #7e22ce; margin-bottom: 5px;">🧠 RAM App: <b>{ram_usage_str}</b></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=200)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
