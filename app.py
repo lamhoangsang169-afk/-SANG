@@ -166,7 +166,7 @@ def init_db_data():
 
 init_db_data()
 
-# ==================== CÁC HÀM CRUD & CACHING SUPABASE (ĐÃ TỐI ƯU TTL) ====================
+# ==================== CÁC HÀM CRUD & CACHING SUPABASE ====================
 @st.cache_data(ttl=600, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
@@ -431,7 +431,6 @@ def get_production_logs_db(is_deleted=False, limit_rows=100):
         pass
     return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
 
-# Hàm lấy tổng số lượng bản ghi thực tế trên cloud để hiển thị chỉ số
 @st.cache_data(ttl=300, show_spinner=False)
 def get_total_production_count_db():
     if supabase is None:
@@ -818,7 +817,6 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    # ==================== TRẠNG THÁI KẾT NỐI SUPABASE & GIỚI HẠN HIỂN THỊ ====================
     if is_supabase_connected:
         st.markdown("""
         <div style="background: rgba(16, 185, 129, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.85rem; font-weight: bold; color: #047857; margin-bottom: 6px;">
@@ -832,7 +830,6 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
 
-    # Lấy thông tin số lượng bản ghi hiển thị / tổng số bản ghi
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=100)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
@@ -890,7 +887,9 @@ if feature == "input_production":
             with f_col1:
                 ngay = st.date_input("Ngày làm việc", now_vn.date(), disabled=True)
             with f_col2:
-                nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
+                # Đưa mục "--- Vui lòng chọn nhân sự ---" lên đầu làm mặc định
+                staff_options = ["--- Vui lòng chọn nhân sự ---"] + active_staff
+                nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
             with f_col3:
                 danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
@@ -907,14 +906,18 @@ if feature == "input_production":
 
             if submitted:
                 is_valid = True
-                if req_img and not record_images: is_valid = False
-                if req_qty and so_luong <= 0: is_valid = False
-                if record_images and len(record_images) > 4:
+                if nhan_su == "--- Vui lòng chọn nhân sự ---":
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện!")
+                elif req_img and not record_images: 
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng tải lên ảnh đính kèm!")
+                elif req_qty and so_luong <= 0: 
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Số lượng thực tế phải lớn hơn 0!")
+                elif record_images and len(record_images) > 4:
                     is_valid = False
                     st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
-
-                if not is_valid and "form_msg" not in st.session_state:
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
 
                 if is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
@@ -985,7 +988,6 @@ if feature == "input_production":
         if filter_task != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
-        # ==================== Ô HIỂN THỊ TỔNG SỐ LƯỢNG DỰA THEO HẠNG MỤC ====================
         if filter_task != "Tất cả":
             total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
             unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
@@ -1074,7 +1076,9 @@ elif feature == "attendance":
     with st.form("attendance_form"):
         f1, f2, f3 = st.columns(3)
         with f1: att_date = st.date_input("Ngày", now_vn.date())
-        with f2: att_staff = st.selectbox("Nhân sự", st.session_state.staff_list)
+        with f2:
+            att_staff_options = ["--- Vui lòng chọn nhân sự ---"] + st.session_state.staff_list
+            att_staff = st.selectbox("Nhân sự", att_staff_options)
         with f3: att_note = st.text_input("Ghi chú ca", "")
         
         b1, b2 = st.columns(2)
@@ -1083,37 +1087,42 @@ elif feature == "attendance":
         
         time_str = now_vn.strftime("%H:%M:%S")
         if check_in:
-            if att_staff in checked_in_set:
+            if att_staff == "--- Vui lòng chọn nhân sự ---":
+                st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
+            elif att_staff in checked_in_set:
                 st.session_state["att_msg"] = ("warning", f"⚠️ Nhân sự {att_staff} đang trong ca làm việc, không thể Check-in thêm!")
             else:
                 add_attendance_db(att_date, att_staff, time_str, "Chưa kết thúc", 0, att_note)
                 st.session_state["att_msg"] = ("success", f"✅ Check-in thành công cho **{att_staff}** lúc **{time_str}**!")
                 st.rerun()
         if check_out:
-            res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
-            
-            if res_check and res_check.data:
-                target_row = res_check.data[0]
-                row_id = target_row["id"]
-                ngay_vao = target_row["ngay"]
-                gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
-                
-                so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
-                
-                old_note = target_row.get("ghi_chu", "")
-                final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
-                
-                supabase.table("attendance").update({
-                    "gio_ra_ca": time_str,
-                    "so_phut_lam_viec": int(so_phut_thuc_te),
-                    "ghi_chu": final_note
-                }).eq("id", row_id).execute()
-                
-                st.cache_data.clear()
-                st.session_state["att_msg"] = ("success", f"✅ Check-out thành công cho **{att_staff}** lúc **{time_str}** (Tổng thời gian: **{so_phut_thuc_te} phút**)!")
+            if att_staff == "--- Vui lòng chọn nhân sự ---":
+                st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
             else:
-                st.session_state["att_msg"] = ("warning", f"⚠️ Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho **{att_staff}**!")
-            st.rerun()
+                res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
+                
+                if res_check and res_check.data:
+                    target_row = res_check.data[0]
+                    row_id = target_row["id"]
+                    ngay_vao = target_row["ngay"]
+                    gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
+                    
+                    so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
+                    
+                    old_note = target_row.get("ghi_chu", "")
+                    final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
+                    
+                    supabase.table("attendance").update({
+                        "gio_ra_ca": time_str,
+                        "so_phut_lam_viec": int(so_phut_thuc_te),
+                        "ghi_chu": final_note
+                    }).eq("id", row_id).execute()
+                    
+                    st.cache_data.clear()
+                    st.session_state["att_msg"] = ("success", f"✅ Check-out thành công cho **{att_staff}** lúc **{time_str}** (Tổng thời gian: **{so_phut_thuc_te} phút**)!")
+                else:
+                    st.session_state["att_msg"] = ("warning", f"⚠️ Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho **{att_staff}**!")
+                st.rerun()
 
     if "att_msg" in st.session_state:
         m_type, m_text = st.session_state["att_msg"]
@@ -1376,7 +1385,7 @@ elif feature == "report_folder":
         for _, row in reports_df.iterrows():
             st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Th thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
+        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
@@ -1601,7 +1610,7 @@ elif feature == "settings_ui":
 # ==================== LÀM SẠCH DỮ LIỆU ====================
 elif feature == "clean_data":
     st.header("Làm Sạch Dữ Liệu")
-    if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Vĩnh", use_container_width=True):
+    if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
         trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
         if not trash_df.empty:
             permanent_delete_db(trash_df["db_id"].tolist())
