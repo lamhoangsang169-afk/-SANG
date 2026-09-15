@@ -119,7 +119,6 @@ def get_production_logs_db(is_deleted=False, limit_rows=100):
         pass
     return pd.DataFrame()
 
-# ==================== HÀM TỐI ƯU MỚI: LỌC THEO KHOẢNG THỜI GIAN ====================
 @st.cache_data(ttl=150, show_spinner=False)
 def get_production_logs_by_date_range(start_date, end_date):
     if supabase is None:
@@ -210,6 +209,8 @@ def load_folders_db():
     except Exception:
         pass
     return default_folders
+
+# ==================== CÁC HÀM XỬ LÝ BÌNH LUẬN ====================
 @st.cache_data(ttl=60, show_spinner=False)
 def get_comments_by_log_id(log_id):
     if supabase is None:
