@@ -593,17 +593,24 @@ def render_main_content(current_menu_name):
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            s_col1, s_col2, s_col3, s_col4 = st.columns([1.1, 1.3, 1.1, 1.1])
+            # SẮP XẾP CHUẨN 5 CỘT TRÊN MỘT HÀNG NGANG (ĐÚNG NHƯ BẢN PHÁC THẢO)
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.1, 1.3, 1.1, 1.1, 1.2])
             
-            with s_col1:
+            with f_col1:
                 all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
                 default_index = all_dates.index(today_str) if today_str in all_dates else 0
                 filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
                 
-            with s_col2:
-                enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
+            with f_col2:
+                enable_hour_filter = st.checkbox("Lọc theo Giờ", value=False)
+                if enable_hour_filter:
+                    t_sub1, t_sub2 = st.columns(2)
+                    with t_sub1: start_t = st.time_input("Từ", datetime.time(7, 30), label_visibility="collapsed")
+                    with t_sub2: end_t = st.time_input("Đến", datetime.time(17, 0), label_visibility="collapsed")
+                else:
+                    start_t, end_t = None, None
                 
-            with s_col3:
+            with f_col3:
                 all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
                 
@@ -614,11 +621,7 @@ def render_main_content(current_menu_name):
             if filter_staff != "Tất cả": 
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
 
-            if enable_hour_filter:
-                h_col1, h_col2, h_col3 = st.columns([1, 1, 2])
-                with h_col1: start_t = st.time_input("Từ giờ", datetime.time(7, 30))
-                with h_col2: end_t = st.time_input("Đến giờ", datetime.time(17, 0))
-                
+            if enable_hour_filter and start_t and end_t:
                 def check_time_in_range(t_str):
                     try:
                         t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
@@ -626,11 +629,9 @@ def render_main_content(current_menu_name):
                     except:
                         return True
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Thời Gian"].apply(check_time_in_range)]
-            else:
-                start_t, end_t = None, None
 
             # --- BƯỚC 2: CẬP NHẬT DANH SÁCH HẠNG MỤC DỰA TRÊN DỮ LIỆU ĐÃ LỌC ---
-            with s_col4:
+            with f_col4:
                 available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist()) if not temp_filtered_df.empty else ["Tất cả"]
                 filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
             
@@ -639,25 +640,24 @@ def render_main_content(current_menu_name):
             if filter_task != "Tất cả": 
                 filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
                 
+            # --- BƯỚC 4: THỰC HIỆN CƠ CHẾ PHÂN TRANG (PAGINATION) NẰM Ở CỘT THỨ 5 ---
+            rows_per_page = 10
+            total_rows = len(filtered_df)
+            total_pages = (total_rows - 1) // rows_per_page + 1
+
+            with f_col5:
+                current_page = st.number_input(f"Trang hiển thị ({total_pages} tr | {total_rows} bản ghi)", min_value=1, max_value=max(total_pages, 1), value=1, step=1, key="pagination_page_num")
+
+            start_idx = (current_page - 1) * rows_per_page
+            end_idx = start_idx + rows_per_page
+            paginated_df = filtered_df.iloc[start_idx:end_idx]
+
             if filter_task != "Tất cả":
                 total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
                 unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
                 st.markdown(f'<div style="background: rgba(59, 130, 246, 0.15); padding: 12px 18px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 15px; font-size: 1rem; font-weight: bold; text-align: center;">📊 Tổng số lượng của hạng mục <span style="color: #ff4b4b;">"{filter_task}"</span>: <span style="font-size: 1.2rem; color: #1d4ed8;">{total_qty_task:,.0f}</span> {unit_name}</div>', unsafe_allow_html=True)
 
-            if not filtered_df.empty:
-                # --- BƯỚC 4: THỰC HIỆN CƠ CHẾ PHÂN TRANG (PAGINATION) ---
-                rows_per_page = 10
-                total_rows = len(filtered_df)
-                total_pages = (total_rows - 1) // rows_per_page + 1
-
-                p_col1, p_col2, p_col3 = st.columns([1.5, 2, 1.5])
-                with p_col2:
-                    current_page = st.number_input(f"Trang hiển thị (Tổng số: {total_pages} trang | {total_rows} bản ghi)", min_value=1, max_value=max(total_pages, 1), value=1, step=1, key="pagination_page_num")
-
-                start_idx = (current_page - 1) * rows_per_page
-                end_idx = start_idx + rows_per_page
-                paginated_df = filtered_df.iloc[start_idx:end_idx]
-
+            if not paginated_df.empty:
                 col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
                 with col_del_all_2:
                     del_c1, del_c2 = st.columns([1, 1])
