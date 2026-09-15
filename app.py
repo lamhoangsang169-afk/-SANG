@@ -610,15 +610,13 @@ def render_main_content(current_menu_name):
                 all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
                 
+            # --- BƯỚC 1: LỌC DỮ LIỆU THEO NGÀY, GIỜ VÀ NHÂN SỰ TRƯỚC ---
             temp_filtered_df = input_df.copy()
-            if filter_date != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
-            if filter_staff != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
+            if filter_date != "Tất cả": 
+                temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
+            if filter_staff != "Tất cả": 
+                temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
 
-            with s_col4:
-                available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist())
-                filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
-            
-            filtered_df = temp_filtered_df.copy()
             if enable_hour_filter and start_t and end_t:
                 def check_time_in_range(t_str):
                     try:
@@ -626,9 +624,17 @@ def render_main_content(current_menu_name):
                         return start_t <= t_val <= end_t
                     except:
                         return True
-                filtered_df = filtered_df[filtered_df["Thời Gian"].apply(check_time_in_range)]
-                
-            if filter_task != "Tất cả": filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
+                temp_filtered_df = temp_filtered_df[temp_filtered_df["Thời Gian"].apply(check_time_in_range)]
+
+            # --- BƯỚC 2: CẬP NHẬT DANH SÁCH HẠNG MỤC DỰA TRÊN DỮ LIỆU ĐÃ LỌC ---
+            with s_col4:
+                available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist()) if not temp_filtered_df.empty else ["Tất cả"]
+                filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
+            
+            # --- BƯỚC 3: LỌC HOÀN CHỈNH ĐỂ HIỂN THỊ DANH SÁCH ---
+            filtered_df = temp_filtered_df.copy()
+            if filter_task != "Tất cả": 
+                filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
                 
             if filter_task != "Tất cả":
                 total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
