@@ -56,7 +56,7 @@ def get_app_memory_usage():
         except Exception:
             return "Ổn định"
 
-# Hàm tính dung lượng Database và File Storage thực tế từ Supabase
+# Hàm tính dung lượng Database và File Storage thực tế từ Supabase (Đã chuẩn hóa đơn vị chính xác)
 def get_detailed_storage_usage():
     if supabase is None:
         return "0 MB / 500 MB", "0 MB / 1 GB"
@@ -66,24 +66,32 @@ def get_detailed_storage_usage():
         users_count = len(supabase.table("user_accounts").select("id", count="exact").execute().data)
         
         estimated_db_kb = (logs_count + att_count + users_count) * 2.5
-        db_used_str = f"{estimated_db_kb / 1024:.2f} MB" if estimated_db_kb > 1024 else f"{estimated_db_kb:.1f} KB"
+        if estimated_db_kb > 1024:
+            db_used_str = f"{estimated_db_kb / 1024:.2f} MB"
+        else:
+            db_used_str = f"{estimated_db_kb:.1f} KB"
         db_display = f"{db_used_str} / 500 MB"
 
-        storage_mb = 0.0
+        storage_bytes = 0
         try:
             files_img = supabase.storage.from_("production-images").list()
             files_rep = supabase.storage.from_("reports-storage").list()
             
             total_files = (files_img if files_img else []) + (files_rep if files_rep else [])
             for f in total_files:
-                storage_mb += f.get("metadata", {}).get("size", 0) / (1024 * 2)
+                storage_bytes += f.get("metadata", {}).get("size", 0)
         except Exception:
             pass
 
-        storage_display = f"{storage_mb:.2f} MB / 1 GB"
+        storage_mb = storage_bytes / (1024 * 1024)
+        if storage_mb >= 1024:
+            storage_display = f"{storage_mb / 1024:.2f} GB / 1 GB"
+        else:
+            storage_display = f"{storage_mb:.2f} MB / 1 GB"
+            
         return db_display, storage_display
     except Exception:
-        return "Đang tính...", "Đang tính..."
+        return "0 MB / 500 MB", "0 MB / 1 GB"
 
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
@@ -652,7 +660,7 @@ with st.sidebar:
     else:
         st.markdown('<div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">🔴 Chưa kết nối Supabase</div>', unsafe_allow_html=True)
 
-    # Hiển thị thông số RAM và Lưu trữ thực tế
+    # Hiển thị thông số RAM và Lưu trữ thực tế đã chuẩn hóa
     ram_usage_str = get_app_memory_usage()
     db_usage_str, storage_usage_str = get_detailed_storage_usage()
 
