@@ -686,12 +686,12 @@ if feature == "input_production":
                     else:
                         st.warning("Vui lòng tích chọn dòng cần xóa!")
 
-            # --- KHU VỰC BÌNH LUẬN ĐẶT NGOÀI FORM CHÍNH ĐỂ TRÁNH LỖI LỒNG FORM ---
-            st.markdown("##### 💬 Thảo luận & Bình luận chi tiết bản ghi")
+            # --- KHU VỰC BÌNH LUẬN NẰM NGAY BÊN DƯỚI (BÊN NGOÀI FORM XÓA) ---
+            st.markdown("##### 💬 Thảo luận & Bình luận chi tiết từng bản ghi")
             for idx, row in filtered_df.iterrows():
                 log_id = row['db_id']
                 total_cmts = len(get_comments_by_log_id(log_id))
-                with st.expander(f"💬 Xem / Thêm bình luận cho bản ghi STT {row['STT']} ({row['Nhân Sự']} - {row['Hạng Mục Công Việc']}) ({total_cmts})"):
+                with st.expander(f"💬 Bình luận cho bản ghi STT {row['STT']} ({row['Nhân Sự']} - {row['Hạng Mục Công Việc']}) [{total_cmts}]"):
                     comments_list = get_comments_by_log_id(log_id)
                     if comments_list:
                         for c in comments_list:
@@ -700,8 +700,7 @@ if feature == "input_production":
                     else:
                         st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
                         
-                    cmt_key = f"input_cmt_{log_id}"
-                    new_cmt = st.text_input("Nhập nội dung bình luận...", key=cmt_key)
+                    new_cmt = st.text_input("Nhập nội dung bình luận...", key=f"input_cmt_{log_id}")
                     if st.button("Gửi bình luận", key=f"btn_send_cmt_{log_id}", use_container_width=True):
                         if new_cmt and new_cmt.strip():
                             add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
