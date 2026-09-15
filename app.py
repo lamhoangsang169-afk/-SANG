@@ -4,8 +4,7 @@ import datetime
 import plotly.express as px
 import base64
 import hashlib
-import unicodedata
-import re
+import os
 
 # Import từ các module đã tách
 from utils import (
@@ -37,6 +36,28 @@ init_db_data()
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+# Hàm lấy dung lượng RAM tiến trình app đang dùng (Thuần Python, không cần cài psutil)
+def get_app_memory_usage():
+    try:
+        import sys
+        # Cố gắng dùng psutil nếu có sẵn trong môi trường Cloud
+        import psutil
+        process = psutil.Process(os.getpid())
+        mem_mb = process.memory_info().rss / (1024 ** 2)
+        return f"{mem_mb:.1f} MB (RAM)"
+    except Exception:
+        # Nếu không có psutil, dùng thư viện resource của hệ điều hành hoặc đo kích thước cơ bản
+        try:
+            import resource
+            rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            if sys.platform == "darwin": # macOS tính bằng bytes
+                mem_mb = rss / (1024 ** 2)
+            else: # Linux tính bằng kilobytes
+                mem_mb = rss / 1024
+            return f"{mem_mb:.1f} MB (RAM)"
+        except Exception:
+            return "Ổn định (Cloud Mode)"
+
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -61,7 +82,6 @@ if not st.session_state.logged_in:
         
         st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
         
-        # Tạo tab phân tách rõ ràng giữa Admin và Nhân viên
         tab_admin, tab_staff = st.tabs(["👑 Quản Trị Viên", "👤 Nhân Viên"])
         
         with tab_admin:
@@ -604,6 +624,10 @@ with st.sidebar:
         st.markdown('<div style="background: rgba(16, 185, 129, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.85rem; font-weight: bold; color: #047857; margin-bottom: 6px;">🟢 Đã kết nối Supabase</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">🔴 Chưa kết nối Supabase</div>', unsafe_allow_html=True)
+
+    # Hiển thị thông số RAM hệ thống
+    ram_usage_str = get_app_memory_usage()
+    st.markdown(f'<div style="background: rgba(147, 51, 234, 0.12); padding: 6px 10px; border-radius: 6px; border: 1px solid #9333ea; text-align: center; font-size: 0.8rem; font-weight: bold; color: #7e22ce; margin-bottom: 6px;">🧠 RAM App: <b>{ram_usage_str}</b></div>', unsafe_allow_html=True)
 
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=200)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
