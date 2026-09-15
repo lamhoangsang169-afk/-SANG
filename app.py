@@ -26,7 +26,6 @@ is_supabase_connected = False
 if HAS_SUPABASE_LIB and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        # Kiểm tra ping nhanh tới supabase
         test_ping = supabase.table("staff").select("id").limit(1).execute()
         is_supabase_connected = True
     except Exception:
@@ -406,7 +405,7 @@ def add_production_log_db(ngay, thoi_gian, nhan_su, hang_muc, hinh_anh_url, don_
         pass
 
 @st.cache_data(ttl=300, show_spinner=False)
-def get_production_logs_db(is_deleted=False, limit_rows=200):
+def get_production_logs_db(is_deleted=False, limit_rows=100):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
     try:
@@ -431,6 +430,19 @@ def get_production_logs_db(is_deleted=False, limit_rows=200):
     except Exception:
         pass
     return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
+
+# Hàm lấy tổng số lượng bản ghi thực tế trên cloud để hiển thị chỉ số
+@st.cache_data(ttl=300, show_spinner=False)
+def get_total_production_count_db():
+    if supabase is None:
+        return 0
+    try:
+        res = supabase.table("production_logs").select("id", count="exact").eq("is_deleted", False).execute()
+        if res.count is not None:
+            return res.count
+    except Exception:
+        pass
+    return 0
 
 def update_production_log_deleted_status(db_ids, is_deleted_val):
     if supabase is None:
@@ -806,19 +818,30 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    # ==================== HIỂN THỊ TRẠNG THÁI KẾT NỐI SUPABASE ====================
+    # ==================== TRẠNG THÁI KẾT NỐI SUPABASE & GIỚI HẠN HIỂN THỊ ====================
     if is_supabase_connected:
         st.markdown("""
-        <div style="background: rgba(16, 185, 129, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.85rem; font-weight: bold; color: #047857;">
+        <div style="background: rgba(16, 185, 129, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.85rem; font-weight: bold; color: #047857; margin-bottom: 6px;">
             🟢 Đã kết nối Supabase
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c;">
+        <div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">
             🔴 Chưa kết nối Supabase
         </div>
         """, unsafe_allow_html=True)
+
+    # Lấy thông tin số lượng bản ghi hiển thị / tổng số bản ghi
+    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=100)
+    current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
+    total_db_count = get_total_production_count_db()
+
+    st.markdown(f"""
+    <div style="background: rgba(59, 130, 246, 0.12); padding: 8px 12px; border-radius: 6px; border: 1px solid #3b82f6; text-align: center; font-size: 0.85rem; font-weight: bold; color: #1d4ed8;">
+        📊 Hiển thị: <span style="color: #ff4b4b;">{current_shown_count}</span> / {total_db_count} bản ghi
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1353,7 +1376,7 @@ elif feature == "report_folder":
         for _, row in reports_df.iterrows():
             st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
+        st.info("Th thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
@@ -1578,7 +1601,7 @@ elif feature == "settings_ui":
 # ==================== LÀM SẠCH DỮ LIỆU ====================
 elif feature == "clean_data":
     st.header("Làm Sạch Dữ Liệu")
-    if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
+    if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Vĩnh", use_container_width=True):
         trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
         if not trash_df.empty:
             permanent_delete_db(trash_df["db_id"].tolist())
