@@ -23,7 +23,9 @@ from database import (
     get_total_production_count_db, 
     get_attendance_db,
     load_app_settings_db, 
-    load_folders_db
+    load_folders_db,
+    get_comments_by_log_id,
+    add_comment_db
 )
 
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
@@ -673,6 +675,28 @@ if feature == "input_production":
                                         st.image(u, width=40)
                         else:
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                        
+                        # Tích hợp tính năng Bình luận
+                        log_id = row['db_id']
+                        total_cmts = len(get_comments_by_log_id(log_id))
+                        with st.popover(f"💬 ({total_cmts})", help="Thảo luận / Bình luận"):
+                            st.markdown(f"##### 💬 Thảo luận (STT {row['STT']})")
+                            comments_list = get_comments_by_log_id(log_id)
+                            if comments_list:
+                                for c in comments_list:
+                                    st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
+                                    st.markdown("---")
+                            else:
+                                st.markdown("<small style='color: gray;'>Chưa có bình luận nào.</small>", unsafe_allow_html=True)
+                                
+                            with st.form(f"form_comment_{log_id}"):
+                                new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
+                                if st.form_submit_button("Gửi", use_container_width=True):
+                                    if new_cmt.strip():
+                                        add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
+                                        st.success("Đã gửi bình luận!")
+                                        st.rerun()
+
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
