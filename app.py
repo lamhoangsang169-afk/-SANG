@@ -900,7 +900,8 @@ if feature == "input_production":
         s_col1, s_col2, s_col3, s_col4 = st.columns(4)
         with s_col1:
             all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
-            filter_date = st.selectbox("Lọc theo Ngày", all_dates)
+            default_index = all_dates.index(today_str) if today_str in all_dates else 0
+            filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
         with s_col2:
             enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
             if enable_hour_filter:
@@ -1317,7 +1318,7 @@ elif feature == "report_folder":
         for _, row in reports_df.iterrows():
             st.markdown(f"📥 [{row['Tên File']} - Tạo ngày {row['Ngày Tạo']}]({row['Đường Dẫn URL']})")
     else:
-        st.info("Thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
+        st.info("Th thư mục báo cáo đang trống. Hãy vào mục '2. Báo Cáo & Biểu Đồ' để xuất và lưu báo cáo mới.")
 
 # ==================== THAM CHIẾU CÔNG VIỆC ====================
 elif feature == "rules":
