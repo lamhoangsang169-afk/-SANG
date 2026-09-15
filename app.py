@@ -675,6 +675,28 @@ if feature == "input_production":
                                         st.image(u, width=40)
                         else:
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                    
+                    # --- TÍCH HỢP BÌNH LUẬN TRỰC TIẾP NGAY TRONG TỪNG DÒNG BẢN GHI ---
+                    log_id = row['db_id']
+                    total_cmts = len(get_comments_by_log_id(log_id))
+                    with st.expander(f"💬 Bình luận & Thảo luận [{total_cmts}]"):
+                        comments_list = get_comments_by_log_id(log_id)
+                        if comments_list:
+                            for c in comments_list:
+                                st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
+                                st.markdown("---")
+                        else:
+                            st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
+                            
+                        new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
+                        if st.button("Gửi", key=f"btn_send_cmt_{log_id}", use_container_width=True):
+                            if new_cmt and new_cmt.strip():
+                                add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
+                                st.success("Đã gửi bình luận!")
+                                st.rerun()
+                            else:
+                                st.warning("Vui lòng nhập nội dung!")
+
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
@@ -685,29 +707,6 @@ if feature == "input_production":
                         st.rerun()
                     else:
                         st.warning("Vui lòng tích chọn dòng cần xóa!")
-
-            # --- KHU VỰC BÌNH LUẬN NẰM NGAY BÊN DƯỚI (BÊN NGOÀI FORM XÓA) ---
-            st.markdown("##### 💬 Thảo luận & Bình luận chi tiết từng bản ghi")
-            for idx, row in filtered_df.iterrows():
-                log_id = row['db_id']
-                total_cmts = len(get_comments_by_log_id(log_id))
-                with st.expander(f"💬 Bình luận cho bản ghi STT {row['STT']} ({row['Nhân Sự']} - {row['Hạng Mục Công Việc']}) [{total_cmts}]"):
-                    comments_list = get_comments_by_log_id(log_id)
-                    if comments_list:
-                        for c in comments_list:
-                            st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
-                            st.markdown("---")
-                    else:
-                        st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
-                        
-                    new_cmt = st.text_input("Nhập nội dung bình luận...", key=f"input_cmt_{log_id}")
-                    if st.button("Gửi bình luận", key=f"btn_send_cmt_{log_id}", use_container_width=True):
-                        if new_cmt and new_cmt.strip():
-                            add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
-                            st.success("Đã gửi bình luận thành công!")
-                            st.rerun()
-                        else:
-                            st.warning("Vui lòng nhập nội dung bình luận!")
         else:
             st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
     else:
