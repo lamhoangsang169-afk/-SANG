@@ -1029,10 +1029,10 @@ elif feature == "attendance":
         time_str = now_vn.strftime("%H:%M:%S")
         if check_in:
             if att_staff in checked_in_set:
-                st.session_state["att_msg"] = ("warning", f"Nhân sự {att_staff} đang trong ca làm việc!")
+                st.session_state["att_msg"] = ("warning", f"⚠️ Nhân sự {att_staff} đang trong ca làm việc, không thể Check-in thêm!")
             else:
                 add_attendance_db(att_date, att_staff, time_str, "Chưa kết thúc", 0, att_note)
-                st.session_state["att_msg"] = ("success", f"Đã Vào ca cho {att_staff} lúc {time_str}!")
+                st.session_state["att_msg"] = ("success", f"✅ Check-in thành công cho **{att_staff}** lúc **{time_str}**!")
                 st.rerun()
         if check_out:
             res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
@@ -1055,9 +1055,9 @@ elif feature == "attendance":
                 }).eq("id", row_id).execute()
                 
                 st.cache_data.clear()
-                st.session_state["att_msg"] = ("success", f"Đã Kết thúc ca cho {att_staff} lúc {time_str} (Tổng thời gian: {so_phut_thuc_te} phút)!")
+                st.session_state["att_msg"] = ("success", f"✅ Check-out thành công cho **{att_staff}** lúc **{time_str}** (Tổng thời gian: **{so_phut_thuc_te} phút**)!")
             else:
-                st.session_state["att_msg"] = ("warning", f"Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho {att_staff}!")
+                st.session_state["att_msg"] = ("warning", f"⚠️ Không tìm thấy mốc Vào ca nào đang mở (Chưa kết thúc) cho **{att_staff}**!")
             st.rerun()
 
     if "att_msg" in st.session_state:
