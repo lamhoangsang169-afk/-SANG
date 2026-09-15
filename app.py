@@ -940,6 +940,16 @@ if feature == "input_production":
         if filter_task != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
+        # ==================== Ô HIỂN THỊ TỔNG SỐ LƯỢNG DỰA THEO HẠNG MỤC ====================
+        if filter_task != "Tất cả":
+            total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
+            unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
+            st.markdown(f"""
+            <div style="background: rgba(59, 130, 246, 0.15); padding: 12px 18px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 15px; font-size: 1rem; font-weight: bold; text-align: center;">
+                📊 Tổng số lượng của hạng mục <span style="color: #ff4b4b;">"{filter_task}"</span>: <span style="font-size: 1.2rem; color: #1d4ed8;">{total_qty_task:,.0f}</span> {unit_name}
+            </div>
+            """, unsafe_allow_html=True)
+
         if not filtered_df.empty:
             col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
             with col_del_all_2:
