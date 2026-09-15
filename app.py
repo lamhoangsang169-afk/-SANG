@@ -675,28 +675,6 @@ if feature == "input_production":
                                         st.image(u, width=40)
                         else:
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
-                        
-                        # Tích hợp tính năng Bình luận
-                        log_id = row['db_id']
-                        total_cmts = len(get_comments_by_log_id(log_id))
-                        with st.popover(f"💬 ({total_cmts})", help="Thảo luận / Bình luận"):
-                            st.markdown(f"##### 💬 Thảo luận (STT {row['STT']})")
-                            comments_list = get_comments_by_log_id(log_id)
-                            if comments_list:
-                                for c in comments_list:
-                                    st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
-                                    st.markdown("---")
-                            else:
-                                st.markdown("<small style='color: gray;'>Chưa có bình luận nào.</small>", unsafe_allow_html=True)
-                                
-                            with st.form(f"form_comment_{log_id}"):
-                                new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
-                                if st.form_submit_button("Gửi", use_container_width=True):
-                                    if new_cmt.strip():
-                                        add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
-                                        st.success("Đã gửi bình luận!")
-                                        st.rerun()
-
                     st.markdown("---")
                     
                 if st.form_submit_button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True):
@@ -707,6 +685,30 @@ if feature == "input_production":
                         st.rerun()
                     else:
                         st.warning("Vui lòng tích chọn dòng cần xóa!")
+
+            # --- KHU VỰC BÌNH LUẬN ĐẶT NGOÀI FORM CHÍNH ĐỂ TRÁNH LỖI LỒNG FORM ---
+            st.markdown("##### 💬 Thảo luận & Bình luận chi tiết bản ghi")
+            for idx, row in filtered_df.iterrows():
+                log_id = row['db_id']
+                total_cmts = len(get_comments_by_log_id(log_id))
+                with st.expander(f"💬 Xem / Thêm bình luận cho bản ghi STT {row['STT']} ({row['Nhân Sự']} - {row['Hạng Mục Công Việc']}) ({total_cmts})"):
+                    comments_list = get_comments_by_log_id(log_id)
+                    if comments_list:
+                        for c in comments_list:
+                            st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
+                            st.markdown("---")
+                    else:
+                        st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
+                        
+                    cmt_key = f"input_cmt_{log_id}"
+                    new_cmt = st.text_input("Nhập nội dung bình luận...", key=cmt_key)
+                    if st.button("Gửi bình luận", key=f"btn_send_cmt_{log_id}", use_container_width=True):
+                        if new_cmt and new_cmt.strip():
+                            add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
+                            st.success("Đã gửi bình luận thành công!")
+                            st.rerun()
+                        else:
+                            st.warning("Vui lòng nhập nội dung bình luận!")
         else:
             st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
     else:
@@ -799,7 +801,6 @@ elif feature == "attendance":
 elif feature == "report":
     st.header(menu)
     
-    # BỘ LỌC KHOẢNG THỜI GIAN ĐỂ TỐI ƯU RAM VÀ HIỆU SUẤT
     col_date1, col_date2 = st.columns(2)
     default_start = datetime.date.today().replace(day=1)
     default_end = datetime.date.today()
@@ -810,8 +811,6 @@ elif feature == "report":
         report_end_date = st.date_input("Đến ngày", default_end)
 
     all_staff_current = st.session_state.staff_list
-    
-    # Lấy dữ liệu theo khoảng thời gian trực tiếp từ Database
     input_df = get_production_logs_by_date_range(report_start_date, report_end_date)
     
     if not input_df.empty:
