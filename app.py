@@ -511,519 +511,524 @@ def get_feature_type(menu_name):
                 return "input_production"
     return "input_production"
 
-feature = get_feature_type(menu)
+# ==================== KHU VỰC NỘI DUNG TỐI ƯU BẰNG ST.FRAGMENT ====================
+@st.fragment
+def render_main_content(current_menu_name):
+    feature = get_feature_type(current_menu_name)
 
-# ==================== 1. NHẬP SẢN LƯỢNG ====================
-if feature == "input_production":
-    now_vn = datetime.datetime.now(VN_TIMEZONE)
-    today_str = str(now_vn.date())
-    
-    att_df_check = get_attendance_db()
-    checked_in_set = set()
-    if not att_df_check.empty:
-        checked_in_set = set(att_df_check[att_df_check["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
-
-    active_staff = [s for s in st.session_state.staff_list if s in checked_in_set]
-
-    st.subheader(f"{menu} ({today_str})")
-
-    if not active_staff:
-        st.warning(f"⚠️ Hiện tại chưa có nhân sự nào **Check-in (Vào ca)** hoặc các ca trước chưa kết thúc. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
-    else:
-        req_img = st.session_state.get("require_image", True)
-        req_qty = st.session_state.get("require_quantity", True)
+    # ==================== 1. NHẬP SẢN LƯỢNG ====================
+    if feature == "input_production":
+        now_vn = datetime.datetime.now(VN_TIMEZONE)
+        today_str = str(now_vn.date())
         
-        with st.form("entry_form"):
-            f_col1, f_col2, f_col3 = st.columns(3)
-            with f_col1: ngay = st.date_input("Ngày làm việc", now_vn.date(), disabled=True)
-            with f_col2:
-                staff_options = ["--- Vui lòng chọn nhân sự ---"] + active_staff
-                nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
-            with f_col3:
-                danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
-                hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
-                
-            record_images = st.file_uploader("Tải ảnh đính kèm (Tối đa 4 ảnh)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="record_img")
-                    
-            f_col4, f_col5 = st.columns(2)
-            with f_col4: so_luong = st.number_input("Số lượng thực tế", min_value=0, value=0, step=1)
-            with f_col5: ghi_chu = st.text_input("Ghi chú", "")
-                
-            submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
+        att_df_check = get_attendance_db()
+        checked_in_set = set()
+        if not att_df_check.empty:
+            checked_in_set = set(att_df_check[att_df_check["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist())
 
-            if submitted:
-                is_valid = True
-                if nhan_su == "--- Vui lòng chọn nhân sự ---":
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện!")
-                elif req_img and not record_images: 
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng tải lên ảnh đính kèm!")
-                elif req_qty and so_luong <= 0: 
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Số lượng thực tế phải lớn hơn 0!")
-                elif record_images and len(record_images) > 4:
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
+        active_staff = [s for s in st.session_state.staff_list if s in checked_in_set]
 
-                if is_valid:
-                    row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
-                    he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
-                    don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
-                    tong_diem = so_luong * he_so
-                    
-                    img_urls = upload_multiple_images_to_storage(record_images) if record_images else ""
-                    current_time_str = datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S")
-                    
-                    add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_urls, don_vi, so_luong, he_so, tong_diem, ghi_chu)
-                    st.session_state["form_msg"] = ("success", f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
-                    st.rerun()
+        st.subheader(f"{current_menu_name} ({today_str})")
 
-        if "form_msg" in st.session_state:
-            m_type, m_text = st.session_state["form_msg"]
-            if m_type == "success": st.success(m_text)
-            else: st.error(m_text)
-            del st.session_state["form_msg"]
-
-    st.markdown("---")
-    st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
-    
-    input_df = get_production_logs_db(is_deleted=False, limit_rows=100)
-    if not input_df.empty:
-        s_col1, s_col2, s_col3, s_col4 = st.columns(4)
-        with s_col1:
-            all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
-            default_index = all_dates.index(today_str) if today_str in all_dates else 0
-            filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
-        with s_col2:
-            enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
-            if enable_hour_filter:
-                t_col1, t_col2 = st.columns(2)
-                with t_col1: start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed")
-                with t_col2: end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed")
-            else:
-                start_t, end_t = None, None
-        with s_col3:
-            all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
-            filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
+        if not active_staff:
+            st.warning(f"⚠️ Hiện tại chưa có nhân sự nào **Check-in (Vào ca)** hoặc các ca trước chưa kết thúc. Vui lòng thực hiện Check-in trước khi nhập sản lượng!")
+        else:
+            req_img = st.session_state.get("require_image", True)
+            req_qty = st.session_state.get("require_quantity", True)
             
-        temp_filtered_df = input_df.copy()
-        if filter_date != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
-        if filter_staff != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
-
-        with s_col4:
-            available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist())
-            filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
-        
-        filtered_df = temp_filtered_df.copy()
-        if enable_hour_filter and start_t and end_t:
-            def check_time_in_range(t_str):
-                try:
-                    t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
-                    return start_t <= t_val <= end_t
-                except:
-                    return True
-            filtered_df = filtered_df[filtered_df["Thời Gian"].apply(check_time_in_range)]
-            
-        if filter_task != "Tất cả": filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
-            
-        if filter_task != "Tất cả":
-            total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
-            unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
-            st.markdown(f'<div style="background: rgba(59, 130, 246, 0.15); padding: 12px 18px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 15px; font-size: 1rem; font-weight: bold; text-align: center;">📊 Tổng số lượng của hạng mục <span style="color: #ff4b4b;">"{filter_task}"</span>: <span style="font-size: 1.2rem; color: #1d4ed8;">{total_qty_task:,.0f}</span> {unit_name}</div>', unsafe_allow_html=True)
-
-        if not filtered_df.empty:
-            col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
-            with col_del_all_2:
-                del_c1, del_c2 = st.columns([1, 1])
-                with del_c1: confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
-                with del_c2:
-                    if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
-                        if confirm_delete_all:
-                            all_filtered_ids = filtered_df["db_id"].tolist()
-                            if all_filtered_ids:
-                                update_production_log_deleted_status(all_filtered_ids, True)
-                                st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
-                                st.rerun()
-                        else:
-                            st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
-
-            # Duyệt danh sách bản ghi độc lập (Đã loại bỏ hoàn toàn phần bình luận)
-            selected_ids_to_delete = []
-            for idx, row in filtered_df.iterrows():
-                row_c1, row_c2 = st.columns([4, 1])
-                with row_c1:
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                        <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                        📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                        💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
-                        selected_ids_to_delete.append(row['db_id'])
+            with st.form("entry_form"):
+                f_col1, f_col2, f_col3 = st.columns(3)
+                with f_col1: ngay = st.date_input("Ngày làm việc", now_vn.date(), disabled=True)
+                with f_col2:
+                    staff_options = ["--- Vui lòng chọn nhân sự ---"] + active_staff
+                    nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
+                with f_col3:
+                    danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+                    hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
+                    
+                record_images = st.file_uploader("Tải ảnh đính kèm (Tối đa 4 ảnh)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="record_img")
                         
-                with row_c2:
-                    img_url_val = row.get("Hình Ảnh", "")
-                    if img_url_val and isinstance(img_url_val, str):
-                        urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
-                        if urls:
-                            sub_cols = st.columns(min(len(urls), 4), gap="small")
-                            for i, u in enumerate(urls):
-                                with sub_cols[i]:
-                                    with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
-                                    st.image(u, width=40)
-                    else:
-                        st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
-
-                st.markdown("---")
-            
-            if st.button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True, type="secondary"):
-                if selected_ids_to_delete:
-                    update_production_log_deleted_status(selected_ids_to_delete, True)
-                    st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn ít nhất một dòng cần xóa!")
-        else:
-            st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
-    else:
-        st.info("Chưa có dữ liệu sản lượng.")
-
-# ==================== CHẤM CÔNG CA LÀM VIỆC ====================
-elif feature == "attendance":
-    st.header(menu)
-    now_vn = datetime.datetime.now(VN_TIMEZONE)
-    
-    att_df = get_attendance_db()
-    checked_in_set = set(att_df[att_df["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist()) if not att_df.empty else set()
-
-    staff_lines = ""
-    for s in st.session_state.staff_list:
-        if s in checked_in_set: staff_lines += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
-        else: staff_lines += f"🔴 <b>{s}</b> - Không hoạt động<br>"
-    st.markdown(f"<div style='background: rgba(255,255,255,0.7); padding: 10px; border-radius: 6px; margin-bottom: 15px;'>{staff_lines}</div>", unsafe_allow_html=True)
-
-    with st.form("attendance_form"):
-        f1, f2, f3 = st.columns(3)
-        with f1: att_date = st.date_input("Ngày", now_vn.date())
-        with f2:
-            att_staff_options = ["--- Vui lòng chọn nhân sự ---"] + st.session_state.staff_list
-            att_staff = st.selectbox("Nhân sự", att_staff_options)
-        with f3: att_note = st.text_input("Ghi chú ca", "")
-        
-        b1, b2 = st.columns(2)
-        with b1: check_in = st.form_submit_button("🟢 Check-in (Vào ca)", use_container_width=True)
-        with b2: check_out = st.form_submit_button("🔴 Check-out (Kết thúc)", use_container_width=True)
-        
-        time_str = now_vn.strftime("%H:%M:%S")
-        if check_in:
-            if att_staff == "--- Vui lòng chọn nhân sự ---":
-                st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
-            elif att_staff in checked_in_set:
-                st.session_state["att_msg"] = ("warning", f"⚠️ Nhân sự {att_staff} đang trong ca làm việc!")
-            else:
-                add_attendance_db(att_date, att_staff, time_str, "Chưa kết thúc", 0, att_note)
-                st.session_state["att_msg"] = ("success", f"✅ Check-in thành công cho **{att_staff}** lúc **{time_str}**!")
-                st.rerun()
-        if check_out:
-            if att_staff == "--- Vui lòng chọn nhân sự ---":
-                st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
-            else:
-                res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
-                if res_check and res_check.data:
-                    target_row = res_check.data[0]
-                    row_id = target_row["id"]
-                    ngay_vao = target_row["ngay"]
-                    gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
-                    so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
-                    old_note = target_row.get("ghi_chu", "")
-                    final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
+                f_col4, f_col5 = st.columns(2)
+                with f_col4: so_luong = st.number_input("Số lượng thực tế", min_value=0, value=0, step=1)
+                with f_col5: ghi_chu = st.text_input("Ghi chú", "")
                     
-                    supabase.table("attendance").update({
-                        "gio_ra_ca": time_str, "so_phut_lam_viec": int(so_phut_thuc_te), "ghi_chu": final_note
-                    }).eq("id", row_id).execute()
-                    st.cache_data.clear()
-                    st.session_state["att_msg"] = ("success", f"✅ Check-out thành công cho **{att_staff}** (Tổng: **{so_phut_thuc_te} phút**)!")
+                submitted = st.form_submit_button("📊 Báo Cáo Sản Lượng", use_container_width=True)
+
+                if submitted:
+                    is_valid = True
+                    if nhan_su == "--- Vui lòng chọn nhân sự ---":
+                        is_valid = False
+                        st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện!")
+                    elif req_img and not record_images: 
+                        is_valid = False
+                        st.session_state["form_msg"] = ("error", "⚠️ Vui lòng tải lên ảnh đính kèm!")
+                    elif req_qty and so_luong <= 0: 
+                        is_valid = False
+                        st.session_state["form_msg"] = ("error", "⚠️ Số lượng thực tế phải lớn hơn 0!")
+                    elif record_images and len(record_images) > 4:
+                        is_valid = False
+                        st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
+
+                    if is_valid:
+                        row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
+                        he_so = float(row_rule["Hệ Số Điểm"].values[0]) if not row_rule.empty else 1.0
+                        don_vi = row_rule["Đơn Vị"].values[0] if not row_rule.empty else "Cái"
+                        tong_diem = so_luong * he_so
+                        
+                        img_urls = upload_multiple_images_to_storage(record_images) if record_images else ""
+                        current_time_str = datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S")
+                        
+                        add_production_log_db(today_str, current_time_str, nhan_su, hang_muc, img_urls, don_vi, so_luong, he_so, tong_diem, ghi_chu)
+                        st.session_state["form_msg"] = ("success", f"✅ Ghi nhận thành công cho **{nhan_su}**! Tổng điểm: **{tong_diem} điểm**")
+                        st.rerun()
+
+            if "form_msg" in st.session_state:
+                m_type, m_text = st.session_state["form_msg"]
+                if m_type == "success": st.success(m_text)
+                else: st.error(m_text)
+                del st.session_state["form_msg"]
+
+        st.markdown("---")
+        st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
+        
+        input_df = get_production_logs_db(is_deleted=False, limit_rows=100)
+        if not input_df.empty:
+            s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+            with s_col1:
+                all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
+                default_index = all_dates.index(today_str) if today_str in all_dates else 0
+                filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
+            with s_col2:
+                enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
+                if enable_hour_filter:
+                    t_col1, t_col2 = st.columns(2)
+                    with t_col1: start_t = st.time_input("Từ giờ", datetime.time(7, 30), label_visibility="collapsed")
+                    with t_col2: end_t = st.time_input("Đến giờ", datetime.time(17, 0), label_visibility="collapsed")
                 else:
-                    st.session_state["att_msg"] = ("warning", f"⚠️ Không tìm thấy mốc Vào ca nào đang mở cho **{att_staff}**!")
+                    start_t, end_t = None, None
+            with s_col3:
+                all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
+                filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
+                
+            temp_filtered_df = input_df.copy()
+            if filter_date != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
+            if filter_staff != "Tất cả": temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
+
+            with s_col4:
+                available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist())
+                filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
+            
+            filtered_df = temp_filtered_df.copy()
+            if enable_hour_filter and start_t and end_t:
+                def check_time_in_range(t_str):
+                    try:
+                        t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
+                        return start_t <= t_val <= end_t
+                    except:
+                        return True
+                filtered_df = filtered_df[filtered_df["Thời Gian"].apply(check_time_in_range)]
+                
+            if filter_task != "Tất cả": filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
+                
+            if filter_task != "Tất cả":
+                total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
+                unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
+                st.markdown(f'<div style="background: rgba(59, 130, 246, 0.15); padding: 12px 18px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 15px; font-size: 1rem; font-weight: bold; text-align: center;">📊 Tổng số lượng của hạng mục <span style="color: #ff4b4b;">"{filter_task}"</span>: <span style="font-size: 1.2rem; color: #1d4ed8;">{total_qty_task:,.0f}</span> {unit_name}</div>', unsafe_allow_html=True)
+
+            if not filtered_df.empty:
+                col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
+                with col_del_all_2:
+                    del_c1, del_c2 = st.columns([1, 1])
+                    with del_c1: confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
+                    with del_c2:
+                        if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
+                            if confirm_delete_all:
+                                all_filtered_ids = filtered_df["db_id"].tolist()
+                                if all_filtered_ids:
+                                    update_production_log_deleted_status(all_filtered_ids, True)
+                                    st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
+                                    st.rerun()
+                            else:
+                                st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
+
+                selected_ids_to_delete = []
+                for idx, row in filtered_df.iterrows():
+                    row_c1, row_c2 = st.columns([4, 1])
+                    with row_c1:
+                        st.markdown(f"""
+                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
+                            selected_ids_to_delete.append(row['db_id'])
+                            
+                    with row_c2:
+                        img_url_val = row.get("Hình Ảnh", "")
+                        if img_url_val and isinstance(img_url_val, str):
+                            urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                            if urls:
+                                sub_cols = st.columns(min(len(urls), 4), gap="small")
+                                for i, u in enumerate(urls):
+                                    with sub_cols[i]:
+                                        with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
+                                        st.image(u, width=40)
+                        else:
+                            st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+
+                    st.markdown("---")
+                
+                if st.button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True, type="secondary"):
+                    if selected_ids_to_delete:
+                        update_production_log_deleted_status(selected_ids_to_delete, True)
+                        st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn ít nhất một dòng cần xóa!")
+            else:
+                st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
+        else:
+            st.info("Chưa có dữ liệu sản lượng.")
+
+    # ==================== CHẤM CÔNG CA LÀM VIỆC ====================
+    elif feature == "attendance":
+        st.header(current_menu_name)
+        now_vn = datetime.datetime.now(VN_TIMEZONE)
+        
+        att_df = get_attendance_db()
+        checked_in_set = set(att_df[att_df["Giờ Ra Ca"] == "Chưa kết thúc"]["Nhân Sự"].tolist()) if not att_df.empty else set()
+
+        staff_lines = ""
+        for s in st.session_state.staff_list:
+            if s in checked_in_set: staff_lines += f"🟢 <b>{s}</b> - Đang Làm Việc<br>"
+            else: staff_lines += f"🔴 <b>{s}</b> - Không hoạt động<br>"
+        st.markdown(f"<div style='background: rgba(255,255,255,0.7); padding: 10px; border-radius: 6px; margin-bottom: 15px;'>{staff_lines}</div>", unsafe_allow_html=True)
+
+        with st.form("attendance_form"):
+            f1, f2, f3 = st.columns(3)
+            with f1: att_date = st.date_input("Ngày", now_vn.date())
+            with f2:
+                att_staff_options = ["--- Vui lòng chọn nhân sự ---"] + st.session_state.staff_list
+                att_staff = st.selectbox("Nhân sự", att_staff_options)
+            with f3: att_note = st.text_input("Ghi chú ca", "")
+            
+            b1, b2 = st.columns(2)
+            with b1: check_in = st.form_submit_button("🟢 Check-in (Vào ca)", use_container_width=True)
+            with b2: check_out = st.form_submit_button("🔴 Check-out (Kết thúc)", use_container_width=True)
+            
+            time_str = now_vn.strftime("%H:%M:%S")
+            if check_in:
+                if att_staff == "--- Vui lòng chọn nhân sự ---":
+                    st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
+                elif att_staff in checked_in_set:
+                    st.session_state["att_msg"] = ("warning", f"⚠️ Nhân sự {att_staff} đang trong ca làm việc!")
+                else:
+                    add_attendance_db(att_date, att_staff, time_str, "Chưa kết thúc", 0, att_note)
+                    st.session_state["att_msg"] = ("success", f"✅ Check-in thành công cho **{att_staff}** lúc **{time_str}**!")
+                    st.rerun()
+            if check_out:
+                if att_staff == "--- Vui lòng chọn nhân sự ---":
+                    st.session_state["att_msg"] = ("warning", "⚠️ Vui lòng chọn đúng tên nhân sự!")
+                else:
+                    res_check = supabase.table("attendance").select("*").eq("nhan_su", att_staff).eq("gio_ra_ca", "Chưa kết thúc").execute() if supabase else None
+                    if res_check and res_check.data:
+                        target_row = res_check.data[0]
+                        row_id = target_row["id"]
+                        ngay_vao = target_row["ngay"]
+                        gio_vao_ca = target_row.get("gio_vao_ca", "00:00:00")
+                        so_phut_thuc_te = calculate_exact_minutes(ngay_vao, gio_vao_ca, str(att_date), time_str)
+                        old_note = target_row.get("ghi_chu", "")
+                        final_note = f"{old_note} | {att_note}" if old_note and att_note else (old_note or att_note)
+                        
+                        supabase.table("attendance").update({
+                            "gio_ra_ca": time_str, "so_phut_lam_viec": int(so_phut_thuc_te), "ghi_chu": final_note
+                        }).eq("id", row_id).execute()
+                        st.cache_data.clear()
+                        st.session_state["att_msg"] = ("success", f"✅ Check-out thành công cho **{att_staff}** (Tổng: **{so_phut_thuc_te} phút**)!")
+                    else:
+                        st.session_state["att_msg"] = ("warning", f"⚠️ Không tìm thấy mốc Vào ca nào đang mở cho **{att_staff}**!")
+                    st.rerun()
+
+        if "att_msg" in st.session_state:
+            m_type, m_text = st.session_state["att_msg"]
+            if m_type == "success": st.success(m_text)
+            else: st.warning(m_text)
+            del st.session_state["att_msg"]
+
+        st.markdown("---")
+        st.subheader("📋 Lịch Sử Chấm Công")
+        if not att_df.empty:
+            st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
+            with st.form("delete_att_form"):
+                st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
+                att_ids_to_del = []
+                for idx, r in att_df.iterrows():
+                    if st.checkbox(f"Xóa dòng STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Giờ Vào Ca']} -> {r['Giờ Ra Ca']})", key=f"del_att_{r['db_id']}"):
+                        att_ids_to_del.append(r['db_id'])
+                if st.form_submit_button("Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True):
+                    if att_ids_to_del:
+                        delete_attendance_db(att_ids_to_del)
+                        st.success("Đã xóa các bản ghi chấm công thành công!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn dòng cần xóa!")
+
+    # ==================== BÁO CÁO & BIỂU ĐỒ ====================
+    elif feature == "report":
+        st.header(current_menu_name)
+        
+        col_date1, col_date2 = st.columns(2)
+        default_start = datetime.date.today().replace(day=1)
+        default_end = datetime.date.today()
+        
+        with col_date1:
+            report_start_date = st.date_input("Từ ngày", default_start)
+        with col_date2:
+            report_end_date = st.date_input("Đến ngày", default_end)
+
+        all_staff_current = st.session_state.staff_list
+        input_df = get_production_logs_by_date_range(report_start_date, report_end_date)
+        
+        if not input_df.empty:
+            summary = input_df.groupby("Nhân Sự").agg(Tổng_Số_Lượng=("Số Lượng", "sum"), Tổng_Điểm=("Tổng Điểm", "sum")).reset_index()
+        else:
+            summary = pd.DataFrame(columns=["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm"])
+
+        if not summary.empty:
+            summary = summary[summary["Nhân Sự"].isin(all_staff_current)]
+            summary = summary[summary["Tổng_Điểm"] > 0]
+        
+        total_all_points = summary["Tổng_Điểm"].sum() if not summary.empty else 0
+        if not summary.empty:
+            summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
+            summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(lambda pts: "Xuất Sắc" if pts >= 700 else ("Đạt" if pts >= 400 else "Cần Cố Gắn"))
+            summary_display = summary[["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Xếp_Loại"]].copy()
+            summary_display.columns = ["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"]
+        else:
+            summary_display = pd.DataFrame(columns=["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"])
+        
+        st.subheader("Bảng Tổng Kết Theo Nhân Sự")
+        if not summary_display.empty:
+            st.dataframe(summary_display.style.format({"Số Lượng Thực Tế": "{:,.0f}", "Tổng Điểm": "{:,.1f}", "Tỷ Lệ Đóng Góp": "{:.2%}"}), use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có dữ liệu sản lượng trong khoảng thời gian này.")
+
+        st.markdown("---")
+        st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
+        att_df = get_attendance_db()
+        att_summary = att_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index() if not att_df.empty else pd.DataFrame(columns=["Nhân Sự", "Tổng Phút Làm Việc"])
+        att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
+            
+        if not summary.empty or not att_summary.empty:
+            comparison_df = pd.merge(summary, att_summary, on="Nhân Sự", how="outer").fillna(0)
+            comparison_df = comparison_df[comparison_df["Nhân Sự"].isin(all_staff_current)]
+            comparison_df = comparison_df[(comparison_df["Tổng_Điểm"] > 0) | (comparison_df["Tổng Phút Làm Việc"] > 0)]
+            
+            if not comparison_df.empty:
+                comparison_df = comparison_df.sort_values(by="Tổng_Điểm", ascending=False).reset_index(drop=True)
+                rank_badges = []
+                current_rank_num = 1
+                for idx in range(len(comparison_df)):
+                    if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
+                        rank_badges.append(rank_badges[-1])
+                    else:
+                        current_rank_num = current_rank_num + 1 if idx > 0 else 1
+                        if current_rank_num == 1: rank_badges.append("🥇 Hạng 1")
+                        elif current_rank_num == 2: rank_badges.append("🥈 Hạng 2")
+                        elif current_rank_num == 3: rank_badges.append("🥉 Hạng 3")
+                        else: rank_badges.append(f"Top {current_rank_num}")
+                comparison_df.insert(0, "Xếp Hạng", rank_badges)
+                
+                total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
+                comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
+                comparison_df["Tỷ_Lệ_Đóng_Góp"] = comparison_df["Tổng_Điểm"].apply(lambda x: (x / total_pts_all) if (total_pts_all := comparison_df["Tổng_Điểm"].sum()) > 0 else 0)
+                comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
+                comparison_df["Số_Ngày_Làm_Việc"] = comparison_df["Tổng Phút Làm Việc"] / 480.0
+                
+                comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Số_Ngày_Làm_Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
+                comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Số ngày làm việc", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch"]
+                
+                st.dataframe(comparison_table.style.format({
+                    "Tổng Thời Gian (Phút)": "{:,.0f}", "Số ngày làm việc": "{:,.2f}", "Tỷ Lệ Thời Gian (%)": "{:.2%}",
+                    "Tổng Điểm": "{:,.1f}", "Tỷ Lệ Sản Lượng (%)": "{:.2%}", "Chênh Lệch": "{:+.2%}"
+                }), use_container_width=True, hide_index=True)
+            else:
+                st.info("Chưa có dữ liệu đối chiếu.")
+
+        st.markdown("---")
+        if not summary.empty and total_all_points > 0:
+            export_csv_df = summary_display.copy()
+            if not input_df.empty:
+                task_details = []
+                for staff_name in export_csv_df["Nhân Sự"]:
+                    staff_logs = input_df[input_df["Nhân Sự"] == staff_name]
+                    if not staff_logs.empty:
+                        grouped_tasks = staff_logs.groupby("Hạng Mục Công Việc")["Số Lượng"].sum()
+                        task_details.append(" | ".join([f"{t}: {q}" for t, q in grouped_tasks.items()]))
+                    else:
+                        task_details.append("")
+                export_csv_df["Chi Tiết Hạng Mục"] = task_details
+
+            exp_col1, exp_col2 = st.columns([1, 3])
+            with exp_col1:
+                csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
+                file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
+                if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
+                    file_url = upload_report_to_storage(file_name_val, csv_bytes)
+                    if file_url: save_export_report_db(file_name_val, file_url)
+                st.download_button("💾 Tải File Về Máy", data=csv_bytes, file_name=file_name_val, mime="text/csv", use_container_width=True)
+
+            chart_col1, chart_col2 = st.columns([0.45, 1.35])
+            with chart_col1:
+                fig_plotly = px.pie(summary, names="Nhân Sự", values="Tổng_Điểm", hole=0, color_discrete_sequence=st.session_state.chart_colors)
+                fig_plotly.update_traces(textposition='inside', textinfo='percent', textfont=dict(size=20, color='white', family='Arial Black'), pull=[0.03] * len(summary))
+                fig_plotly.update_layout(margin=dict(t=30, b=30, l=30, r=30), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, height=320)
+                st.plotly_chart(fig_plotly, use_container_width=True)
+                
+            with chart_col2:
+                st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
+                for idx, row in summary.iterrows():
+                    staff_name = row["Nhân Sự"]
+                    short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
+                    pts, pct = row["Tổng_Điểm"], row["Tỷ_Lệ_Đóng_Góp"] * 100
+                    color_code = st.session_state.chart_colors[idx % len(st.session_state.chart_colors)]
+                    st.markdown(f'<div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;"><span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span><b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)</div>', unsafe_allow_html=True)
+
+    # ==================== 5. THƯ MỤC BÁO CÁO ====================
+    elif feature == "report_folder":
+        st.header(current_menu_name)
+        reports_df = get_export_reports_db(is_deleted=False)
+        if not reports_df.empty:
+            with st.form("reports_folder_form"):
+                for idx, row in reports_df.iterrows():
+                    st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📁 File: <b>{row['Tên File']}</b><br>🔗 <a href="{row['Đường Dẫn URL']}" target="_blank">Mở liên kết trực tiếp</a></div>', unsafe_allow_html=True)
+                    reports_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn báo cáo STT {row['STT']}", key=f"rep_{row['db_id']}")
+                    st.markdown("---")
+                if st.form_submit_button("🗑️ Chuyển Các Báo Cáo Đã Chọn Vào Thùng Rác", use_container_width=True):
+                    selected_ids = reports_df[reports_df["Chọn"] == True]["db_id"].tolist()
+                    if selected_ids:
+                        update_export_report_deleted_status(selected_ids, True)
+                        st.success("Đã chuyển vào thùng rác!")
+                        st.rerun()
+                    else:
+                        st.warning("Vui lòng tích chọn báo cáo cần chuyển!")
+        else:
+            st.info("Thư mục báo cáo đang trống.")
+
+    # ==================== THAM CHIẾU CÔNG VIỆC ====================
+    elif feature == "rules":
+        st.header(current_menu_name)
+        with st.form("rules_form"):
+            edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
+            if st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True):
+                save_rules_df_db(edited_rules)
                 st.rerun()
 
-    if "att_msg" in st.session_state:
-        m_type, m_text = st.session_state["att_msg"]
-        if m_type == "success": st.success(m_text)
-        else: st.warning(m_text)
-        del st.session_state["att_msg"]
-
-    st.markdown("---")
-    st.subheader("📋 Lịch Sử Chấm Công")
-    if not att_df.empty:
-        st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
-        with st.form("delete_att_form"):
-            st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
-            att_ids_to_del = []
-            for idx, r in att_df.iterrows():
-                if st.checkbox(f"Xóa dòng STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Giờ Vào Ca']} -> {r['Giờ Ra Ca']})", key=f"del_att_{r['db_id']}"):
-                    att_ids_to_del.append(r['db_id'])
-            if st.form_submit_button("Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True):
-                if att_ids_to_del:
-                    delete_attendance_db(att_ids_to_del)
-                    st.success("Đã xóa các bản ghi chấm công thành công!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn dòng cần xóa!")
-
-# ==================== BÁO CÁO & BIỂU ĐỒ ====================
-elif feature == "report":
-    st.header(menu)
-    
-    col_date1, col_date2 = st.columns(2)
-    default_start = datetime.date.today().replace(day=1)
-    default_end = datetime.date.today()
-    
-    with col_date1:
-        report_start_date = st.date_input("Từ ngày", default_start)
-    with col_date2:
-        report_end_date = st.date_input("Đến ngày", default_end)
-
-    all_staff_current = st.session_state.staff_list
-    input_df = get_production_logs_by_date_range(report_start_date, report_end_date)
-    
-    if not input_df.empty:
-        summary = input_df.groupby("Nhân Sự").agg(Tổng_Số_Lượng=("Số Lượng", "sum"), Tổng_Điểm=("Tổng Điểm", "sum")).reset_index()
-    else:
-        summary = pd.DataFrame(columns=["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm"])
-
-    if not summary.empty:
-        summary = summary[summary["Nhân Sự"].isin(all_staff_current)]
-        summary = summary[summary["Tổng_Điểm"] > 0]
-    
-    total_all_points = summary["Tổng_Điểm"].sum() if not summary.empty else 0
-    if not summary.empty:
-        summary["Tỷ_Lệ_Đóng_Góp"] = summary["Tổng_Điểm"].apply(lambda x: (x / total_all_points) if total_all_points > 0 else 0)
-        summary["Xếp_Loại"] = summary["Tổng_Điểm"].apply(lambda pts: "Xuất Sắc" if pts >= 700 else ("Đạt" if pts >= 400 else "Cần Cố Gắn"))
-        summary_display = summary[["Nhân Sự", "Tổng_Số_Lượng", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Xếp_Loại"]].copy()
-        summary_display.columns = ["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"]
-    else:
-        summary_display = pd.DataFrame(columns=["Nhân Sự", "Số Lượng Thực Tế", "Tổng Điểm", "Tỷ Lệ Đóng Góp", "Xếp Loại"])
-    
-    st.subheader("Bảng Tổng Kết Theo Nhân Sự")
-    if not summary_display.empty:
-        st.dataframe(summary_display.style.format({"Số Lượng Thực Tế": "{:,.0f}", "Tổng Điểm": "{:,.1f}", "Tỷ Lệ Đóng Góp": "{:.2%}"}), use_container_width=True, hide_index=True)
-    else:
-        st.info("Chưa có dữ liệu sản lượng trong khoảng thời gian này.")
-
-    st.markdown("---")
-    st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
-    att_df = get_attendance_db()
-    att_summary = att_df.groupby("Nhân Sự")["Số Phút Làm Việc"].sum().reset_index() if not att_df.empty else pd.DataFrame(columns=["Nhân Sự", "Tổng Phút Làm Việc"])
-    att_summary.columns = ["Nhân Sự", "Tổng Phút Làm Việc"]
+    # ==================== THÙNG RÁC SẢN LƯỢNG ====================
+    elif feature == "trash":
+        st.header(current_menu_name)
+        trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
+        trash_reports_df = get_export_reports_db(is_deleted=True)
         
-    if not summary.empty or not att_summary.empty:
-        comparison_df = pd.merge(summary, att_summary, on="Nhân Sự", how="outer").fillna(0)
-        comparison_df = comparison_df[comparison_df["Nhân Sự"].isin(all_staff_current)]
-        comparison_df = comparison_df[(comparison_df["Tổng_Điểm"] > 0) | (comparison_df["Tổng Phút Làm Việc"] > 0)]
-        
-        if not comparison_df.empty:
-            comparison_df = comparison_df.sort_values(by="Tổng_Điểm", ascending=False).reset_index(drop=True)
-            rank_badges = []
-            current_rank_num = 1
-            for idx in range(len(comparison_df)):
-                if idx > 0 and comparison_df.loc[idx, "Tổng_Điểm"] == comparison_df.loc[idx - 1, "Tổng_Điểm"]:
-                    rank_badges.append(rank_badges[-1])
-                else:
-                    current_rank_num = current_rank_num + 1 if idx > 0 else 1
-                    if current_rank_num == 1: rank_badges.append("🥇 Hạng 1")
-                    elif current_rank_num == 2: rank_badges.append("🥈 Hạng 2")
-                    elif current_rank_num == 3: rank_badges.append("🥉 Hạng 3")
-                    else: rank_badges.append(f"Top {current_rank_num}")
-            comparison_df.insert(0, "Xếp Hạng", rank_badges)
-            
-            total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
-            comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
-            comparison_df["Tỷ_Lệ_Đóng_Góp"] = comparison_df["Tổng_Điểm"].apply(lambda x: (x / total_pts_all) if (total_pts_all := comparison_df["Tổng_Điểm"].sum()) > 0 else 0)
-            comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
-            comparison_df["Số_Ngày_Làm_Việc"] = comparison_df["Tổng Phút Làm Việc"] / 480.0
-            
-            comparison_table = comparison_df[["Xếp Hạng", "Nhân Sự", "Tổng Phút Làm Việc", "Số_Ngày_Làm_Việc", "Tỷ_Lệ_Thời_Gian", "Tổng_Điểm", "Tỷ_Lệ_Đóng_Góp", "Chênh_Lệch_%"]].copy()
-            comparison_table.columns = ["Xếp Hạng", "Nhân Sự", "Tổng Thời Gian (Phút)", "Số ngày làm việc", "Tỷ Lệ Thời Gian (%)", "Tổng Điểm", "Tỷ Lệ Sản Lượng (%)", "Chênh Lệch"]
-            
-            st.dataframe(comparison_table.style.format({
-                "Tổng Thời Gian (Phút)": "{:,.0f}", "Số ngày làm việc": "{:,.2f}", "Tỷ Lệ Thời Gian (%)": "{:.2%}",
-                "Tổng Điểm": "{:,.1f}", "Tỷ Lệ Sản Lượng (%)": "{:.2%}", "Chênh Lệch": "{:+.2%}"
-            }), use_container_width=True, hide_index=True)
-        else:
-            st.info("Chưa có dữ liệu đối chiếu.")
-
-    st.markdown("---")
-    if not summary.empty and total_all_points > 0:
-        export_csv_df = summary_display.copy()
-        if not input_df.empty:
-            task_details = []
-            for staff_name in export_csv_df["Nhân Sự"]:
-                staff_logs = input_df[input_df["Nhân Sự"] == staff_name]
-                if not staff_logs.empty:
-                    grouped_tasks = staff_logs.groupby("Hạng Mục Công Việc")["Số Lượng"].sum()
-                    task_details.append(" | ".join([f"{t}: {q}" for t, q in grouped_tasks.items()]))
-                else:
-                    task_details.append("")
-            export_csv_df["Chi Tiết Hạng Mục"] = task_details
-
-        exp_col1, exp_col2 = st.columns([1, 3])
-        with exp_col1:
-            csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
-            file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
-            if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
-                file_url = upload_report_to_storage(file_name_val, csv_bytes)
-                if file_url: save_export_report_db(file_name_val, file_url)
-            st.download_button("💾 Tải File Về Máy", data=csv_bytes, file_name=file_name_val, mime="text/csv", use_container_width=True)
-
-        chart_col1, chart_col2 = st.columns([0.45, 1.35])
-        with chart_col1:
-            fig_plotly = px.pie(summary, names="Nhân Sự", values="Tổng_Điểm", hole=0, color_discrete_sequence=st.session_state.chart_colors)
-            fig_plotly.update_traces(textposition='inside', textinfo='percent', textfont=dict(size=20, color='white', family='Arial Black'), pull=[0.03] * len(summary))
-            fig_plotly.update_layout(margin=dict(t=30, b=30, l=30, r=30), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, height=320)
-            st.plotly_chart(fig_plotly, use_container_width=True)
-            
-        with chart_col2:
-            st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
-            for idx, row in summary.iterrows():
-                staff_name = row["Nhân Sự"]
-                short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
-                pts, pct = row["Tổng_Điểm"], row["Tỷ_Lệ_Đóng_Góp"] * 100
-                color_code = st.session_state.chart_colors[idx % len(st.session_state.chart_colors)]
-                st.markdown(f'<div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;"><span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span><b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)</div>', unsafe_allow_html=True)
-
-# ==================== 5. THƯ MỤC BÁO CÁO ====================
-elif feature == "report_folder":
-    st.header(menu)
-    reports_df = get_export_reports_db(is_deleted=False)
-    if not reports_df.empty:
-        with st.form("reports_folder_form"):
-            for idx, row in reports_df.iterrows():
-                st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📁 File: <b>{row['Tên File']}</b><br>🔗 <a href="{row['Đường Dẫn URL']}" target="_blank">Mở liên kết trực tiếp</a></div>', unsafe_allow_html=True)
-                reports_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn báo cáo STT {row['STT']}", key=f"rep_{row['db_id']}")
-                st.markdown("---")
-            if st.form_submit_button("🗑️ Chuyển Các Báo Cáo Đã Chọn Vào Thùng Rác", use_container_width=True):
-                selected_ids = reports_df[reports_df["Chọn"] == True]["db_id"].tolist()
-                if selected_ids:
-                    update_export_report_deleted_status(selected_ids, True)
-                    st.success("Đã chuyển vào thùng rác!")
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng tích chọn báo cáo cần chuyển!")
-    else:
-        st.info("Thư mục báo cáo đang trống.")
-
-# ==================== THAM CHIẾU CÔNG VIỆC ====================
-elif feature == "rules":
-    st.header(menu)
-    with st.form("rules_form"):
-        edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
-        if st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True):
-            save_rules_df_db(edited_rules)
-            st.rerun()
-
-# ==================== THÙNG RÁC SẢN LƯỢNG ====================
-elif feature == "trash":
-    st.header(menu)
-    trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
-    trash_reports_df = get_export_reports_db(is_deleted=True)
-    
-    st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
-    if not trash_df.empty:
-        with st.form("trash_form"):
-            for idx, row in trash_df.iterrows():
-                st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b> | 📌 {row['Hạng Mục Công Việc']} ({row['Số Lượng']} {row['Đơn Vị']})</div>', unsafe_allow_html=True)
-                trash_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn sản lượng STT {row['STT']}", key=f"t_{row['db_id']}")
-                
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.form_submit_button("📥 Khôi Phục Đã Chọn", use_container_width=True):
-                    ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
-                    if ids:
-                        update_production_log_deleted_status(ids, False)
-                        st.success("Đã khôi phục thành công!")
-                        st.rerun()
-            with c2:
-                if st.form_submit_button("🔥 Xóa Vĩnh Viễn Đã Chọn", use_container_width=True):
-                    ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
-                    if ids:
-                        permanent_delete_db(ids)
-                        st.success("Đã xóa vĩnh viễn!")
-                        st.rerun()
-    else:
-        st.info("Thùng rác sản lượng trống.")
-
-# ==================== QUẢN LÝ THƯ MỤC & MENU ====================
-elif feature == "manage_folders":
-    st.header("Quản Lý Thư Mục & Menu")
-    with st.form("manage_menu_form"):
-        current_folder_name = st.session_state.folders[0]["folder_name"] if st.session_state.folders else "📌 Quản Lý Nghiệp Vụ"
-        new_folder_name = st.text_input("Tên thư mục", value=current_folder_name)
-        current_items = st.session_state.folders[0]["items"] if st.session_state.folders else []
-        updated_items = []
-        for i_idx, item in enumerate(current_items):
-            new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item.get("name", ""), key=f"edit_name_{i_idx}")
-            updated_items.append({"id": item.get("id", f"menu_{i_idx+1}"), "name": new_name})
-            
-        if st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True):
-            new_folders_structure = [{"folder_name": new_folder_name, "items": updated_items}]
-            st.session_state.folders = new_folders_structure
-            save_folders_db(new_folders_structure)
-            st.success("Đã lưu menu thành công!")
-            st.rerun()
-
-# ==================== CÀI ĐẶT GIAO DIỆN ====================
-elif feature == "settings_ui":
-    st.header("Cài Đặt Giao Diện & Nhân Sự")
-    with st.form("ui_settings_form"):
-        c_col1, c_col2 = st.columns(2)
-        with c_col1:
-            picker_bg = st.color_picker("Màu nền ứng dụng", value=st.session_state.bg_color)
-            picker_text = st.color_picker("Màu chữ", value=st.session_state.text_color)
-        with c_col2:
-            picker_primary = st.color_picker("Màu chủ đạo", value=st.session_state.primary_color)
-            picker_sidebar = st.color_picker("Màu nền sidebar", value=st.session_state.sidebar_bg)
-            
-        slider_opacity = st.slider("Độ mờ sidebar", 0.1, 1.0, float(st.session_state.sidebar_opacity), 0.05)
-        bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng", type=["png", "jpg", "jpeg"])
-        
-        if st.form_submit_button("💾 Lưu Cài Đặt", use_container_width=True):
-            st.session_state.bg_color = picker_bg
-            st.session_state.text_color = picker_text
-            st.session_state.primary_color = picker_primary
-            st.session_state.sidebar_bg = picker_sidebar
-            st.session_state.sidebar_opacity = slider_opacity
-            if bg_file_upload is not None:
-                if compressed_bg := compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80):
-                    st.session_state.bg_image_base64 = compressed_bg
-            save_app_settings_db({
-                "primary_color": st.session_state.primary_color, "bg_color": st.session_state.bg_color,
-                "sidebar_bg": st.session_state.sidebar_bg, "sidebar_opacity": st.session_state.sidebar_opacity,
-                "text_color": st.session_state.text_color, "bg_image_base64": st.session_state.bg_image_base64,
-                "avatar_base64": st.session_state.avatar_base64
-            })
-            st.success("Đã lưu cài đặt giao diện!")
-            st.rerun()
-
-    st.markdown("---")
-    st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
-    with st.form("staff_form"):
-        staff_df = get_staff_df_db()
-        edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["id"])
-        if st.form_submit_button("💾 Lưu Nhân Sự", use_container_width=True):
-            save_staff_list_db(edited_staff)
-            st.session_state.staff_list = get_staff_list_db()
-            st.success("Đã cập nhật danh sách nhân sự!")
-            st.rerun()
-
-# ==================== LÀM SẠCH DỮ LIỆU ====================
-elif feature == "clean_data":
-    st.header("Làm Sạch Dữ Liệu")
-    if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
-        trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
+        st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
         if not trash_df.empty:
-            permanent_delete_db(trash_df["db_id"].tolist())
-            st.success("Đã làm sạch thùng rác!")
-            st.rerun()
+            with st.form("trash_form"):
+                for idx, row in trash_df.iterrows():
+                    st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b> | 📌 {row['Hạng Mục Công Việc']} ({row['Số Lượng']} {row['Đơn Vị']})</div>', unsafe_allow_html=True)
+                    trash_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn sản lượng STT {row['STT']}", key=f"t_{row['db_id']}")
+                    
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.form_submit_button("📥 Khôi Phục Đã Chọn", use_container_width=True):
+                        ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                        if ids:
+                            update_production_log_deleted_status(ids, False)
+                            st.success("Đã khôi phục thành công!")
+                            st.rerun()
+                with c2:
+                    if st.form_submit_button("🔥 Xóa Vĩnh Viễn Đã Chọn", use_container_width=True):
+                        ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                        if ids:
+                            permanent_delete_db(ids)
+                            st.success("Đã xóa vĩnh viễn!")
+                            st.rerun()
+        else:
+            st.info("Thùng rác sản lượng trống.")
+
+    # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
+    elif feature == "manage_folders":
+        st.header("Quản Lý Thư Mục & Menu")
+        with st.form("manage_menu_form"):
+            current_folder_name = st.session_state.folders[0]["folder_name"] if st.session_state.folders else "📌 Quản Lý Nghiệp Vụ"
+            new_folder_name = st.text_input("Tên thư mục", value=current_folder_name)
+            current_items = st.session_state.folders[0]["items"] if st.session_state.folders else []
+            updated_items = []
+            for i_idx, item in enumerate(current_items):
+                new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item.get("name", ""), key=f"edit_name_{i_idx}")
+                updated_items.append({"id": item.get("id", f"menu_{i_idx+1}"), "name": new_name})
+                
+            if st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True):
+                new_folders_structure = [{"folder_name": new_folder_name, "items": updated_items}]
+                st.session_state.folders = new_folders_structure
+                save_folders_db(new_folders_structure)
+                st.success("Đã lưu menu thành công!")
+                st.rerun()
+
+    # ==================== CÀI ĐẶT GIAO DIỆN ====================
+    elif feature == "settings_ui":
+        st.header("Cài Đặt Giao Diện & Nhân Sự")
+        with st.form("ui_settings_form"):
+            c_col1, c_col2 = st.columns(2)
+            with c_col1:
+                picker_bg = st.color_picker("Màu nền ứng dụng", value=st.session_state.bg_color)
+                picker_text = st.color_picker("Màu chữ", value=st.session_state.text_color)
+            with c_col2:
+                picker_primary = st.color_picker("Màu chủ đạo", value=st.session_state.primary_color)
+                picker_sidebar = st.color_picker("Màu nền sidebar", value=st.session_state.sidebar_bg)
+                
+            slider_opacity = st.slider("Độ mờ sidebar", 0.1, 1.0, float(st.session_state.sidebar_opacity), 0.05)
+            bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng", type=["png", "jpg", "jpeg"])
+            
+            if st.form_submit_button("💾 Lưu Cài Đặt", use_container_width=True):
+                st.session_state.bg_color = picker_bg
+                st.session_state.text_color = picker_text
+                st.session_state.primary_color = picker_primary
+                st.session_state.sidebar_bg = picker_sidebar
+                st.session_state.sidebar_opacity = slider_opacity
+                if bg_file_upload is not None:
+                    if compressed_bg := compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80):
+                        st.session_state.bg_image_base64 = compressed_bg
+                save_app_settings_db({
+                    "primary_color": st.session_state.primary_color, "bg_color": st.session_state.bg_color,
+                    "sidebar_bg": st.session_state.sidebar_bg, "sidebar_opacity": st.session_state.sidebar_opacity,
+                    "text_color": st.session_state.text_color, "bg_image_base64": st.session_state.bg_image_base64,
+                    "avatar_base64": st.session_state.avatar_base64
+                })
+                st.success("Đã lưu cài đặt giao diện!")
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
+        with st.form("staff_form"):
+            staff_df = get_staff_df_db()
+            edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["id"])
+            if st.form_submit_button("💾 Lưu Nhân Sự", use_container_width=True):
+                save_staff_list_db(edited_staff)
+                st.session_state.staff_list = get_staff_list_db()
+                st.success("Đã cập nhật danh sách nhân sự!")
+                st.rerun()
+
+    # ==================== LÀM SẠCH DỮ LIỆU ====================
+    elif feature == "clean_data":
+        st.header("Làm Sạch Dữ Liệu")
+        if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
+            trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
+            if not trash_df.empty:
+                permanent_delete_db(trash_df["db_id"].tolist())
+                st.success("Đã làm sạch thùng rác!")
+                st.rerun()
+
+# Gọi fragment chính để hiển thị mượt mà không load lại sidebar
+render_main_content(menu)
