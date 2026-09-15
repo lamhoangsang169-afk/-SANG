@@ -46,37 +46,84 @@ if not st.session_state.logged_in:
     col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
     with col_l2:
         st.markdown("""
-        <div style="background: rgba(255, 255, 255, 0.9); padding: 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
-            <h2 style="text-align: center; color: #ff4b4b; margin-bottom: 20px;">🔐 ĐĂNG NHẬP HỆ THỐNG POSS</h2>
+        <div style="background: rgba(255, 255, 255, 0.9); padding: 25px 30px 10px 30px; border-radius: 12px 12px 0 0; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-bottom: none;">
+            <h2 style="text-align: center; color: #ff4b4b; margin-bottom: 0px;">🔐 HỆ THỐNG POSS</h2>
         </div>
         """, unsafe_allow_html=True)
         
-        with st.form("login_form"):
-            email_input = st.text_input("📧 Email tài khoản", placeholder="Nhập email của bạn...")
-            password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
-            submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
+        # Tạo Tab chuyển đổi giữa Đăng Nhập và Đăng Ký
+        auth_tab1, auth_tab2 = st.tabs(["🚀 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
+        
+        with auth_tab1:
+            st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
+            with st.form("login_form"):
+                email_input = st.text_input("📧 Email tài khoản", placeholder="Nhập email của bạn...")
+                password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
+                submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
+                
+                if submitted_login:
+                    if not email_input or not password_input:
+                        st.error("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!")
+                    elif supabase is None:
+                        st.error("⚠️ Chưa kết nối được tới Supabase!")
+                    else:
+                        try:
+                            res = supabase.auth.sign_in_with_password({
+                                "email": email_input.strip(),
+                                "password": password_input.strip()
+                            })
+                            if res and res.user:
+                                st.session_state.logged_in = True
+                                st.session_state.user_email = res.user.email
+                                st.query_params["auth_user"] = res.user.email
+                                st.success("✅ Đăng nhập thành công!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Email hoặc mật khẩu không chính xác!")
+                        except Exception:
+                            st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
+            st.markdown("</div>", unsafe_allow_html=True)
             
-            if submitted_login:
-                if not email_input or not password_input:
-                    st.error("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!")
-                elif supabase is None:
-                    st.error("⚠️ Chưa kết nối được tới Supabase!")
-                else:
-                    try:
-                        res = supabase.auth.sign_in_with_password({
-                            "email": email_input.strip(),
-                            "password": password_input.strip()
-                        })
-                        if res and res.user:
-                            st.session_state.logged_in = True
-                            st.session_state.user_email = res.user.email
-                            st.query_params["auth_user"] = res.user.email
-                            st.success("✅ Đăng nhập thành công!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Email hoặc mật khẩu không chính xác!")
-                    except Exception:
-                        st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
+        with auth_tab2:
+            st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
+            with st.form("register_form"):
+                reg_email = st.text_input("📧 Email đăng ký", placeholder="Nhập email mới của bạn...")
+                reg_password = st.text_input("🔑 Mật khẩu mới", type="password", placeholder="Tối thiểu 6 ký tự...")
+                reg_password_confirm = st.text_input("🔑 Xác nhận mật khẩu", type="password", placeholder="Nhập lại mật khẩu...")
+                submitted_register = st.form_submit_button("✨ Đăng Ký Tài Khoản", use_container_width=True)
+                
+                if submitted_register:
+                    if not reg_email or not reg_password:
+                        st.error("⚠️ Vui lòng nhập đầy đủ Email và Mật khẩu!")
+                    elif len(reg_password) < 6:
+                        st.error("⚠️ Mật khẩu phải có ít nhất 6 ký tự!")
+                    elif reg_password != reg_password_confirm:
+                        st.error("⚠️ Mật khẩu xác nhận không khớp!")
+                    elif supabase is None:
+                        st.error("⚠️ Chưa kết nối được tới Supabase!")
+                    else:
+                        try:
+                            res_reg = supabase.auth.sign_up({
+                                "email": reg_email.strip(),
+                                "password": reg_password.strip()
+                            })
+                            if res_reg:
+                                # Tự động tạo bản ghi phân quyền mặc định là Staff cho tài khoản mới
+                                supabase.table("user_roles").upsert({
+                                    "email": reg_email.strip().lower(),
+                                    "role": "Staff",
+                                    "perm_input": True,
+                                    "perm_report": False,
+                                    "perm_attendance": True,
+                                    "perm_rules": False
+                                }).execute()
+                                st.success("✅ Đăng ký thành công! Bạn có thể chuyển sang tab Đăng Nhập để truy cập hệ thống.")
+                            else:
+                                st.error("❌ Đăng ký thất bại. Email này có thể đã được sử dụng.")
+                        except Exception as e:
+                            st.error(f"❌ Lỗi đăng ký: {e}")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
     st.stop()
 
 # ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ĐỘNG & CHI TIẾT ====================
