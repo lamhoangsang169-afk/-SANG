@@ -601,7 +601,8 @@ def render_main_content(current_menu_name):
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.1, 1.3, 1.1, 1.1, 1.2])
+            # --- THU GỌN KÍCH THƯỚC CÁC Ô LỌC BẰNG CÁCH ĐIỀU CHỈNH TỶ LỆ CỘT ---
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.8, 1.2, 0.9, 0.9, 0.8])
             
             with f_col1:
                 all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
@@ -789,7 +790,6 @@ def render_main_content(current_menu_name):
             with st.form("delete_att_form"):
                 st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
                 
-                # THÊM TÍNH NĂNG XÓA TẤT CẢ KÈM XÁC NHẬN AN TOÀN
                 st.markdown("---")
                 confirm_del_all_att = st.checkbox("⚠️ Tôi chắc chắn muốn xóa TOÀN BỘ lịch sử chấm công", key="chk_confirm_del_all_att")
                 
