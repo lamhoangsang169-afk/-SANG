@@ -120,7 +120,7 @@ if not st.session_state.logged_in:
 
 # ==================== PHẦN CHỨC NĂNG SAU KHI ĐĂNG NHẬP ====================
 
-def compress_image_to_base64(uploaded_file, max_size=(1200, 1200), quality=75):
+def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=60):
     try:
         if uploaded_file is None:
             return None
@@ -162,8 +162,8 @@ def init_db_data():
 
 init_db_data()
 
-# ==================== CÁC HÀM CRUD & CACHING SUPABASE ====================
-@st.cache_data(show_spinner=False)
+# ==================== CÁC HÀM CRUD & CACHING SUPABASE (ĐÃ TỐI ƯU TTL) ====================
+@st.cache_data(ttl=600, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
         return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
@@ -222,7 +222,7 @@ def save_staff_list_db(edited_df):
     except Exception as e:
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def get_rules_df_db():
     if supabase is None:
         df = pd.DataFrame(master_rules)
@@ -308,7 +308,7 @@ def save_rules_df_db(df):
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def load_app_settings_db():
     if supabase is None:
         return {}
@@ -330,7 +330,7 @@ def save_app_settings_db(settings_dict):
     except Exception as e:
         st.error(f"Lỗi lưu cấu hình: {e}")
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def load_folders_db():
     if supabase is None:
         return default_folders
@@ -400,11 +400,12 @@ def add_production_log_db(ngay, thoi_gian, nhan_su, hang_muc, hinh_anh_url, don_
     except Exception:
         pass
 
-def get_production_logs_db(is_deleted=False):
+@st.cache_data(ttl=300, show_spinner=False)
+def get_production_logs_db(is_deleted=False, limit_rows=200):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Thời Gian", "Nhân Sự", "Hạng Mục Công Việc", "Hình Ảnh", "Đơn Vị", "Số Lượng", "Hệ Số Điểm", "Tổng Điểm", "Ghi Chú"])
     try:
-        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=False).execute()
+        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=True).limit(limit_rows).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
@@ -420,8 +421,7 @@ def get_production_logs_db(is_deleted=False):
                 "tong_diem": "Tổng Điểm",
                 "ghi_chu": "Ghi Chú"
             })
-            df.insert(0, "STT", range(1, len(df) + 1))
-            df = df.iloc[::-1].reset_index(drop=True)
+            df.insert(0, "STT", range(len(df), 0, -1))
             return df
     except Exception:
         pass
@@ -447,11 +447,12 @@ def permanent_delete_db(db_ids):
     except Exception:
         pass
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_attendance_db():
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Ngày", "Nhân Sự", "Giờ Vào Ca", "Giờ Ra Ca", "Số Phút Làm Việc", "Ghi Chú"])
     try:
-        res = supabase.table("attendance").select("*").order("id", desc=True).execute()
+        res = supabase.table("attendance").select("*").order("id", desc=True).limit(100).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
@@ -513,11 +514,12 @@ def save_export_report_db(ten_file, file_url):
     except Exception as e:
         st.error(f"Lỗi khi lưu vào bảng export_reports: {e}")
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
         return pd.DataFrame(columns=["STT", "db_id", "Tên File", "Ngày Tạo", "Đường Dẫn URL"])
     try:
-        res = supabase.table("export_reports").select("*").eq("is_deleted", is_deleted).order("id", desc=True).execute()
+        res = supabase.table("export_reports").select("*").eq("is_deleted", is_deleted).order("id", desc=True).limit(50).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
@@ -845,9 +847,7 @@ if feature == "input_production":
             with f_col1:
                 ngay = st.date_input("Ngày làm việc", now_vn.date(), disabled=True)
             with f_col2:
-                # 🛠️ GIẢI PHÁP: Thêm mục trống "-- Vui lòng chọn nhân sự --" làm mặc định bắt buộc chọn
-                staff_options = ["-- Vui lòng chọn nhân sự --"] + active_staff
-                nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
+                nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
             with f_col3:
                 danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
@@ -864,20 +864,14 @@ if feature == "input_production":
 
             if submitted:
                 is_valid = True
-                
-                # 🛠️ KIỂM TRA: Nếu nhân sự vẫn để giá trị mặc định thì báo lỗi
-                if nhan_su == "-- Vui lòng chọn nhân sự --":
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện trước khi báo cáo!")
-                elif req_img and not record_images: 
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng tải lên ảnh đính kèm!")
-                elif req_qty and so_luong <= 0: 
-                    is_valid = False
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng nhập số lượng > 0!")
-                elif record_images and len(record_images) > 4:
+                if req_img and not record_images: is_valid = False
+                if req_qty and so_luong <= 0: is_valid = False
+                if record_images and len(record_images) > 4:
                     is_valid = False
                     st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
+
+                if not is_valid and "form_msg" not in st.session_state:
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
 
                 if is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
@@ -948,6 +942,7 @@ if feature == "input_production":
         if filter_task != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
+        # ==================== Ô HIỂN THỊ TỔNG SỐ LƯỢNG DỰA THEO HẠNG MỤC ====================
         if filter_task != "Tất cả":
             total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
             unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
@@ -1108,7 +1103,7 @@ elif feature == "report":
     
     all_staff_current = st.session_state.staff_list
     
-    input_df = get_production_logs_db(is_deleted=False)
+    input_df = get_production_logs_db(is_deleted=False, limit_rows=1000)
     if not input_df.empty:
         summary = input_df.groupby("Nhân Sự").agg(
             Tổng_Số_Lượng=("Số Lượng", "sum"),
@@ -1353,7 +1348,7 @@ elif feature == "rules":
 # ==================== THÙNG RÁC SẢN LƯỢNG ====================
 elif feature == "trash":
     st.header(menu)
-    trash_df = get_production_logs_db(is_deleted=True)
+    trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
     trash_reports_df = get_export_reports_db(is_deleted=True)
     
     st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
@@ -1564,7 +1559,7 @@ elif feature == "settings_ui":
 elif feature == "clean_data":
     st.header("Làm Sạch Dữ Liệu")
     if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
-        trash_df = get_production_logs_db(is_deleted=True)
+        trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
         if not trash_df.empty:
             permanent_delete_db(trash_df["db_id"].tolist())
             st.success("Đã làm sạch thùng rác!")
