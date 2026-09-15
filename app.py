@@ -22,11 +22,16 @@ SUPABASE_URL = "https://xbozutjkiywnaoiluahq.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhib3p1dGpraXl3bmFvaWx1YWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMjUwODIsImV4cCI6MjEwNDYwMTA4Mn0.ByzJ_xC9Cl3uUACmiIYD1xrHtDEs-fQBKZ4wSX-nlWc"
 
 supabase = None
+is_supabase_connected = False
 if HAS_SUPABASE_LIB and SUPABASE_KEY != "YOUR_SUPABASE_ANON_KEY":
     try:
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # Kiểm tra ping nhanh tới supabase
+        test_ping = supabase.table("staff").select("id").limit(1).execute()
+        is_supabase_connected = True
     except Exception:
         supabase = None
+        is_supabase_connected = False
 
 class VietnamTz(datetime.tzinfo):
     def utcoffset(self, dt):
@@ -799,6 +804,21 @@ with st.sidebar:
     if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
         st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
         st.rerun()
+
+    st.markdown("---")
+    # ==================== HIỂN THỊ TRẠNG THÁI KẾT NỐI SUPABASE ====================
+    if is_supabase_connected:
+        st.markdown("""
+        <div style="background: rgba(16, 185, 129, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.85rem; font-weight: bold; color: #047857;">
+            🟢 Đã kết nối Supabase
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c;">
+            🔴 Chưa kết nối Supabase
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
