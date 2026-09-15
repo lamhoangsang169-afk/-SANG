@@ -40,13 +40,13 @@ def hash_password(password):
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-if "user_name" not in st.session_state:
-    st.session_state.user_name = ""
+if "user_identifier" not in st.session_state:
+    st.session_state.user_identifier = ""
 
 params = st.query_params
 if not st.session_state.logged_in and "auth_user" in params:
     st.session_state.logged_in = True
-    st.session_state.user_name = params["auth_user"]
+    st.session_state.user_identifier = params["auth_user"]
 
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -61,43 +61,62 @@ if not st.session_state.logged_in:
         
         st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
         with st.form("login_form"):
-            staff_list_opt = ["--- Chọn họ và tên ---"] + get_staff_list_db()
-            login_name = st.selectbox("👤 Họ và tên nhân sự", staff_list_opt)
+            login_type = st.radio("Loại tài khoản đăng nhập", ["👤 Nhân viên (Chọn tên)", "👑 Quản trị viên (Nhập Email Admin)"], horizontal=True)
+            
+            login_name = ""
+            email_input = ""
+            
+            if "Nhân viên" in login_type:
+                staff_list_opt = ["--- Chọn họ và tên ---"] + get_staff_list_db()
+                login_name = st.selectbox("Họ và tên nhân sự", staff_list_opt)
+            else:
+                email_input = st.text_input("📧 Email Admin", placeholder="lamhoangsang169@gmail.com")
+                
             password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
             remember_me = st.checkbox("📌 Ghi nhớ đăng nhập trên thiết bị này", value=True)
             
             submitted_login = st.form_submit_button("🚀 Đăng Nhập Hệ Thống", use_container_width=True)
             
             if submitted_login:
-                if login_name == "--- Chọn họ và tên ---" or not password_input:
-                    st.error("⚠️ Vui lòng chọn họ tên và nhập mật khẩu!")
-                elif supabase is None:
+                if supabase is None:
                     st.error("⚠️ Chưa kết nối được tới cơ sở dữ liệu!")
                 else:
                     try:
-                        # Tài khoản Admin mặc định hệ thống
-                        if login_name.lower().strip() in ["lam hoang sang", "lâm hoàng sang"] and password_input == "123456":
-                            st.session_state.logged_in = True
-                            st.session_state.user_name = login_name
-                            if remember_me:
-                                st.query_params["auth_user"] = login_name
-                            st.success("✅ Đăng nhập Admin thành công!")
-                            st.rerun()
-                        else:
-                            res = supabase.table("user_accounts").select("*").eq("name", login_name).execute()
-                            if res.data and len(res.data) > 0:
-                                user_record = res.data[0]
-                                if user_record["password_hash"] == hash_password(password_input):
-                                    st.session_state.logged_in = True
-                                    st.session_state.user_name = login_name
-                                    if remember_me:
-                                        st.query_params["auth_user"] = login_name
-                                    st.success("✅ Đăng nhập thành công!")
-                                    st.rerun()
-                                else:
-                                    st.error("❌ Mật khẩu không chính xác!")
+                        if "Quản trị viên" in login_type:
+                            # Đăng nhập Admin bằng Email qua Supabase Auth cũ
+                            clean_email = email_input.strip()
+                            res = supabase.auth.sign_in_with_password({
+                                "email": clean_email,
+                                "password": password_input.strip()
+                            })
+                            if res and res.user:
+                                st.session_state.logged_in = True
+                                st.session_state.user_identifier = res.user.email
+                                if remember_me:
+                                    st.query_params["auth_user"] = res.user.email
+                                st.success("✅ Đăng nhập Admin thành công!")
+                                st.rerun()
                             else:
-                                st.error("❌ Tài khoản chưa được Quản trị viên cấp. Vui lòng liên hệ Admin!")
+                                st.error("❌ Email hoặc mật khẩu Admin không chính xác!")
+                        else:
+                            # Đăng nhập Nhân viên qua bảng nội bộ user_accounts
+                            if login_name == "--- Chọn họ và tên ---" or not password_input:
+                                st.error("⚠️ Vui lòng chọn họ tên và nhập mật khẩu!")
+                            else:
+                                res = supabase.table("user_accounts").select("*").eq("name", login_name).execute()
+                                if res.data and len(res.data) > 0:
+                                    user_record = res.data[0]
+                                    if user_record["password_hash"] == hash_password(password_input):
+                                        st.session_state.logged_in = True
+                                        st.session_state.user_identifier = login_name
+                                        if remember_me:
+                                            st.query_params["auth_user"] = login_name
+                                        st.success("✅ Đăng nhập thành công!")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Mật khẩu không chính xác!")
+                                else:
+                                    st.error("❌ Tài khoản chưa được Quản trị viên cấp mật khẩu!")
                     except Exception as e:
                         st.error(f"❌ Lỗi đăng nhập: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -105,7 +124,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ====================
-def get_user_permissions(name):
+def get_user_permissions(identifier):
     default_perms = {
         "role": "Staff",
         "perm_input": False,
@@ -113,10 +132,13 @@ def get_user_permissions(name):
         "perm_attendance": True,
         "perm_rules": False
     }
-    if not name or supabase is None:
+    if not identifier or supabase is None:
         return default_perms
     
-    if name.lower().strip() in ["lam hoang sang", "lâm hoàng sang"]:
+    clean_id = str(identifier).strip().lower()
+    
+    # Nhận diện tài khoản Admin cũ bằng email
+    if clean_id == "lamhoangsang169@gmail.com":
         return {
             "role": "Admin",
             "perm_input": True,
@@ -126,7 +148,7 @@ def get_user_permissions(name):
         }
 
     try:
-        res = supabase.table("user_accounts").select("*").eq("name", name).execute()
+        res = supabase.table("user_accounts").select("*").eq("name", identifier).execute()
         if res.data and len(res.data) > 0:
             row = res.data[0]
             return {
@@ -140,7 +162,7 @@ def get_user_permissions(name):
         pass
     return default_perms
 
-user_perms = get_user_permissions(st.session_state.user_name)
+user_perms = get_user_permissions(st.session_state.user_identifier)
 current_user_role = user_perms["role"]
 
 # ==================== CÁC HÀM CRUD BỔ SUNG TRONG APP ====================
@@ -505,11 +527,14 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
     role_badge = "👑 Quản Trị Viên (Admin)" if current_user_role == "Admin" else ("🛡️ Quản Lý" if current_user_role == "Manager" else "👤 Nhân Viên")
-    st.markdown(f"<small>👤 <b>{st.session_state.user_name}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
+    st.markdown(f"<small>👤 <b>{st.session_state.user_identifier}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
     
     if st.button("🚪 Đăng Xuất", use_container_width=True):
+        if current_user_role == "Admin" and supabase is not None:
+            try: supabase.auth.sign_out()
+            except Exception: pass
         st.session_state.logged_in = False
-        st.session_state.user_name = ""
+        st.session_state.user_identifier = ""
         if "auth_user" in st.query_params: del st.query_params["auth_user"]
         st.rerun()
 
@@ -1195,14 +1220,13 @@ def render_main_content(current_menu_name):
             st.markdown("Tại đây bạn có thể tạo tài khoản, đổi mật khẩu và cấp quyền trực tiếp cho từng nhân sự:")
             
             try:
-                # Tự động đồng bộ danh sách nhân sự sang bảng user_accounts nếu chưa có
                 staff_list_names = get_staff_list_db()
                 for s_name in staff_list_names:
                     chk = supabase.table("user_accounts").select("*").eq("name", s_name).execute()
                     if not chk.data:
                         supabase.table("user_accounts").insert({
                             "name": s_name,
-                            "password_hash": hash_password("123456"), # Mật khẩu mặc định ban đầu là 123456
+                            "password_hash": hash_password("123456"),
                             "role": "Staff",
                             "perm_input": False,
                             "perm_report": False,
