@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import plotly.express as px
 import base64
+import hashlib
 import unicodedata
 import re
 
@@ -32,27 +33,20 @@ st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊"
 
 init_db_data()
 
-# Hàm chuyển đổi họ tên có dấu thành dạng email chuẩn có đuôi .com để khớp Supabase Auth
-def convert_name_to_email(full_name):
-    clean_name = unicodedata.normalize('NFD', full_name)
-    clean_name = ''.join([c for c in clean_name if unicodedata.category(c) != 'Mn'])
-    clean_name = clean_name.replace('đ', 'd').replace('Đ', 'D')
-    clean_name = re.sub(r'[^a-zA-Z0-9\s]', '', clean_name)
-    username = "".join(clean_name.lower().split())
-    if not username:
-        username = "user"
-    return f"{username}@posssystem.com"
+# Hàm mã hóa mật khẩu bảo mật
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-if "user_email" not in st.session_state:
-    st.session_state.user_email = ""
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
 
 params = st.query_params
 if not st.session_state.logged_in and "auth_user" in params:
     st.session_state.logged_in = True
-    st.session_state.user_email = params["auth_user"]
+    st.session_state.user_name = params["auth_user"]
 
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -61,97 +55,57 @@ if not st.session_state.logged_in:
         st.markdown("""
         <div style="background: rgba(255, 255, 255, 0.9); padding: 25px 30px 10px 30px; border-radius: 12px 12px 0 0; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-bottom: none;">
             <h2 style="text-align: center; color: #ff4b4b; margin-bottom: 0px;">🔐 HỆ THỐNG POSS</h2>
+            <p style="text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 5px;">Đăng nhập hệ thống nội bộ</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Tạo Tab chuyển đổi giữa Đăng Nhập và Đăng Ký
-        auth_tab1, auth_tab2 = st.tabs(["🚀 Đăng Nhập", "📝 Đăng Ký Tài Khoản"])
-        
-        with auth_tab1:
-            st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
-            with st.form("login_form"):
-                email_input = st.text_input("📧 Email hoặc Họ Tên tài khoản", placeholder="Nhập email hoặc họ tên của bạn...")
-                password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
-                
-                remember_me = st.checkbox("📌 Ghi nhớ đăng nhập trên thiết bị này", value=True)
-                
-                submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
-                
-                if submitted_login:
-                    if not email_input or not password_input:
-                        st.error("⚠️ Vui lòng nhập đầy đủ thông tin tài khoản và mật khẩu!")
-                    elif supabase is None:
-                        st.error("⚠️ Chưa kết nối được tới Supabase!")
-                    else:
-                        try:
-                            login_val = email_input.strip()
-                            if "@" not in login_val:
-                                login_val = convert_name_to_email(login_val)
-                                
-                            res = supabase.auth.sign_in_with_password({
-                                "email": login_val,
-                                "password": password_input.strip()
-                            })
-                            if res and res.user:
-                                st.session_state.logged_in = True
-                                st.session_state.user_email = res.user.email
-                                
-                                if remember_me:
-                                    st.query_params["auth_user"] = res.user.email
-                                    
-                                st.success("✅ Đăng nhập thành công!")
-                                st.rerun()
-                            else:
-                                st.error("❌ Tài khoản hoặc mật khẩu không chính xác!")
-                        except Exception:
-                            st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            staff_list_opt = ["--- Chọn họ và tên ---"] + get_staff_list_db()
+            login_name = st.selectbox("👤 Họ và tên nhân sự", staff_list_opt)
+            password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
+            remember_me = st.checkbox("📌 Ghi nhớ đăng nhập trên thiết bị này", value=True)
             
-        with auth_tab2:
-            st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
-            with st.form("register_form"):
-                reg_fullname = st.text_input("👤 Họ và tên đầy đủ", placeholder="Ví dụ: Lâm Minh Khang...")
-                reg_password = st.text_input("🔑 Mật khẩu mới", type="password", placeholder="Tối thiểu 6 ký tự...")
-                reg_password_confirm = st.text_input("🔑 Xác nhận mật khẩu", type="password", placeholder="Nhập lại mật khẩu...")
-                submitted_register = st.form_submit_button("✨ Đăng Ký Tài Khoản", use_container_width=True)
-                
-                if submitted_register:
-                    if not reg_fullname or not reg_password:
-                        st.error("⚠️ Vui lòng nhập đầy đủ Họ Tên và Mật khẩu!")
-                    elif len(reg_password) < 6:
-                        st.error("⚠️ Mật khẩu phải có ít nhất 6 ký tự!")
-                    elif reg_password != reg_password_confirm:
-                        st.error("⚠️ Mật khẩu xác nhận không khớp!")
-                    elif supabase is None:
-                        st.error("⚠️ Chưa kết nối được tới Supabase!")
-                    else:
-                        try:
-                            generated_email = convert_name_to_email(reg_fullname)
-                            
-                            res_reg = supabase.auth.sign_up({
-                                "email": generated_email,
-                                "password": reg_password.strip()
-                            })
-                            if res_reg:
-                                supabase.table("user_roles").upsert({
-                                    "email": generated_email,
-                                    "role": "Staff",
-                                    "perm_input": False,
-                                    "perm_report": False,
-                                    "perm_attendance": True,
-                                    "perm_rules": False
-                                }).execute()
-                                st.success(f"✅ Đăng ký thành công với tên **{reg_fullname}**! Vui lòng chuyển sang tab Đăng Nhập.")
+            submitted_login = st.form_submit_button("🚀 Đăng Nhập Hệ Thống", use_container_width=True)
+            
+            if submitted_login:
+                if login_name == "--- Chọn họ và tên ---" or not password_input:
+                    st.error("⚠️ Vui lòng chọn họ tên và nhập mật khẩu!")
+                elif supabase is None:
+                    st.error("⚠️ Chưa kết nối được tới cơ sở dữ liệu!")
+                else:
+                    try:
+                        # Tài khoản Admin mặc định hệ thống
+                        if login_name.lower().strip() in ["lam hoang sang", "lâm hoàng sang"] and password_input == "123456":
+                            st.session_state.logged_in = True
+                            st.session_state.user_name = login_name
+                            if remember_me:
+                                st.query_params["auth_user"] = login_name
+                            st.success("✅ Đăng nhập Admin thành công!")
+                            st.rerun()
+                        else:
+                            res = supabase.table("user_accounts").select("*").eq("name", login_name).execute()
+                            if res.data and len(res.data) > 0:
+                                user_record = res.data[0]
+                                if user_record["password_hash"] == hash_password(password_input):
+                                    st.session_state.logged_in = True
+                                    st.session_state.user_name = login_name
+                                    if remember_me:
+                                        st.query_params["auth_user"] = login_name
+                                    st.success("✅ Đăng nhập thành công!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Mật khẩu không chính xác!")
                             else:
-                                st.error("❌ Đăng ký thất bại. Tên này có thể đã được sử dụng.")
-                        except Exception as e:
-                            st.error(f"❌ Lỗi đăng ký: {e}")
-            st.markdown("</div>", unsafe_allow_html=True)
+                                st.error("❌ Tài khoản chưa được Quản trị viên cấp. Vui lòng liên hệ Admin!")
+                    except Exception as e:
+                        st.error(f"❌ Lỗi đăng nhập: {e}")
+        st.markdown("</div>", unsafe_allow_html=True)
             
     st.stop()
 
-# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ĐỘNG & CHI TIẾT ====================
-def get_user_permissions(email):
+# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ====================
+def get_user_permissions(name):
     default_perms = {
         "role": "Staff",
         "perm_input": False,
@@ -159,12 +113,10 @@ def get_user_permissions(email):
         "perm_attendance": True,
         "perm_rules": False
     }
-    if not email or supabase is None:
+    if not name or supabase is None:
         return default_perms
     
-    clean_email = email.strip().lower()
-    
-    if clean_email == "lamhoangsang169@gmail.com":
+    if name.lower().strip() in ["lam hoang sang", "lâm hoàng sang"]:
         return {
             "role": "Admin",
             "perm_input": True,
@@ -174,7 +126,7 @@ def get_user_permissions(email):
         }
 
     try:
-        res = supabase.table("user_roles").select("*").eq("email", clean_email).execute()
+        res = supabase.table("user_accounts").select("*").eq("name", name).execute()
         if res.data and len(res.data) > 0:
             row = res.data[0]
             return {
@@ -184,21 +136,11 @@ def get_user_permissions(email):
                 "perm_attendance": row.get("perm_attendance", True),
                 "perm_rules": row.get("perm_rules", False)
             }
-        else:
-            supabase.table("user_roles").upsert({
-                "email": clean_email, 
-                "role": "Staff",
-                "perm_input": False,
-                "perm_report": False,
-                "perm_attendance": True,
-                "perm_rules": False
-            }).execute()
-            return default_perms
     except Exception:
         pass
     return default_perms
 
-user_perms = get_user_permissions(st.session_state.user_email)
+user_perms = get_user_permissions(st.session_state.user_name)
 current_user_role = user_perms["role"]
 
 # ==================== CÁC HÀM CRUD BỔ SUNG TRONG APP ====================
@@ -271,7 +213,6 @@ def save_rules_df_db(df):
                 rid = int(row_id)
                 old_info = old_rules_map.get(rid, {"hang_muc": "", "he_so_diem": 1.0})
                 old_hang_muc = old_info["hang_muc"]
-                old_he_so = old_info["he_so_diem"]
                 
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
@@ -282,7 +223,6 @@ def save_rules_df_db(df):
                     }).eq("hang_muc_cong_viec", old_hang_muc).eq("is_deleted", False).execute()
                 
                 target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
-                
                 res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).eq("is_deleted", False).execute()
                 if res_logs.data:
                     for lg in res_logs.data:
@@ -303,7 +243,7 @@ def save_rules_df_db(df):
             supabase.table("rules").delete().eq("id", del_id).execute()
             
         st.cache_data.clear()
-        st.success("Đã đồng bộ định mức và cập nhật lại toàn bộ điểm số cũ thành công!")
+        st.success("Đã đồng bộ định mức thành công!")
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
@@ -565,14 +505,11 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
     role_badge = "👑 Quản Trị Viên (Admin)" if current_user_role == "Admin" else ("🛡️ Quản Lý" if current_user_role == "Manager" else "👤 Nhân Viên")
-    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
+    st.markdown(f"<small>👤 <b>{st.session_state.user_name}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
     
     if st.button("🚪 Đăng Xuất", use_container_width=True):
-        if supabase is not None:
-            try: supabase.auth.sign_out()
-            except Exception: pass
         st.session_state.logged_in = False
-        st.session_state.user_email = ""
+        st.session_state.user_name = ""
         if "auth_user" in st.query_params: del st.query_params["auth_user"]
         st.rerun()
 
@@ -617,8 +554,8 @@ with st.sidebar:
         if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
             st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
             st.rerun()
-        if st.button("🛡️ Quản Lý Phân Quyền", use_container_width=True):
-            st.session_state.current_menu = "🛡️ Quản Lý Phân Quyền"
+        if st.button("🛡️ Quản Lý Tài Khoản & Phân Quyền", use_container_width=True):
+            st.session_state.current_menu = "🛡️ Quản Lý Tài Khoản & Phân Quyền"
             st.rerun()
         if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
             st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
@@ -643,7 +580,7 @@ def get_feature_type(menu_name):
     if menu_name == "⏱️ Chấm Công Ca Làm Việc": return "attendance"
     if menu_name == "📁 Quản Lý Thư Mục & Menu": return "manage_folders"
     if menu_name == "🎨 Cài Đặt Giao Diện": return "settings_ui"
-    if menu_name == "🛡️ Quản Lý Phân Quyền": return "manage_roles"
+    if menu_name == "🛡️ Quản Lý Tài Khoản & Phân Quyền": return "manage_roles"
     if menu_name == "🧹 Làm Sạch Dữ Liệu": return "clean_data"
     for folder in st.session_state.folders:
         for item in folder["items"]:
@@ -723,7 +660,7 @@ def render_main_content(current_menu_name):
                             st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
                         elif "công việc phát sinh" in cleaned_hang_muc.lower() and not cleaned_ghi_chu:
                             is_valid = False
-                            st.session_state["form_msg"] = ("error", "⚠️ Bắt buộc phải nhập nội dung vào phần Ghi chú khi chọn 'Công việc phát sinh ( TP_xác nhận )'!")
+                            st.session_state["form_msg"] = ("error", "⚠️ Bắt buộc phải nhập nội dung vào phần Ghi chú khi chọn 'Công việc phát sinh'!")
 
                         if is_valid:
                             row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
@@ -1154,7 +1091,6 @@ def render_main_content(current_menu_name):
             st.warning("🔒 Tính năng thùng rác và xóa vĩnh viễn chỉ dành cho Quản trị viên (Admin).")
         else:
             trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
-            trash_reports_df = get_export_reports_db(is_deleted=True)
             
             st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
             if not trash_df.empty:
@@ -1250,25 +1186,41 @@ def render_main_content(current_menu_name):
                     st.success("Đã cập nhật danh sách nhân sự!")
                     st.rerun()
 
-    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN CHI TIẾT (DÀNH CHO ADMIN) ====================
+    # ==================== 🛡️ QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN KẾT HỢP ====================
     elif feature == "manage_roles":
-        st.header("🛡️ Quản Lý Phân Quyền Chi Tiết Tài Khoản")
+        st.header("🛡️ Quản Lý Tài Khoản & Phân Quyền Chi Tiết")
         if current_user_role != "Admin":
-            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý phân quyền!")
+            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý tài khoản và phân quyền!")
         else:
-            st.markdown("Tích chọn các quyền hiển thị chức năng cho từng tài khoản nhân viên trực tiếp trên bảng bên dưới:")
+            st.markdown("Tại đây bạn có thể tạo tài khoản, đổi mật khẩu và cấp quyền trực tiếp cho từng nhân sự:")
             
             try:
-                res_roles = supabase.table("user_roles").select("*").execute()
+                # Tự động đồng bộ danh sách nhân sự sang bảng user_accounts nếu chưa có
+                staff_list_names = get_staff_list_db()
+                for s_name in staff_list_names:
+                    chk = supabase.table("user_accounts").select("*").eq("name", s_name).execute()
+                    if not chk.data:
+                        supabase.table("user_accounts").insert({
+                            "name": s_name,
+                            "password_hash": hash_password("123456"), # Mật khẩu mặc định ban đầu là 123456
+                            "role": "Staff",
+                            "perm_input": False,
+                            "perm_report": False,
+                            "perm_attendance": True,
+                            "perm_rules": False
+                        }).execute()
+
+                res_roles = supabase.table("user_accounts").select("*").execute()
                 if res_roles.data:
                     roles_df = pd.DataFrame(res_roles.data)
                     
-                    with st.form("manage_roles_form"):
+                    with st.form("manage_accounts_form"):
                         edited_roles_df = st.data_editor(
                             roles_df,
                             column_config={
                                 "id": "ID",
-                                "email": st.column_config.TextColumn("Email tài khoản", disabled=True),
+                                "name": st.column_config.TextColumn("Họ và tên nhân sự", disabled=True),
+                                "password_hash": st.column_config.TextColumn("Mật khẩu mã hóa (Hashed)", disabled=True),
                                 "role": st.column_config.SelectboxColumn("Vai trò", options=["Admin", "Manager", "Staff"], required=True),
                                 "perm_input": st.column_config.CheckboxColumn("Nhập sản lượng"),
                                 "perm_report": st.column_config.CheckboxColumn("Xem báo cáo"),
@@ -1279,10 +1231,33 @@ def render_main_content(current_menu_name):
                             use_container_width=True
                         )
                         
-                        if st.form_submit_button("💾 Lưu Cập Nhật Phân Quyền", use_container_width=True):
+                        st.markdown("---")
+                        st.markdown("##### 🔑 Đổi mật khẩu nhanh cho nhân sự")
+                        col_p1, col_p2, col_p3 = st.columns([1.5, 1.5, 1])
+                        with col_p1:
+                            target_staff_pw = st.selectbox("Chọn nhân sự cần đổi mật khẩu", ["--- Chọn nhân sự ---"] + staff_list_names)
+                        with col_p2:
+                            new_staff_pass = st.text_input("Mật khẩu mới", type="password", placeholder="Nhập mật khẩu mới...")
+                        with col_p3:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            btn_update_pw = st.form_submit_button("Cập Nhật Mật Khẩu", use_container_width=True)
+
+                        if btn_update_pw:
+                            if target_staff_pw != "--- Chọn nhân sự ---" and new_staff_pass:
+                                if len(new_staff_pass) >= 6:
+                                    supabase.table("user_accounts").update({
+                                        "password_hash": hash_password(new_staff_pass)
+                                    }).eq("name", target_staff_pw).execute()
+                                    st.success(f"✅ Đã đổi mật khẩu thành công cho **{target_staff_pw}**!")
+                                else:
+                                    st.error("⚠️ Mật khẩu phải có ít nhất 6 ký tự!")
+                            else:
+                                st.warning("⚠️ Vui lòng chọn nhân sự và nhập mật khẩu mới!")
+
+                        if st.form_submit_button("💾 Lưu Cập Nhật Quyền Hạn Hàng Loạt", use_container_width=True):
                             for _, row in edited_roles_df.iterrows():
                                 r_id = row["id"]
-                                supabase.table("user_roles").update({
+                                supabase.table("user_accounts").update({
                                     "role": row["role"],
                                     "perm_input": bool(row["perm_input"]),
                                     "perm_report": bool(row["perm_report"]),
@@ -1293,9 +1268,9 @@ def render_main_content(current_menu_name):
                             st.success("✅ Đã cập nhật quyền hạn chi tiết thành công!")
                             st.rerun()
                 else:
-                    st.info("Chưa có tài khoản nào đăng nhập.")
+                    st.info("Chưa có tài khoản nhân sự nào trong hệ thống.")
             except Exception as e:
-                st.error(f"Lỗi tải danh sách quyền: {e}")
+                st.error(f"Lỗi quản lý tài khoản: {e}")
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
