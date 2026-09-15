@@ -845,7 +845,9 @@ if feature == "input_production":
             with f_col1:
                 ngay = st.date_input("Ngày làm việc", now_vn.date(), disabled=True)
             with f_col2:
-                nhan_su = st.selectbox("Nhân sự thực hiện", active_staff)
+                # 🛠️ GIẢI PHÁP: Thêm mục trống "-- Vui lòng chọn nhân sự --" làm mặc định bắt buộc chọn
+                staff_options = ["-- Vui lòng chọn nhân sự --"] + active_staff
+                nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
             with f_col3:
                 danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                 hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
@@ -862,14 +864,20 @@ if feature == "input_production":
 
             if submitted:
                 is_valid = True
-                if req_img and not record_images: is_valid = False
-                if req_qty and so_luong <= 0: is_valid = False
-                if record_images and len(record_images) > 4:
+                
+                # 🛠️ KIỂM TRA: Nếu nhân sự vẫn để giá trị mặc định thì báo lỗi
+                if nhan_su == "-- Vui lòng chọn nhân sự --":
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện trước khi báo cáo!")
+                elif req_img and not record_images: 
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng tải lên ảnh đính kèm!")
+                elif req_qty and so_luong <= 0: 
+                    is_valid = False
+                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng nhập số lượng > 0!")
+                elif record_images and len(record_images) > 4:
                     is_valid = False
                     st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
-
-                if not is_valid and "form_msg" not in st.session_state:
-                    st.session_state["form_msg"] = ("error", "⚠️ Vui lòng điền đủ ảnh đính kèm và số lượng > 0 theo cấu hình!")
 
                 if is_valid:
                     row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
@@ -940,7 +948,6 @@ if feature == "input_production":
         if filter_task != "Tất cả": 
             filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
             
-        # ==================== Ô HIỂN THỊ TỔNG SỐ LƯỢNG DỰA THEO HẠNG MỤC ====================
         if filter_task != "Tất cả":
             total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
             unit_name = filtered_df["Đơn Vị"].values[0] if not filtered_df.empty and "Đơn Vị" in filtered_df.columns else "Cái"
