@@ -555,6 +555,10 @@ def render_main_content(current_menu_name):
 
                 if submitted:
                     is_valid = True
+                    # Làm sạch chuỗi hạng mục để so sánh chính xác tuyệt đối
+                    cleaned_hang_muc = str(hang_muc).strip()
+                    cleaned_ghi_chu = str(ghi_chu).strip()
+
                     if nhan_su == "--- Vui lòng chọn nhân sự ---":
                         is_valid = False
                         st.session_state["form_msg"] = ("error", "⚠️ Vui lòng chọn đúng tên nhân sự thực hiện!")
@@ -567,10 +571,10 @@ def render_main_content(current_menu_name):
                     elif record_images and len(record_images) > 4:
                         is_valid = False
                         st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
-                    # ĐIỀU KIỆN MỚI: BẮT BUỘC PHẢI CÓ GHI CHÚ KHI CHỌN CÔNG VIỆC PHÁT SINH
-                    elif hang_muc == "Công việc phát sinh ( TP_xác nhận )" and not ghi_chu.strip():
+                    # BẮT BUỘC GHI CHÚ KHI CHỌN HẠNG MỤC CÔNG VIỆC PHÁT SINH
+                    elif "công việc phát sinh" in cleaned_hang_muc.lower() and not cleaned_ghi_chu:
                         is_valid = False
-                        st.session_state["form_msg"] = ("error", "⚠️ Vui lòng nhập nội dung vào phần Ghi chú khi báo cáo Công việc phát sinh ( TP_xác nhận )!")
+                        st.session_state["form_msg"] = ("error", "⚠️ Bắt buộc phải nhập nội dung vào phần Ghi chú khi chọn 'Công việc phát sinh ( TP_xác nhận )'!")
 
                     if is_valid:
                         row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
