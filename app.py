@@ -59,6 +59,10 @@ if not st.session_state.logged_in:
             with st.form("login_form"):
                 email_input = st.text_input("📧 Email tài khoản", placeholder="Nhập email của bạn...")
                 password_input = st.text_input("🔑 Mật khẩu", type="password", placeholder="Nhập mật khẩu...")
+                
+                # Thêm tùy chọn ghi nhớ đăng nhập
+                remember_me = st.checkbox("📌 Ghi nhớ đăng nhập trên thiết bị này", value=True)
+                
                 submitted_login = st.form_submit_button("🚀 Đăng Nhập", use_container_width=True)
                 
                 if submitted_login:
@@ -75,7 +79,11 @@ if not st.session_state.logged_in:
                             if res and res.user:
                                 st.session_state.logged_in = True
                                 st.session_state.user_email = res.user.email
-                                st.query_params["auth_user"] = res.user.email
+                                
+                                # Lưu vào query params nếu người dùng chọn ghi nhớ
+                                if remember_me:
+                                    st.query_params["auth_user"] = res.user.email
+                                    
                                 st.success("✅ Đăng nhập thành công!")
                                 st.rerun()
                             else:
@@ -576,7 +584,7 @@ with st.sidebar:
                 filtered_items.append(item)
             else:
                 item_id = item.get("id")
-                if item_id == "menu_1" and (user_perms["perm_input"] or True): filtered_items.append(item) # Cho phép thấy menu nhập sản lượng để xem danh sách
+                if item_id == "menu_1" and (user_perms["perm_input"] or True): filtered_items.append(item)
                 elif item_id == "menu_2" and user_perms["perm_report"]: filtered_items.append(item)
                 elif item_id == "menu_3" and user_perms["perm_rules"]: filtered_items.append(item)
                 elif item_id == "menu_4" and current_user_role == "Admin": filtered_items.append(item)
