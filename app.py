@@ -650,7 +650,7 @@ if feature == "input_production":
                         else:
                             st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
 
-            # Duyệt danh sách bản ghi bên ngoài form để tránh lỗi lồng form
+            # Duyệt danh sách bản ghi độc lập bên ngoài form lớn
             selected_ids_to_delete = []
             for idx, row in filtered_df.iterrows():
                 row_c1, row_c2 = st.columns([4, 1])
@@ -678,7 +678,7 @@ if feature == "input_production":
                     else:
                         st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                 
-                # --- KHUNG BÌNH LUẬN TRỰC TIẾP TRÊN TỪNG DÒNG ---
+                # --- KHUNG BÌNH LUẬN DÙNG FORM RIÊNG CHO TỪNG DÒNG ---
                 log_id = row['db_id']
                 total_cmts = len(get_comments_by_log_id(log_id))
                 with st.expander(f"💬 Bình luận & Thảo luận [{total_cmts}]"):
@@ -690,14 +690,17 @@ if feature == "input_production":
                     else:
                         st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
                         
-                    new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
-                    if st.button("Gửi", key=f"btn_send_cmt_{log_id}", use_container_width=True):
-                        if new_cmt and new_cmt.strip():
-                            add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
-                            st.success("Đã gửi bình luận!")
-                            st.rerun()
-                        else:
-                            st.warning("Vui lòng nhập nội dung!")
+                    with st.form(key=f"form_cmt_row_{log_id}"):
+                        new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
+                        submitted_cmt = st.form_submit_button("Gửi", use_container_width=True)
+                        
+                        if submitted_cmt:
+                            if new_cmt and new_cmt.strip():
+                                add_comment_db(log_id, st.session_state.user_email, new_cmt.strip())
+                                st.success("Đã gửi bình luận!")
+                                st.rerun()
+                            else:
+                                st.warning("Vui lòng nhập nội dung!")
 
                 st.markdown("---")
             
