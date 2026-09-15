@@ -93,7 +93,7 @@ def save_staff_list_db(edited_df):
             name = str(row.get("Nhân Sự", "")).strip()
             row_id = row.get("id")
             
-            if not name:
+            if not name or name.lower() in ["nan", "none"]:
                 continue
                 
             if pd.notna(row_id) and int(row_id) in old_ids:
@@ -129,11 +129,13 @@ def save_rules_df_db(df):
         for idx, row in df.iterrows():
             row_id = row.get("id")
             new_hang_muc = str(row.get("Hạng Mục Công Việc", "")).strip()
-            new_he_so = float(row.get("Hệ Số Điểm", 1.0)) if pd.notna(row.get("Hệ Số Điểm")) else 1.0
             
-            if not new_hang_muc:
+            # Lọc bỏ các dòng để trống, nan, None
+            if not new_hang_muc or new_hang_muc.lower() in ["nan", "none"]:
                 continue
                 
+            new_he_so = float(row.get("Hệ Số Điểm", 1.0)) if pd.notna(row.get("Hệ Số Điểm")) else 1.0
+            
             payload = {
                 "stt": int(idx + 1),
                 "hang_muc": new_hang_muc,
@@ -542,7 +544,10 @@ def render_main_content(current_menu_name):
                     staff_options = ["--- Vui lòng chọn nhân sự ---"] + active_staff
                     nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
                 with f_col3:
-                    danh_sach_hang_muc = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+                    # Lọc sạch các giá trị nan, None, khoảng trắng khỏi danh sách định mức
+                    raw_tasks = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
+                    danh_sach_hang_muc = [str(t).strip() for t in raw_tasks if pd.notna(t) and str(t).strip() and str(t).strip().lower() not in ["nan", "none"]]
+                    
                     hang_muc = st.selectbox("Hạng mục công việc", danh_sach_hang_muc)
                     
                 record_images = st.file_uploader("Tải ảnh đính kèm (Tối đa 4 ảnh)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="record_img")
@@ -555,7 +560,6 @@ def render_main_content(current_menu_name):
 
                 if submitted:
                     is_valid = True
-                    # Làm sạch chuỗi hạng mục để so sánh chính xác tuyệt đối
                     cleaned_hang_muc = str(hang_muc).strip()
                     cleaned_ghi_chu = str(ghi_chu).strip()
 
@@ -571,7 +575,6 @@ def render_main_content(current_menu_name):
                     elif record_images and len(record_images) > 4:
                         is_valid = False
                         st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
-                    # BẮT BUỘC GHI CHÚ KHI CHỌN HẠNG MỤC CÔNG VIỆC PHÁT SINH
                     elif "công việc phát sinh" in cleaned_hang_muc.lower() and not cleaned_ghi_chu:
                         is_valid = False
                         st.session_state["form_msg"] = ("error", "⚠️ Bắt buộc phải nhập nội dung vào phần Ghi chú khi chọn 'Công việc phát sinh ( TP_xác nhận )'!")
