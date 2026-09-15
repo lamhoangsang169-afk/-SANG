@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import plotly.express as px
+import base64
 
 # Import từ các module đã tách
 from utils import (
@@ -18,6 +19,7 @@ from database import (
     get_staff_list_db, 
     get_rules_df_db,
     get_production_logs_db, 
+    get_production_logs_by_date_range,
     get_total_production_count_db, 
     get_attendance_db,
     load_app_settings_db, 
@@ -772,8 +774,21 @@ elif feature == "attendance":
 # ==================== BÁO CÁO & BIỂU ĐỒ ====================
 elif feature == "report":
     st.header(menu)
+    
+    # BỘ LỌC KHOẢNG THỜI GIAN ĐỂ TỐI ƯU RAM VÀ HIỆU SUẤT
+    col_date1, col_date2 = st.columns(2)
+    default_start = datetime.date.today().replace(day=1)
+    default_end = datetime.date.today()
+    
+    with col_date1:
+        report_start_date = st.date_input("Từ ngày", default_start)
+    with col_date2:
+        report_end_date = st.date_input("Đến ngày", default_end)
+
     all_staff_current = st.session_state.staff_list
-    input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
+    
+    # Lấy dữ liệu theo khoảng thời gian trực tiếp từ Database
+    input_df = get_production_logs_by_date_range(report_start_date, report_end_date)
     
     if not input_df.empty:
         summary = input_df.groupby("Nhân Sự").agg(Tổng_Số_Lượng=("Số Lượng", "sum"), Tổng_Điểm=("Tổng Điểm", "sum")).reset_index()
@@ -797,7 +812,7 @@ elif feature == "report":
     if not summary_display.empty:
         st.dataframe(summary_display.style.format({"Số Lượng Thực Tế": "{:,.0f}", "Tổng Điểm": "{:,.1f}", "Tỷ Lệ Đóng Góp": "{:.2%}"}), use_container_width=True, hide_index=True)
     else:
-        st.info("Chưa có dữ liệu sản lượng.")
+        st.info("Chưa có dữ liệu sản lượng trong khoảng thời gian này.")
 
     st.markdown("---")
     st.subheader("⚖️ Bảng Đối Chiếu Thời Gian Làm Việc & Sản Lượng")
@@ -858,7 +873,7 @@ elif feature == "report":
         exp_col1, exp_col2 = st.columns([1, 3])
         with exp_col1:
             csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
-            file_name_val = f"bao_cao_san_luong_{datetime.date.today()}.csv"
+            file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
             if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
                 file_url = upload_report_to_storage(file_name_val, csv_bytes)
                 if file_url: save_export_report_db(file_name_val, file_url)
