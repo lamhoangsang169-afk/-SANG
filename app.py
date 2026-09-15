@@ -80,8 +80,8 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN (ROLE-BASED) ====================
-# Danh sách email được cấu hình quyền Admin/Quản lý cao nhất
-ADMIN_EMAILS = ["admin@poss.com", "lamhoangsang@poss.com"] # Bạn có thể thay đổi hoặc thêm email quản trị tại đây
+# Thêm chính xác email của bạn vào danh sách Quản trị viên (Admin)
+ADMIN_EMAILS = ["lamhoangsang169@gmail.com"] 
 
 def get_user_role(email):
     """Xác định vai trò dựa trên email tài khoản"""
@@ -456,8 +456,8 @@ with st.sidebar:
     st.markdown('</div></div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
-    role_badge = "👑 Admin" if current_user_role == "Admin" else "👤 Nhân Viên"
-    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'};'>{role_badge}</span></small>", unsafe_allow_html=True)
+    role_badge = "👑 Quản Trị Viên (Admin)" if current_user_role == "Admin" else "👤 Nhân Viên"
+    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'}; font-weight:bold;'>{role_badge}</span></small>", unsafe_allow_html=True)
     
     if st.button("🚪 Đăng Xuất", use_container_width=True):
         if supabase is not None:
@@ -481,7 +481,6 @@ with st.sidebar:
     for folder in st.session_state.folders:
         with st.expander(folder["folder_name"], expanded=True):
             for item in folder["items"]:
-                # Nếu là tài khoản Nhân viên (Staff), ẩn một số chức năng quản lý nhạy cảm nếu muốn
                 if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
                     st.session_state.current_menu = item["name"]
                     st.rerun()
