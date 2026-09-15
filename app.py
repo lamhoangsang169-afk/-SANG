@@ -79,9 +79,24 @@ if not st.session_state.logged_in:
                         st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
     st.stop()
 
+# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN (ROLE-BASED) ====================
+# Danh sách email được cấu hình quyền Admin/Quản lý cao nhất
+ADMIN_EMAILS = ["admin@poss.com", "lamhoangsang@poss.com"] # Bạn có thể thay đổi hoặc thêm email quản trị tại đây
+
+def get_user_role(email):
+    """Xác định vai trò dựa trên email tài khoản"""
+    if not email:
+        return "Staff"
+    if email.strip().lower() in [e.lower() for e in ADMIN_EMAILS]:
+        return "Admin"
+    return "Staff"
+
+current_user_role = get_user_role(st.session_state.user_email)
+
 # ==================== CÁC HÀM CRUD BỔ SUNG TRONG APP ====================
 def save_staff_list_db(edited_df):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
+        st.warning("⚠️ Bạn không có quyền thực hiện thao tác này!")
         return
     try:
         res_old = supabase.table("staff").select("id, name").execute()
@@ -117,7 +132,8 @@ def save_staff_list_db(edited_df):
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
 def save_rules_df_db(df):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
+        st.warning("⚠️ Chỉ Quản trị viên mới có quyền thay đổi định mức!")
         return
     try:
         res_old = supabase.table("rules").select("id, hang_muc, he_so_diem").execute()
@@ -184,7 +200,7 @@ def save_rules_df_db(df):
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
 def save_app_settings_db(settings_dict):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
         return
     try:
         payload = {"id": 1, **settings_dict}
@@ -194,7 +210,7 @@ def save_app_settings_db(settings_dict):
         st.error(f"Lỗi lưu cấu hình: {e}")
 
 def save_folders_db(folders_list):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
         return
     try:
         payload = {"id": 1, "folders_json": folders_list}
@@ -257,7 +273,7 @@ def update_production_log_deleted_status(db_ids, is_deleted_val):
         pass
 
 def permanent_delete_db(db_ids):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
         return
     try:
         for db_id in db_ids:
@@ -291,7 +307,6 @@ def delete_attendance_db(db_ids):
 
 def save_export_report_db(ten_file, file_url):
     if supabase is None:
-        st.error("Chưa kết nối Supabase!")
         return
     try:
         payload = {
@@ -332,7 +347,7 @@ def update_export_report_deleted_status(db_ids, is_deleted_val):
         pass
 
 def permanent_delete_export_report_db(db_ids):
-    if supabase is None:
+    if supabase is None or current_user_role != "Admin":
         return
     try:
         for db_id in db_ids:
@@ -441,7 +456,9 @@ with st.sidebar:
     st.markdown('</div></div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sidebar-scrollable-content">', unsafe_allow_html=True)
-    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b></small>", unsafe_allow_html=True)
+    role_badge = "👑 Admin" if current_user_role == "Admin" else "👤 Nhân Viên"
+    st.markdown(f"<small>👤 <b>{st.session_state.user_email}</b><br>🛡️ Phân quyền: <span style='color: {'#ff4b4b' if current_user_role=='Admin' else '#3b82f6'};'>{role_badge}</span></small>", unsafe_allow_html=True)
+    
     if st.button("🚪 Đăng Xuất", use_container_width=True):
         if supabase is not None:
             try: supabase.auth.sign_out()
@@ -464,21 +481,24 @@ with st.sidebar:
     for folder in st.session_state.folders:
         with st.expander(folder["folder_name"], expanded=True):
             for item in folder["items"]:
+                # Nếu là tài khoản Nhân viên (Staff), ẩn một số chức năng quản lý nhạy cảm nếu muốn
                 if st.button(item["name"], use_container_width=True, key=f"btn_{item['id']}"):
                     st.session_state.current_menu = item["name"]
                     st.rerun()
 
-    st.markdown("---")
-    st.markdown("### ⚙️ Cấu Hình Hệ Thống")
-    if st.button("📁 Quản Lý Thư Mục & Menu", use_container_width=True):
-        st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
-        st.rerun()
-    if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
-        st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
-        st.rerun()
-    if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
-        st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
-        st.rerun()
+    # --- CHỈ ADMIN MỚI THẤY KHU VỰC CẤU HÌNH HỆ THỐNG NÀY ---
+    if current_user_role == "Admin":
+        st.markdown("---")
+        st.markdown("### ⚙️ Cấu Hình Hệ Thống (Admin)")
+        if st.button("📁 Quản Lý Thư Mục & Menu", use_container_width=True):
+            st.session_state.current_menu = "📁 Quản Lý Thư Mục & Menu"
+            st.rerun()
+        if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
+            st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
+            st.rerun()
+        if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
+            st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
+            st.rerun()
 
     st.markdown("---")
     if is_supabase_connected:
@@ -601,7 +621,6 @@ def render_main_content(current_menu_name):
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            # --- THU GỌN KÍCH THƯỚC CÁC Ô LỌC BẰNG CÁCH ĐIỀU CHỈNH TỶ LỆ CỘT ---
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.8, 1.2, 0.9, 0.9, 0.8])
             
             with f_col1:
@@ -790,7 +809,6 @@ def render_main_content(current_menu_name):
             with st.form("delete_att_form"):
                 st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
                 
-                st.markdown("---")
                 confirm_del_all_att = st.checkbox("⚠️ Tôi chắc chắn muốn xóa TOÀN BỘ lịch sử chấm công", key="chk_confirm_del_all_att")
                 
                 att_col1, att_col2 = st.columns(2)
@@ -967,139 +985,155 @@ def render_main_content(current_menu_name):
     # ==================== THAM CHIẾU CÔNG VIỆC ====================
     elif feature == "rules":
         st.header(current_menu_name)
-        with st.form("rules_form"):
-            edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
-            
-            st.markdown("---")
-            st.markdown("##### ⚙️ Thao Tác Nâng Cao")
-            confirm_clear_all_rules = st.checkbox("⚠️ Tôi chắc chắn muốn xóa toàn bộ danh mục công việc trong hệ thống", key="chk_clear_rules")
-            
-            col_save_rule, col_clear_rule = st.columns(2)
-            with col_save_rule:
-                saved_clicked = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
-            with col_clear_rule:
-                clear_clicked = st.form_submit_button("🔥 Xóa Toàn Bộ Định Mức", use_container_width=True)
+        if current_user_role != "Admin":
+            st.warning("🔒 Bạn đăng nhập với quyền **Nhân Viên**. Chỉ có **Admin** mới được phép chỉnh sửa định mức công việc!")
+            st.dataframe(st.session_state.rules_df, use_container_width=True, hide_index=True)
+        else:
+            with st.form("rules_form"):
+                edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
+                
+                st.markdown("---")
+                st.markdown("##### ⚙️ Thao Tác Nâng Cao (Admin)")
+                confirm_clear_all_rules = st.checkbox("⚠️ Tôi chắc chắn muốn xóa toàn bộ danh mục công việc trong hệ thống", key="chk_clear_rules")
+                
+                col_save_rule, col_clear_rule = st.columns(2)
+                with col_save_rule:
+                    saved_clicked = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
+                with col_clear_rule:
+                    clear_clicked = st.form_submit_button("🔥 Xóa Toàn Bộ Định Mức", use_container_width=True)
 
-            if saved_clicked:
-                save_rules_df_db(edited_rules)
-                st.rerun()
+                if saved_clicked:
+                    save_rules_df_db(edited_rules)
+                    st.rerun()
 
-            if clear_clicked:
-                if confirm_clear_all_rules:
-                    if supabase is not None:
-                        try:
-                            supabase.table("rules").delete().neq("id", 0).execute()
-                            st.cache_data.clear()
-                            st.success("Đã xóa toàn bộ danh mục định mức công việc thành công!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Lỗi khi xóa toàn bộ định mức: {e}")
-                else:
-                    st.warning("⚠️ Vui lòng tích chọn hộp xác nhận phía trên trước khi bấm Xóa Toàn Bộ!")
+                if clear_clicked:
+                    if confirm_clear_all_rules:
+                        if supabase is not None:
+                            try:
+                                supabase.table("rules").delete().neq("id", 0).execute()
+                                st.cache_data.clear()
+                                st.success("Đã xóa toàn bộ danh mục định mức công việc thành công!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Lỗi khi xóa toàn bộ định mức: {e}")
+                    else:
+                        st.warning("⚠️ Vui lòng tích chọn hộp xác nhận phía trên trước khi bấm Xóa Toàn Bộ!")
 
     # ==================== THÙNG RÁC SẢN LƯỢNG ====================
     elif feature == "trash":
         st.header(current_menu_name)
-        trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
-        trash_reports_df = get_export_reports_db(is_deleted=True)
-        
-        st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
-        if not trash_df.empty:
-            with st.form("trash_form"):
-                for idx, row in trash_df.iterrows():
-                    st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b> | 📌 {row['Hạng Mục Công Việc']} ({row['Số Lượng']} {row['Đơn Vị']})</div>', unsafe_allow_html=True)
-                    trash_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn sản lượng STT {row['STT']}", key=f"t_{row['db_id']}")
-                    
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.form_submit_button("📥 Khôi Phục Đã Chọn", use_container_width=True):
-                        ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
-                        if ids:
-                            update_production_log_deleted_status(ids, False)
-                            st.success("Đã khôi phục thành công!")
-                            st.rerun()
-                with c2:
-                    if st.form_submit_button("🔥 Xóa Vĩnh Viễn Đã Chọn", use_container_width=True):
-                        ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
-                        if ids:
-                            permanent_delete_db(ids)
-                            st.success("Đã xóa vĩnh viễn!")
-                            st.rerun()
+        if current_user_role != "Admin":
+            st.warning("🔒 Tính năng thùng rác và xóa vĩnh viễn chỉ dành cho Quản trị viên (Admin).")
         else:
-            st.info("Thùng rác sản lượng trống.")
+            trash_df = get_production_logs_db(is_deleted=True, limit_rows=100)
+            trash_reports_df = get_export_reports_db(is_deleted=True)
+            
+            st.subheader("🗑️ Thùng Rác: Bản Ghi Sản Lượng")
+            if not trash_df.empty:
+                with st.form("trash_form"):
+                    for idx, row in trash_df.iterrows():
+                        st.markdown(f'<div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;"><b>STT: {row['STT']}</b> | 📅 {row['Ngày']} | 👤 <b>{row['Nhân Sự']}</b> | 📌 {row['Hạng Mục Công Việc']} ({row['Số Lượng']} {row['Đơn Vị']})</div>', unsafe_allow_html=True)
+                        trash_df.loc[idx, "Chọn"] = st.checkbox(f"Chọn sản lượng STT {row['STT']}", key=f"t_{row['db_id']}")
+                        
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.form_submit_button("📥 Khôi Phục Đã Chọn", use_container_width=True):
+                            ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                            if ids:
+                                update_production_log_deleted_status(ids, False)
+                                st.success("Đã khôi phục thành công!")
+                                st.rerun()
+                    with c2:
+                        if st.form_submit_button("🔥 Xóa Vĩnh Viễn Đã Chọn", use_container_width=True):
+                            ids = trash_df[trash_df["Chọn"] == True]["db_id"].tolist()
+                            if ids:
+                                permanent_delete_db(ids)
+                                st.success("Đã xóa vĩnh viễn!")
+                                st.rerun()
+            else:
+                st.info("Thùng rác sản lượng trống.")
 
     # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
     elif feature == "manage_folders":
         st.header("Quản Lý Thư Mục & Menu")
-        with st.form("manage_menu_form"):
-            current_folder_name = st.session_state.folders[0]["folder_name"] if st.session_state.folders else "📌 Quản Lý Nghiệp Vụ"
-            new_folder_name = st.text_input("Tên thư mục", value=current_folder_name)
-            current_items = st.session_state.folders[0]["items"] if st.session_state.folders else []
-            updated_items = []
-            for i_idx, item in enumerate(current_items):
-                new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item.get("name", ""), key=f"edit_name_{i_idx}")
-                updated_items.append({"id": item.get("id", f"menu_{i_idx+1}"), "name": new_name})
-                
-            if st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True):
-                new_folders_structure = [{"folder_name": new_folder_name, "items": updated_items}]
-                st.session_state.folders = new_folders_structure
-                save_folders_db(new_folders_structure)
-                st.success("Đã lưu menu thành công!")
-                st.rerun()
+        if current_user_role != "Admin":
+            st.warning("🔒 Bạn không có quyền truy cập trang quản lý cấu hình hệ thống này.")
+        else:
+            with st.form("manage_menu_form"):
+                current_folder_name = st.session_state.folders[0]["folder_name"] if st.session_state.folders else "📌 Quản Lý Nghiệp Vụ"
+                new_folder_name = st.text_input("Tên thư mục", value=current_folder_name)
+                current_items = st.session_state.folders[0]["items"] if st.session_state.folders else []
+                updated_items = []
+                for i_idx, item in enumerate(current_items):
+                    new_name = st.text_input(f"Tên hiển thị {i_idx+1}", value=item.get("name", ""), key=f"edit_name_{i_idx}")
+                    updated_items.append({"id": item.get("id", f"menu_{i_idx+1}"), "name": new_name})
+                    
+                if st.form_submit_button("💾 Lưu Thay Đổi", use_container_width=True):
+                    new_folders_structure = [{"folder_name": new_folder_name, "items": updated_items}]
+                    st.session_state.folders = new_folders_structure
+                    save_folders_db(new_folders_structure)
+                    st.success("Đã lưu menu thành công!")
+                    st.rerun()
 
     # ==================== CÀI ĐẶT GIAO DIỆN ====================
     elif feature == "settings_ui":
         st.header("Cài Đặt Giao Diện & Nhân Sự")
-        with st.form("ui_settings_form"):
-            c_col1, c_col2 = st.columns(2)
-            with c_col1:
-                picker_bg = st.color_picker("Màu nền ứng dụng", value=st.session_state.bg_color)
-                picker_text = st.color_picker("Màu chữ", value=st.session_state.text_color)
-            with c_col2:
-                picker_primary = st.color_picker("Màu chủ đạo", value=st.session_state.primary_color)
-                picker_sidebar = st.color_picker("Màu nền sidebar", value=st.session_state.sidebar_bg)
+        if current_user_role != "Admin":
+            st.warning("🔒 Chỉ Quản trị viên mới được phép cài đặt giao diện và danh sách nhân sự!")
+        else:
+            with st.form("ui_settings_form"):
+                c_col1, c_col2 = st.columns(2)
+                with c_col1:
+                    picker_bg = st.color_picker("Màu nền ứng dụng", value=st.session_state.bg_color)
+                    picker_text = st.color_picker("Màu chữ", value=st.session_state.text_color)
+                with c_col2:
+                    picker_primary = st.color_picker("Màu chủ đạo", value=st.session_state.primary_color)
+                    picker_sidebar = st.color_picker("Màu nền sidebar", value=st.session_state.sidebar_bg)
+                    
+                slider_opacity = st.slider("Độ mờ sidebar", 0.1, 1.0, float(st.session_state.sidebar_opacity), 0.05)
+                bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng", type=["png", "jpg", "jpeg"])
                 
-            slider_opacity = st.slider("Độ mờ sidebar", 0.1, 1.0, float(st.session_state.sidebar_opacity), 0.05)
-            bg_file_upload = st.file_uploader("🖼️ Tải lên hình nền ứng dụng", type=["png", "jpg", "jpeg"])
-            
-            if st.form_submit_button("💾 Lưu Cài Đặt", use_container_width=True):
-                st.session_state.bg_color = picker_bg
-                st.session_state.text_color = picker_text
-                st.session_state.primary_color = picker_primary
-                st.session_state.sidebar_bg = picker_sidebar
-                st.session_state.sidebar_opacity = slider_opacity
-                if bg_file_upload is not None:
-                    if compressed_bg := compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80):
-                        st.session_state.bg_image_base64 = compressed_bg
-                save_app_settings_db({
-                    "primary_color": st.session_state.primary_color, "bg_color": st.session_state.bg_color,
-                    "sidebar_bg": st.session_state.sidebar_bg, "sidebar_opacity": st.session_state.sidebar_opacity,
-                    "text_color": st.session_state.text_color, "bg_image_base64": st.session_state.bg_image_base64,
-                    "avatar_base64": st.session_state.avatar_base64
-                })
-                st.success("Đã lưu cài đặt giao diện!")
-                st.rerun()
+                if st.form_submit_button("💾 Lưu Cài Đặt", use_container_width=True):
+                    st.session_state.bg_color = picker_bg
+                    st.session_state.text_color = picker_text
+                    st.session_state.primary_color = picker_primary
+                    st.session_state.sidebar_bg = picker_sidebar
+                    st.session_state.sidebar_opacity = slider_opacity
+                    if bg_file_upload is not None:
+                        if compressed_bg := compress_image_to_base64(bg_file_upload, max_size=(1920, 1080), quality=80):
+                            st.session_state.bg_image_base64 = compressed_bg
+                    save_app_settings_db({
+                        "primary_color": st.session_state.primary_color, "bg_color": st.session_state.bg_color,
+                        "sidebar_bg": st.session_state.sidebar_bg, "sidebar_opacity": st.session_state.sidebar_opacity,
+                        "text_color": st.session_state.text_color, "bg_image_base64": st.session_state.bg_image_base64,
+                        "avatar_base64": st.session_state.avatar_base64
+                    })
+                    st.success("Đã lưu cài đặt giao diện!")
+                    st.rerun()
 
-        st.markdown("---")
-        st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
-        with st.form("staff_form"):
-            staff_df = get_staff_df_db()
-            edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["id"])
-            if st.form_submit_button("💾 Lưu Nhân Sự", use_container_width=True):
-                save_staff_list_db(edited_staff)
-                st.session_state.staff_list = get_staff_list_db()
-                st.success("Đã cập nhật danh sách nhân sự!")
-                st.rerun()
+            st.markdown("---")
+            st.markdown("### 👥 Quản Lý Danh Sách Nhân Sự")
+            with st.form("staff_form"):
+                staff_df = get_staff_df_db()
+                edited_staff = st.data_editor(staff_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["id"])
+                if st.form_submit_button("💾 Lưu Nhân Sự", use_container_width=True):
+                    save_staff_list_db(edited_staff)
+                    st.session_state.staff_list = get_staff_list_db()
+                    st.success("Đã cập nhật danh sách nhân sự!")
+                    st.rerun()
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
         st.header("Làm Sạch Dữ Liệu")
-        if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
-            trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
-            if not trash_df.empty:
-                permanent_delete_db(trash_df["db_id"].tolist())
-                st.success("Đã làm sạch thùng rác!")
-                st.rerun()
+        if current_user_role != "Admin":
+            st.warning("🔒 Tính năng làm sạch dữ liệu chỉ dành cho Admin.")
+        else:
+            if st.button("🔥 Xóa Toàn Bộ Dữ Liệu Thùng Rác Vĩnh Viễn", use_container_width=True):
+                trash_df = get_production_logs_db(is_deleted=True, limit_rows=500)
+                if not trash_df.empty:
+                    permanent_delete_db(trash_df["db_id"].tolist())
+                    st.success("Đã làm sạch thùng rác!")
+                    st.rerun()
 
 # Gọi fragment chính để hiển thị mượt mà không load lại sidebar
 render_main_content(menu)
