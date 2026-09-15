@@ -32,7 +32,7 @@ st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊"
 
 init_db_data()
 
-# Hàm chuyển đổi họ tên có dấu thành dạng email chuẩn không dấu
+# Hàm chuyển đổi họ tên có dấu thành dạng email chuẩn có đuôi .com để khớp Supabase Auth
 def convert_name_to_email(full_name):
     clean_name = unicodedata.normalize('NFD', full_name)
     clean_name = ''.join([c for c in clean_name if unicodedata.category(c) != 'Mn'])
@@ -85,7 +85,6 @@ if not st.session_state.logged_in:
                     else:
                         try:
                             login_val = email_input.strip()
-                            # Nếu người dùng nhập họ tên thay vì email, tự động convert lại để đăng nhập khớp hệ thống
                             if "@" not in login_val:
                                 login_val = convert_name_to_email(login_val)
                                 
@@ -111,7 +110,7 @@ if not st.session_state.logged_in:
         with auth_tab2:
             st.markdown("<div style='background: rgba(255, 255, 255, 0.9); padding: 20px 30px 30px 30px; border-radius: 0 0 12px 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; border-top: none;'>", unsafe_allow_html=True)
             with st.form("register_form"):
-                reg_fullname = st.text_input("👤 Họ và tên đầy đủ", placeholder="Ví dụ: Nguyễn Văn Anh...")
+                reg_fullname = st.text_input("👤 Họ và tên đầy đủ", placeholder="Ví dụ: Lâm Minh Khang...")
                 reg_password = st.text_input("🔑 Mật khẩu mới", type="password", placeholder="Tối thiểu 6 ký tự...")
                 reg_password_confirm = st.text_input("🔑 Xác nhận mật khẩu", type="password", placeholder="Nhập lại mật khẩu...")
                 submitted_register = st.form_submit_button("✨ Đăng Ký Tài Khoản", use_container_width=True)
@@ -127,7 +126,6 @@ if not st.session_state.logged_in:
                         st.error("⚠️ Chưa kết nối được tới Supabase!")
                     else:
                         try:
-                            # Tự động quy đổi họ tên thành email hệ thống
                             generated_email = convert_name_to_email(reg_fullname)
                             
                             res_reg = supabase.auth.sign_up({
@@ -135,7 +133,6 @@ if not st.session_state.logged_in:
                                 "password": reg_password.strip()
                             })
                             if res_reg:
-                                # Lưu vào bảng phân quyền với trạng thái chờ Admin cấp quyền
                                 supabase.table("user_roles").upsert({
                                     "email": generated_email,
                                     "role": "Staff",
@@ -1282,7 +1279,7 @@ def render_main_content(current_menu_name):
                             use_container_width=True
                         )
                         
-                        if st.form_submit_button("💾 Lưu Cập Nhật Phân Quyền", use_container_wood=True):
+                        if st.form_submit_button("💾 Lưu Cập Nhật Phân Quyền", use_container_width=True):
                             for _, row in edited_roles_df.iterrows():
                                 r_id = row["id"]
                                 supabase.table("user_roles").update({
