@@ -130,7 +130,6 @@ def save_rules_df_db(df):
             row_id = row.get("id")
             new_hang_muc = str(row.get("Hạng Mục Công Việc", "")).strip()
             
-            # Lọc bỏ các dòng để trống, nan, None
             if not new_hang_muc or new_hang_muc.lower() in ["nan", "none"]:
                 continue
                 
@@ -544,7 +543,6 @@ def render_main_content(current_menu_name):
                     staff_options = ["--- Vui lòng chọn nhân sự ---"] + active_staff
                     nhan_su = st.selectbox("Nhân sự thực hiện", staff_options)
                 with f_col3:
-                    # Lọc sạch các giá trị nan, None, khoảng trắng khỏi danh sách định mức
                     raw_tasks = st.session_state.rules_df["Hạng Mục Công Việc"].tolist() if not st.session_state.rules_df.empty else []
                     danh_sach_hang_muc = [str(t).strip() for t in raw_tasks if pd.notna(t) and str(t).strip() and str(t).strip().lower() not in ["nan", "none"]]
                     
@@ -623,7 +621,6 @@ def render_main_content(current_menu_name):
                 all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
                 
-            # --- BƯỚC 1: LỌC DỮ LIỆU THEO NGÀY, GIỜ VÀ NHÂN SỰ TRƯỚC ---
             temp_filtered_df = input_df.copy()
             if filter_date != "Tất cả": 
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
@@ -639,17 +636,14 @@ def render_main_content(current_menu_name):
                         return True
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Thời Gian"].apply(check_time_in_range)]
 
-            # --- BƯỚC 2: CẬP NHẬT DANH SÁCH HẠNG MỤC DỰA TRÊN DỮ LIỆU ĐÃ LỌC ---
             with f_col4:
                 available_tasks = ["Tất cả"] + sorted(temp_filtered_df["Hạng Mục Công Việc"].unique().tolist()) if not temp_filtered_df.empty else ["Tất cả"]
                 filter_task = st.selectbox("Lọc theo Hạng Mục", available_tasks)
             
-            # --- BƯỚC 3: LỌC HOÀN CHỈNH ĐỂ HIỂN THỊ DANH SÁCH ---
             filtered_df = temp_filtered_df.copy()
             if filter_task != "Tất cả": 
                 filtered_df = filtered_df[filtered_df["Hạng Mục Công Việc"] == filter_task]
                 
-            # --- BƯỚC 4: THỰC HIỆN CƠ CHẾ PHÂN TRANG (PAGINATION) NẰM Ở CỘT THỨ 5 ---
             rows_per_page = 10
             total_rows = len(filtered_df)
             total_pages = (total_rows - 1) // rows_per_page + 1
@@ -794,17 +788,39 @@ def render_main_content(current_menu_name):
             st.dataframe(att_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
             with st.form("delete_att_form"):
                 st.markdown("##### 🗑️ Xóa Bản Ghi Chấm Công Lỗi")
+                
+                # THÊM TÍNH NĂNG XÓA TẤT CẢ KÈM XÁC NHẬN AN TOÀN
+                st.markdown("---")
+                confirm_del_all_att = st.checkbox("⚠️ Tôi chắc chắn muốn xóa TOÀN BỘ lịch sử chấm công", key="chk_confirm_del_all_att")
+                
+                att_col1, att_col2 = st.columns(2)
+                with att_col1:
+                    submitted_delete_selected = st.form_submit_button("Xóa Các Dòng Đã Chọn", use_container_width=True)
+                with att_col2:
+                    submitted_delete_all = st.form_submit_button("🔥 Xóa Toàn Bộ Lịch Sử Chấm Công", use_container_width=True, type="primary")
+
                 att_ids_to_del = []
                 for idx, r in att_df.iterrows():
                     if st.checkbox(f"Xóa dòng STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Giờ Vào Ca']} -> {r['Giờ Ra Ca']})", key=f"del_att_{r['db_id']}"):
                         att_ids_to_del.append(r['db_id'])
-                if st.form_submit_button("Xóa Các Dòng Chấm Công Đã Chọn", use_container_width=True):
+
+                if submitted_delete_selected:
                     if att_ids_to_del:
                         delete_attendance_db(att_ids_to_del)
-                        st.success("Đã xóa các bản ghi chấm công thành công!")
+                        st.success("Đã xóa các bản ghi chấm công đã chọn thành công!")
                         st.rerun()
                     else:
-                        st.warning("Vui lòng tích chọn dòng cần xóa!")
+                        st.warning("Vui lòng tích chọn ít nhất một dòng cần xóa!")
+
+                if submitted_delete_all:
+                    if confirm_del_all_att:
+                        all_att_ids = att_df["db_id"].tolist()
+                        if all_att_ids:
+                            delete_attendance_db(all_att_ids)
+                            st.success("Đã xóa toàn bộ lịch sử chấm công thành công!")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Vui lòng tích chọn hộp xác nhận an toàn trước khi bấm Xóa Toàn Bộ!")
 
     # ==================== BÁO CÁO & BIỂU ĐỒ ====================
     elif feature == "report":
@@ -953,9 +969,33 @@ def render_main_content(current_menu_name):
         st.header(current_menu_name)
         with st.form("rules_form"):
             edited_rules = st.data_editor(st.session_state.rules_df, num_rows="dynamic", use_container_width=True, hide_index=True, disabled=["stt"])
-            if st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True):
+            
+            st.markdown("---")
+            st.markdown("##### ⚙️ Thao Tác Nâng Cao")
+            confirm_clear_all_rules = st.checkbox("⚠️ Tôi chắc chắn muốn xóa toàn bộ danh mục công việc trong hệ thống", key="chk_clear_rules")
+            
+            col_save_rule, col_clear_rule = st.columns(2)
+            with col_save_rule:
+                saved_clicked = st.form_submit_button("💾 Lưu Thay Đổi Định Mức", use_container_width=True)
+            with col_clear_rule:
+                clear_clicked = st.form_submit_button("🔥 Xóa Toàn Bộ Định Mức", use_container_width=True)
+
+            if saved_clicked:
                 save_rules_df_db(edited_rules)
                 st.rerun()
+
+            if clear_clicked:
+                if confirm_clear_all_rules:
+                    if supabase is not None:
+                        try:
+                            supabase.table("rules").delete().neq("id", 0).execute()
+                            st.cache_data.clear()
+                            st.success("Đã xóa toàn bộ danh mục định mức công việc thành công!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Lỗi khi xóa toàn bộ định mức: {e}")
+                else:
+                    st.warning("⚠️ Vui lòng tích chọn hộp xác nhận phía trên trước khi bấm Xóa Toàn Bộ!")
 
     # ==================== THÙNG RÁC SẢN LƯỢNG ====================
     elif feature == "trash":
