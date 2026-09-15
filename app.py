@@ -593,8 +593,7 @@ def render_main_content(current_menu_name):
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
-            # SẮP XẾP 4 BỘ LỌC NẰM TRÊN CÙNG MỘT HÀNG NGANG
-            s_col1, s_col2, s_col3, s_col4 = st.columns([1.2, 1.3, 1.2, 1.3])
+            s_col1, s_col2, s_col3, s_col4 = st.columns([1.1, 1.3, 1.1, 1.1])
             
             with s_col1:
                 all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
@@ -603,13 +602,7 @@ def render_main_content(current_menu_name):
                 
             with s_col2:
                 enable_hour_filter = st.checkbox("Lọc theo Khoảng Giờ", value=False)
-                if enable_hour_filter:
-                    t_col1, t_col2 = st.columns(2)
-                    with t_col1: start_t = st.time_input("Từ", datetime.time(7, 30), label_visibility="collapsed")
-                    with t_col2: end_t = st.time_input("Đến", datetime.time(17, 0), label_visibility="collapsed")
-                else:
-                    start_t, end_t = None, None
-                    
+                
             with s_col3:
                 all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
@@ -621,7 +614,11 @@ def render_main_content(current_menu_name):
             if filter_staff != "Tất cả": 
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
 
-            if enable_hour_filter and start_t and end_t:
+            if enable_hour_filter:
+                h_col1, h_col2, h_col3 = st.columns([1, 1, 2])
+                with h_col1: start_t = st.time_input("Từ giờ", datetime.time(7, 30))
+                with h_col2: end_t = st.time_input("Đến giờ", datetime.time(17, 0))
+                
                 def check_time_in_range(t_str):
                     try:
                         t_val = datetime.datetime.strptime(str(t_str).strip(), "%H:%M:%S").time()
@@ -629,6 +626,8 @@ def render_main_content(current_menu_name):
                     except:
                         return True
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Thời Gian"].apply(check_time_in_range)]
+            else:
+                start_t, end_t = None, None
 
             # --- BƯỚC 2: CẬP NHẬT DANH SÁCH HẠNG MỤC DỰA TRÊN DỮ LIỆU ĐÃ LỌC ---
             with s_col4:
