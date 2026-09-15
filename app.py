@@ -148,11 +148,9 @@ def save_rules_df_db(df):
                 old_hang_muc = old_info["hang_muc"]
                 old_he_so = old_info["he_so_diem"]
                 
-                # Cập nhật bảng định mức
                 supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
-                # Nếu thay đổi tên hạng mục công việc
                 if old_hang_muc and old_hang_muc != new_hang_muc:
                     supabase.table("production_logs").update({
                         "hang_muc_cong_viec": new_hang_muc
@@ -160,14 +158,12 @@ def save_rules_df_db(df):
                 
                 target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
                 
-                # TỰ ĐỘNG TRA SOÁT VÀ CẬP NHẬT LẠI TOÀN BỘ LỊCH SỬ SẢN LƯỢNG (Không giới hạn thời gian)
                 res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).eq("is_deleted", False).execute()
                 if res_logs.data:
                     for lg in res_logs.data:
                         lg_id = lg["id"]
                         qty = lg["so_luong"]
                         new_total_points = qty * new_he_so
-                        # Cập nhật chuẩn cả hệ số điểm mới và tổng điểm mới cho mọi bản ghi cũ
                         supabase.table("production_logs").update({
                             "he_so_diem": new_he_so,
                             "tong_diem": new_total_points
@@ -571,6 +567,10 @@ def render_main_content(current_menu_name):
                     elif record_images and len(record_images) > 4:
                         is_valid = False
                         st.session_state["form_msg"] = ("error", "⚠️ Bạn chỉ được phép đính kèm tối đa 4 ảnh!")
+                    # ĐIỀU KIỆN MỚI: BẮT BUỘC PHẢI CÓ GHI CHÚ KHI CHỌN CÔNG VIỆC PHÁT SINH
+                    elif hang_muc == "Công việc phát sinh ( TP_xác nhận )" and not ghi_chu.strip():
+                        is_valid = False
+                        st.session_state["form_msg"] = ("error", "⚠️ Vui lòng nhập nội dung vào phần Ghi chú khi báo cáo Công việc phát sinh ( TP_xác nhận )!")
 
                     if is_valid:
                         row_rule = st.session_state.rules_df[st.session_state.rules_df["Hạng Mục Công Việc"] == hang_muc]
