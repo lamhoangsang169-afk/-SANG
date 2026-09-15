@@ -79,19 +79,31 @@ if not st.session_state.logged_in:
                         st.error("❌ Đăng nhập thất bại: Vui lòng kiểm tra lại thông tin.")
     st.stop()
 
-# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN (ROLE-BASED) ====================
-# Thêm chính xác email của bạn vào danh sách Quản trị viên (Admin)
-ADMIN_EMAILS = ["lamhoangsang169@gmail.com"] 
-
-def get_user_role(email):
-    """Xác định vai trò dựa trên email tài khoản"""
-    if not email:
+# ==================== HỆ THỐNG PHÂN QUYỀN TÀI KHOẢN ĐỘNG ====================
+def get_user_role_from_db(email):
+    """Lấy quyền từ database Supabase, nếu chưa có thì tự động tạo mặc định là Staff"""
+    if not email or supabase is None:
         return "Staff"
-    if email.strip().lower() in [e.lower() for e in ADMIN_EMAILS]:
+    
+    clean_email = email.strip().lower()
+    
+    # Email mặc định của bạn luôn là Admin tối cao
+    if clean_email == "lamhoangsang169@gmail.com":
         return "Admin"
+
+    try:
+        res = supabase.table("user_roles").select("role").eq("email", clean_email).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["role"]
+        else:
+            # Nếu tài khoản mới đăng nhập lần đầu, tự động ghi nhận vào bảng với quyền 'Staff'
+            supabase.table("user_roles").upsert({"email": clean_email, "role": "Staff"}).execute()
+            return "Staff"
+    except Exception:
+        pass
     return "Staff"
 
-current_user_role = get_user_role(st.session_state.user_email)
+current_user_role = get_user_role_from_db(st.session_state.user_email)
 
 # ==================== CÁC HÀM CRUD BỔ SUNG TRONG APP ====================
 def save_staff_list_db(edited_df):
@@ -495,6 +507,9 @@ with st.sidebar:
         if st.button("🎨 Cài Đặt Giao Diện", use_container_width=True):
             st.session_state.current_menu = "🎨 Cài Đặt Giao Diện"
             st.rerun()
+        if st.button("🛡️ Quản Lý Phân Quyền", use_container_width=True):
+            st.session_state.current_menu = "🛡️ Quản Lý Phân Quyền"
+            st.rerun()
         if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
             st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
             st.rerun()
@@ -518,6 +533,7 @@ def get_feature_type(menu_name):
     if menu_name == "⏱️ Chấm Công Ca Làm Việc": return "attendance"
     if menu_name == "📁 Quản Lý Thư Mục & Menu": return "manage_folders"
     if menu_name == "🎨 Cài Đặt Giao Diện": return "settings_ui"
+    if menu_name == "🛡️ Quản Lý Phân Quyền": return "manage_roles"
     if menu_name == "🧹 Làm Sạch Dữ Liệu": return "clean_data"
     for folder in st.session_state.folders:
         for item in folder["items"]:
@@ -1120,6 +1136,85 @@ def render_main_content(current_menu_name):
                     st.session_state.staff_list = get_staff_list_db()
                     st.success("Đã cập nhật danh sách nhân sự!")
                     st.rerun()
+
+    # ==================== 🛡️ QUẢN LÝ PHÂN QUYỀN VÀ MẬT KHẨU (DÀNH CHO ADMIN) ====================
+    elif feature == "manage_roles":
+        st.header("🛡️ Quản Lý Phân Quyền & Tài Khoản")
+        if current_user_role != "Admin":
+            st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý tài khoản và phân quyền!")
+        else:
+            st.markdown("Quản lý danh sách tài khoản, phân quyền hạn và hỗ trợ đặt lại mật khẩu cho nhân viên:")
+            
+            try:
+                res_roles = supabase.table("user_roles").select("*").execute()
+                if res_roles.data:
+                    roles_df = pd.DataFrame(res_roles.data)
+                    
+                    with st.form("manage_roles_form"):
+                        edited_roles_df = st.data_editor(
+                            roles_df,
+                            column_config={
+                                "id": "ID",
+                                "email": st.column_config.TextColumn("Email tài khoản", disabled=True),
+                                "role": st.column_config.SelectboxColumn(
+                                    "Quyền hạn",
+                                    options=["Admin", "Manager", "Staff"],
+                                    required=True
+                                )
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+                        
+                        if st.form_submit_button("💾 Lưu Cập Nhật Phân Quyền", use_container_width=True):
+                            for _, row in edited_roles_df.iterrows():
+                                r_id = row["id"]
+                                new_role = row["role"]
+                                supabase.table("user_roles").update({"role": new_role}).eq("id", r_id).execute()
+                            st.cache_data.clear()
+                            st.success("✅ Đã cập nhật quyền hạn tài khoản thành công!")
+                            st.rerun()
+
+                    st.markdown("---")
+                    st.markdown("### 🔑 Đặt Lại Mật Khẩu Cho Nhân Viên")
+                    
+                    with st.form("reset_password_form"):
+                        email_list = roles_df["email"].tolist() if not roles_df.empty else []
+                        target_email = st.selectbox("Chọn tài khoản cần đổi mật khẩu", email_list)
+                        new_password = st.text_input("Nhập mật khẩu mới tạm thời", type="password", placeholder="Tối thiểu 6 ký tự...")
+                        
+                        submitted_reset = st.form_submit_button("🔄 Cập Nhật Mật Khẩu Mới", use_container_width=True)
+                        
+                        if submitted_reset:
+                            if not new_password or len(new_password) < 6:
+                                st.error("⚠️ Mật khẩu mới phải có ít nhất 6 ký tự!")
+                            else:
+                                try:
+                                    users_resp = supabase.auth.admin.list_users()
+                                    target_user_id = None
+                                    
+                                    for user in users_resp:
+                                        if hasattr(user, 'email') and user.email.lower() == target_email.lower():
+                                            target_user_id = user.id
+                                            break
+                                        elif isinstance(user, dict) and user.get("email", "").lower() == target_email.lower():
+                                            target_user_id = user.get("id")
+                                            break
+                                            
+                                    if target_user_id:
+                                        supabase.auth.admin.update_user_by_id(
+                                            target_user_id,
+                                            {"password": new_password}
+                                        )
+                                        st.success(f"✅ Đã đổi mật khẩu thành công cho tài khoản: **{target_email}**!")
+                                    else:
+                                        st.error("❌ Không tìm thấy thông tin định danh (User ID) của email này trên hệ thống Auth!")
+                                except Exception as e:
+                                    st.error(f"❌ Lỗi khi đổi mật khẩu: {e}")
+                else:
+                    st.info("Chưa có tài khoản nào khác đăng nhập vào hệ thống.")
+            except Exception as e:
+                st.error(f"Lỗi tải danh sách tài khoản: {e}")
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
