@@ -210,3 +210,28 @@ def load_folders_db():
     except Exception:
         pass
     return default_folders
+@st.cache_data(ttl=60, show_spinner=False)
+def get_comments_by_log_id(log_id):
+    if supabase is None:
+        return []
+    try:
+        res = supabase.table("comments").select("*").eq("production_log_id", log_id).order("id", desc=False).execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
+
+def add_comment_db(log_id, nguoi_binh_luan, noi_dung):
+    if supabase is None:
+        return
+    try:
+        current_time = datetime.datetime.now(VN_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+        payload = {
+            "production_log_id": int(log_id),
+            "nguoi_binh_luan": str(nguoi_binh_luan),
+            "noi_dung": str(noi_dung),
+            "ngay_gio": current_time
+        }
+        supabase.table("comments").insert(payload).execute()
+        st.cache_data.clear()
+    except Exception:
+        pass
