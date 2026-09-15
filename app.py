@@ -650,7 +650,7 @@ if feature == "input_production":
                         else:
                             st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
 
-            # Duyệt danh sách bản ghi độc lập bên ngoài form lớn
+            # Duyệt danh sách bản ghi độc lập
             selected_ids_to_delete = []
             for idx, row in filtered_df.iterrows():
                 row_c1, row_c2 = st.columns([4, 1])
@@ -678,20 +678,21 @@ if feature == "input_production":
                     else:
                         st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                 
-                # --- KHUNG BÌNH LUẬN DÙNG FORM RIÊNG CHO TỪNG DÒNG ---
+                # --- HIỂN THỊ TRỰC QUAN BÌNH LUẬN & NÚT THÊM ---
                 log_id = row['db_id']
-                total_cmts = len(get_comments_by_log_id(log_id))
-                with st.expander(f"💬 Bình luận & Thảo luận [{total_cmts}]"):
-                    comments_list = get_comments_by_log_id(log_id)
-                    if comments_list:
-                        for c in comments_list:
-                            st.markdown(f"<small><b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}):<br>{c['noi_dung']}</small>", unsafe_allow_html=True)
-                            st.markdown("---")
-                    else:
-                        st.markdown("<small style='color: gray;'>Chưa có bình luận nào cho bản ghi này.</small>", unsafe_allow_html=True)
-                        
+                comments_list = get_comments_by_log_id(log_id)
+                total_cmts = len(comments_list)
+                
+                if comments_list:
+                    st.markdown(f"<div style='background: rgba(240,244,248,0.7); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 4px;'><b>💬 Thảo luận ({total_cmts}):</b>", unsafe_allow_html=True)
+                    for c in comments_list:
+                        st.markdown(f"<small>• <b>{c['nguoi_binh_luan']}</b> ({c['ngay_gio']}): {c['noi_dung']}</small>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                with st.popover(f"💬 Thêm bình luận [{total_cmts}]", use_container_width=False):
+                    st.markdown(f"##### Viết bình luận (STT {row['STT']})")
                     with st.form(key=f"form_cmt_row_{log_id}"):
-                        new_cmt = st.text_input("Nhập nội dung...", key=f"input_cmt_{log_id}", label_visibility="collapsed")
+                        new_cmt = st.text_input("Nội dung bình luận...", key=f"input_cmt_{log_id}")
                         submitted_cmt = st.form_submit_button("Gửi", use_container_width=True)
                         
                         if submitted_cmt:
