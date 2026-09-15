@@ -486,11 +486,11 @@ with st.sidebar:
     else:
         st.markdown('<div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">🔴 Chưa kết nối Supabase</div>', unsafe_allow_html=True)
 
-    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=100)
+    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=200)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
 
-    st.markdown(f'<div style="background: rgba(59, 130, 246, 0.12); padding: 8px 12px; border-radius: 6px; border: 1px solid #3b82f6; text-align: center; font-size: 0.85rem; font-weight: bold; color: #1d4ed8;">📊 Hiển thị: <span style="color: #ff4b4b;">{current_shown_count}</span> / {total_db_count} bản ghi</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="background: rgba(59, 130, 246, 0.12); padding: 8px 12px; border-radius: 6px; border: 1px solid #3b82f6; text-align: center; font-size: 0.85rem; font-weight: bold; color: #1d4ed8;">📊 Tải tối đa: <span style="color: #ff4b4b;">{current_shown_count}</span> / {total_db_count} bản ghi</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 menu = st.session_state.current_menu
@@ -591,7 +591,8 @@ def render_main_content(current_menu_name):
         st.markdown("---")
         st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
         
-        input_df = get_production_logs_db(is_deleted=False, limit_rows=100)
+        # Tải nhiều bản ghi hơn (ví dụ 500 bản ghi) để hệ thống có nguồn dữ liệu phân trang đầy đủ mà không làm quá tải RAM
+        input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
         if not input_df.empty:
             s_col1, s_col2, s_col3, s_col4 = st.columns(4)
             with s_col1:
@@ -642,23 +643,36 @@ def render_main_content(current_menu_name):
                 st.markdown(f'<div style="background: rgba(59, 130, 246, 0.15); padding: 12px 18px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 15px; font-size: 1rem; font-weight: bold; text-align: center;">📊 Tổng số lượng của hạng mục <span style="color: #ff4b4b;">"{filter_task}"</span>: <span style="font-size: 1.2rem; color: #1d4ed8;">{total_qty_task:,.0f}</span> {unit_name}</div>', unsafe_allow_html=True)
 
             if not filtered_df.empty:
+                # --- BƯỚC 4: THỰC HIỆN CƠ CHẾ PHÂN TRANG (PAGINATION) ---
+                rows_per_page = 10  # Số lượng bản ghi hiển thị trên mỗi trang
+                total_rows = len(filtered_df)
+                total_pages = (total_rows - 1) // rows_per_page + 1
+
+                p_col1, p_col2, p_col3 = st.columns([1.5, 2, 1.5])
+                with p_col2:
+                    current_page = st.number_input(f"Trang hiển thị (Tổng số: {total_pages} trang | {total_rows} bản ghi)", min_value=1, max_value=max(total_pages, 1), value=1, step=1, key="pagination_page_num")
+
+                start_idx = (current_page - 1) * rows_per_page
+                end_idx = start_idx + rows_per_page
+                paginated_df = filtered_df.iloc[start_idx:end_idx]
+
                 col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
                 with col_del_all_2:
                     del_c1, del_c2 = st.columns([1, 1])
-                    with del_c1: confirm_delete_all = st.checkbox("Xác nhận xóa tất cả", key="chk_confirm_delete_all")
+                    with del_c1: confirm_delete_all = st.checkbox("Xác nhận xóa tất cả trang này", key="chk_confirm_delete_all")
                     with del_c2:
-                        if st.button("🗑️ Xóa tất cả", use_container_width=True, type="primary"):
+                        if st.button("🗑️ Xóa tất cả trang này", use_container_width=True, type="primary"):
                             if confirm_delete_all:
-                                all_filtered_ids = filtered_df["db_id"].tolist()
-                                if all_filtered_ids:
-                                    update_production_log_deleted_status(all_filtered_ids, True)
-                                    st.success("Đã chuyển toàn bộ bản ghi đang hiển thị vào thùng rác!")
+                                all_paginated_ids = paginated_df["db_id"].tolist()
+                                if all_paginated_ids:
+                                    update_production_log_deleted_status(all_paginated_ids, True)
+                                    st.success("Đã chuyển toàn bộ bản ghi đang hiển thị ở trang này vào thùng rác!")
                                     st.rerun()
                             else:
-                                st.warning("⚠️ Vui lòng tích chọn 'Xác nhận xóa tất cả' trước khi bấm!")
+                                st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm!")
 
                 selected_ids_to_delete = []
-                for idx, row in filtered_df.iterrows():
+                for idx, row in paginated_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
                         st.markdown(f"""
