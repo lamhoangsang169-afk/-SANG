@@ -459,7 +459,6 @@ def save_export_report_db(ten_file, file_url):
     except Exception as e:
         st.error(f"Lỗi khi lưu báo cáo: {e}")
 
-# Đã tối ưu cache TTL lên 1800 giây (30 phút) để tăng tốc độ tải trang
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
@@ -668,7 +667,6 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    # Đã tối ưu giới hạn số lượng bản ghi mặc định hiển thị là 150 để load trang siêu nhanh
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=150)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
@@ -786,15 +784,21 @@ def render_main_content(current_menu_name):
         st.markdown("---")
         st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
         
-        # Đã giới hạn tải mặc định 150 bản ghi mới nhất để load siêu nhanh
         input_df = get_production_logs_db(is_deleted=False, limit_rows=150)
         if not input_df.empty:
-            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.8, 1.2, 0.9, 0.9, 0.8])
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.9, 1.2, 0.9, 0.9, 0.8])
             
             with f_col1:
                 all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
                 default_index = all_dates.index(today_str) if today_str in all_dates else 0
                 filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
+                
+                # Hiển thị số lượng bản ghi theo ngày trực tiếp dưới ô chọn ngày
+                if filter_date == "Tất cả":
+                    count_by_date = len(input_df)
+                else:
+                    count_by_date = len(input_df[input_df["Ngày"] == filter_date])
+                st.markdown(f"<small style='color: #1d4ed8; font-weight: bold;'>📅 Ngày này có: {count_by_date} bản ghi</small>", unsafe_allow_html=True)
                 
             with f_col2:
                 enable_hour_filter = st.checkbox("Lọc theo Giờ", value=False)
