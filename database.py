@@ -11,14 +11,13 @@ except ImportError:
     HAS_SUPABASE_LIB = False
 
 SUPABASE_URL = st.secrets["supabase"]["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY']
+SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY"]
 
 @st.cache_resource
 def init_supabase_client():
     if not HAS_SUPABASE_LIB:
         return None, False
     try:
-        # Khởi tạo client trực tiếp không gọi query kiểm tra mạng thừa trên mỗi lần rerun
         supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         return supabase_client, True
     except Exception as e:
