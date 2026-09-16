@@ -11,14 +11,15 @@ except ImportError:
     HAS_SUPABASE_LIB = False
 
 SUPABASE_URL = st.secrets["supabase"]["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY"]
+SUPABASE_KEY = st.secrets["supabase"]["SUPABASE_KEY']
 
+@st.cache_resource
 def init_supabase_client():
     if not HAS_SUPABASE_LIB:
         return None, False
     try:
+        # Khởi tạo client trực tiếp không gọi query kiểm tra mạng thừa trên mỗi lần rerun
         supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        supabase_client.table("staff").select("id").limit(1).execute()
         return supabase_client, True
     except Exception as e:
         st.error(f"Lỗi kết nối Supabase: {e}")
@@ -59,7 +60,6 @@ def init_db_data():
     except Exception:
         pass
 
-# Đã tăng TTL lên 1800 giây (30 phút) để tối ưu tốc độ
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
@@ -211,7 +211,6 @@ def load_folders_db():
         pass
     return default_folders
 
-# ==================== CÁC HÀM XỬ LÝ BÌNH LUẬN ====================
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_comments_by_log_id(log_id):
     if supabase is None:
@@ -234,6 +233,5 @@ def add_comment_db(log_id, nguoi_binh_luan, noi_dung):
             "ngay_gio": current_time
         }
         supabase.table("comments").insert(payload).execute()
-        # Đã lược bỏ st.cache_data.clear() ở đây để tránh làm đơ app
     except Exception:
         pass
