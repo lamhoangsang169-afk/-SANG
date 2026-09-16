@@ -793,7 +793,6 @@ def render_main_content(current_menu_name):
                 default_index = all_dates.index(today_str) if today_str in all_dates else 0
                 filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
                 
-                # Hiển thị số lượng bản ghi theo ngày trực tiếp dưới ô chọn ngày
                 if filter_date == "Tất cả":
                     count_by_date = len(input_df)
                 else:
@@ -1326,7 +1325,7 @@ def render_main_content(current_menu_name):
                             column_config={
                                 "id": "ID",
                                 "name": st.column_config.TextColumn("Họ và tên nhân sự", disabled=True),
-                                "password_hash": st.column_config.TextColumn("Mật khẩu mã hóa (Hashed)", disabled=True),
+                                "password_hash": None, # Ẩn hoàn toàn cột mật khẩu mã hóa khỏi giao diện
                                 "role": st.column_config.SelectboxColumn("Vai trò", options=["Admin", "Manager", "Staff"], required=True),
                                 "perm_input": st.column_config.CheckboxColumn("Nhập sản lượng"),
                                 "perm_report": st.column_config.CheckboxColumn("Xem báo cáo"),
