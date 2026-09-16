@@ -56,7 +56,7 @@ def get_app_memory_usage():
         except Exception:
             return "Ổn định"
 
-# Hàm tính dung lượng Database và File Storage thực tế từ Supabase (Đã chuẩn hóa đơn vị chính xác)
+# Hàm tính dung lượng Database và File Storage thực tế từ Supabase
 def get_detailed_storage_usage():
     if supabase is None:
         return "0 MB / 500 MB", "0 MB / 1 GB"
@@ -459,7 +459,8 @@ def save_export_report_db(ten_file, file_url):
     except Exception as e:
         st.error(f"Lỗi khi lưu báo cáo: {e}")
 
-@st.cache_data(ttl=150, show_spinner=False)
+# Đã tối ưu cache TTL lên 1800 giây (30 phút) để tăng tốc độ tải trang
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_export_reports_db(is_deleted=False):
     if supabase is None:
         return pd.DataFrame()
@@ -660,7 +661,6 @@ with st.sidebar:
     else:
         st.markdown('<div style="background: rgba(239, 68, 68, 0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid #ef4444; text-align: center; font-size: 0.85rem; font-weight: bold; color: #b91c1c; margin-bottom: 6px;">🔴 Chưa kết nối Supabase</div>', unsafe_allow_html=True)
 
-    # Hiển thị thông số RAM và Lưu trữ thực tế đã chuẩn hóa
     ram_usage_str = get_app_memory_usage()
     db_usage_str, storage_usage_str = get_detailed_storage_usage()
 
@@ -668,7 +668,8 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=200)
+    # Đã tối ưu giới hạn số lượng bản ghi mặc định hiển thị là 150 để load trang siêu nhanh
+    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=150)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
 
@@ -785,7 +786,8 @@ def render_main_content(current_menu_name):
         st.markdown("---")
         st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
         
-        input_df = get_production_logs_db(is_deleted=False, limit_rows=500)
+        # Đã giới hạn tải mặc định 150 bản ghi mới nhất để load siêu nhanh
+        input_df = get_production_logs_db(is_deleted=False, limit_rows=150)
         if not input_df.empty:
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.8, 1.2, 0.9, 0.9, 0.8])
             
