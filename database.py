@@ -59,7 +59,8 @@ def init_db_data():
     except Exception:
         pass
 
-@st.cache_data(ttl=300, show_spinner=False)
+# Đã tăng TTL lên 1800 giây (30 phút) để tối ưu tốc độ
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
         return pd.DataFrame({"id": range(1, len(default_staff_list)+1), "Nhân Sự": default_staff_list})
@@ -82,7 +83,7 @@ def get_staff_list_db():
         return [str(x).strip() for x in df["Nhân Sự"].tolist() if str(x).strip()]
     return default_staff_list
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_rules_df_db():
     if supabase is None:
         df = pd.DataFrame(master_rules)
@@ -100,8 +101,8 @@ def get_rules_df_db():
         df["stt"] = range(1, len(df) + 1)
     return df
 
-@st.cache_data(ttl=150, show_spinner=False)
-def get_production_logs_db(is_deleted=False, limit_rows=100):
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_production_logs_db(is_deleted=False, limit_rows=150):
     if supabase is None:
         return pd.DataFrame()
     try:
@@ -119,7 +120,7 @@ def get_production_logs_db(is_deleted=False, limit_rows=100):
         pass
     return pd.DataFrame()
 
-@st.cache_data(ttl=150, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_production_logs_by_date_range(start_date, end_date):
     if supabase is None:
         return pd.DataFrame()
@@ -146,7 +147,7 @@ def get_production_logs_by_date_range(start_date, end_date):
         pass
     return pd.DataFrame()
 
-@st.cache_data(ttl=150, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_total_production_count_db():
     if supabase is None:
         return 0
@@ -158,7 +159,7 @@ def get_total_production_count_db():
         pass
     return 0
 
-@st.cache_data(ttl=150, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_attendance_db():
     if supabase is None:
         return pd.DataFrame()
@@ -176,7 +177,7 @@ def get_attendance_db():
         pass
     return pd.DataFrame()
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def load_app_settings_db():
     if supabase is None:
         return {}
@@ -188,7 +189,7 @@ def load_app_settings_db():
         pass
     return {}
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def load_folders_db():
     default_folders = [{
         "folder_name": "📌 Quản Lý Nghiệp Vụ",
@@ -211,7 +212,7 @@ def load_folders_db():
     return default_folders
 
 # ==================== CÁC HÀM XỬ LÝ BÌNH LUẬN ====================
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def get_comments_by_log_id(log_id):
     if supabase is None:
         return []
@@ -233,6 +234,6 @@ def add_comment_db(log_id, nguoi_binh_luan, noi_dung):
             "ngay_gio": current_time
         }
         supabase.table("comments").insert(payload).execute()
-        st.cache_data.clear()
+        # Đã lược bỏ st.cache_data.clear() ở đây để tránh làm đơ app
     except Exception:
         pass
