@@ -782,7 +782,15 @@ def render_main_content(current_menu_name):
                     del st.session_state["form_msg"]
 
         st.markdown("---")
-        st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
+        
+        # Thêm nút làm mới ngay cạnh tiêu đề
+        col_title_1, col_title_2 = st.columns([3, 1])
+        with col_title_1:
+            st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
+        with col_title_2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_input"):
+                st.cache_data.clear()
+                st.rerun()
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=150)
         if not input_df.empty:
@@ -912,7 +920,14 @@ def render_main_content(current_menu_name):
 
     # ==================== CHẤM CÔNG CA LÀM VIỆC ====================
     elif feature == "attendance":
-        st.header(current_menu_name)
+        col_att_h1, col_att_h2 = st.columns([3, 1])
+        with col_att_h1:
+            st.header(current_menu_name)
+        with col_att_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_att"):
+                st.cache_data.clear()
+                st.rerun()
+
         now_vn = datetime.datetime.now(VN_TIMEZONE)
         
         att_df = get_attendance_db()
@@ -1013,7 +1028,13 @@ def render_main_content(current_menu_name):
 
     # ==================== BÁO CÁO & BIỂU ĐỒ ====================
     elif feature == "report":
-        st.header(current_menu_name)
+        col_rep_h1, col_rep_h2 = st.columns([3, 1])
+        with col_rep_h1:
+            st.header(current_menu_name)
+        with col_rep_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_report"):
+                st.cache_data.clear()
+                st.rerun()
         
         col_date1, col_date2 = st.columns(2)
         default_start = datetime.date.today().replace(day=1)
@@ -1134,7 +1155,14 @@ def render_main_content(current_menu_name):
 
     # ==================== 5. THƯ MỤC BÁO CÁO ====================
     elif feature == "report_folder":
-        st.header(current_menu_name)
+        col_fold_h1, col_fold_h2 = st.columns([3, 1])
+        with col_fold_h1:
+            st.header(current_menu_name)
+        with col_fold_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_folder"):
+                st.cache_data.clear()
+                st.rerun()
+
         reports_df = get_export_reports_db(is_deleted=False)
         if not reports_df.empty:
             with st.form("reports_folder_form"):
@@ -1155,7 +1183,14 @@ def render_main_content(current_menu_name):
 
     # ==================== THAM CHIẾU CÔNG VIỆC ====================
     elif feature == "rules":
-        st.header(current_menu_name)
+        col_rules_h1, col_rules_h2 = st.columns([3, 1])
+        with col_rules_h1:
+            st.header(current_menu_name)
+        with col_rules_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_rules"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin" and not user_perms["perm_rules"]:
             st.warning("🔒 Bạn không có quyền truy cập hoặc chỉnh sửa định mức công việc!")
             st.dataframe(st.session_state.rules_df, use_container_width=True, hide_index=True)
@@ -1192,7 +1227,14 @@ def render_main_content(current_menu_name):
 
     # ==================== THÙNG RÁC SẢN LƯỢNG ====================
     elif feature == "trash":
-        st.header(current_menu_name)
+        col_trash_h1, col_trash_h2 = st.columns([3, 1])
+        with col_trash_h1:
+            st.header(current_menu_name)
+        with col_trash_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_trash"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin":
             st.warning("🔒 Tính năng thùng rác và xóa vĩnh viễn chỉ dành cho Quản trị viên (Admin).")
         else:
@@ -1225,7 +1267,14 @@ def render_main_content(current_menu_name):
 
     # ==================== QUẢN LÝ THƯ MỤC & MENU ====================
     elif feature == "manage_folders":
-        st.header("Quản Lý Thư Mục & Menu")
+        col_mf_h1, col_mf_h2 = st.columns([3, 1])
+        with col_mf_h1:
+            st.header("Quản Lý Thư Mục & Menu")
+        with col_mf_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_mf"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin":
             st.warning("🔒 Bạn không có quyền truy cập trang quản lý cấu hình hệ thống này.")
         else:
@@ -1247,7 +1296,14 @@ def render_main_content(current_menu_name):
 
     # ==================== CÀI ĐẶT GIAO DIỆN ====================
     elif feature == "settings_ui":
-        st.header("Cài Đặt Giao Diện & Nhân Sự")
+        col_ui_h1, col_ui_h2 = st.columns([3, 1])
+        with col_ui_h1:
+            st.header("Cài Đặt Giao Diện & Nhân Sự")
+        with col_ui_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_ui"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin":
             st.warning("🔒 Chỉ Quản trị viên mới được phép cài đặt giao diện và danh sách nhân sự!")
         else:
@@ -1294,7 +1350,14 @@ def render_main_content(current_menu_name):
 
     # ==================== 🛡️ QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN KẾT HỢP ====================
     elif feature == "manage_roles":
-        st.header("🛡️ Quản Lý Tài Khoản & Phân Quyền Chi Tiết")
+        col_mr_h1, col_mr_h2 = st.columns([3, 1])
+        with col_mr_h1:
+            st.header("🛡️ Quản Lý Tài Khoản & Phân Quyền Chi Tiết")
+        with col_mr_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_mr"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin":
             st.warning("🔒 Chỉ Quản trị viên mới có quyền quản lý tài khoản và phân quyền!")
         else:
@@ -1325,7 +1388,7 @@ def render_main_content(current_menu_name):
                             column_config={
                                 "id": "ID",
                                 "name": st.column_config.TextColumn("Họ và tên nhân sự", disabled=True),
-                                "password_hash": None, # Ẩn hoàn toàn cột mật khẩu mã hóa khỏi giao diện
+                                "password_hash": None,
                                 "role": st.column_config.SelectboxColumn("Vai trò", options=["Admin", "Manager", "Staff"], required=True),
                                 "perm_input": st.column_config.CheckboxColumn("Nhập sản lượng"),
                                 "perm_report": st.column_config.CheckboxColumn("Xem báo cáo"),
@@ -1379,7 +1442,14 @@ def render_main_content(current_menu_name):
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
-        st.header("Làm Sạch Dữ Liệu")
+        col_cd_h1, col_cd_h2 = st.columns([3, 1])
+        with col_cd_h1:
+            st.header("Làm Sạch Dữ Liệu")
+        with col_cd_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_cd"):
+                st.cache_data.clear()
+                st.rerun()
+
         if current_user_role != "Admin":
             st.warning("🔒 Tính năng làm sạch dữ liệu chỉ dành cho Admin.")
         else:
