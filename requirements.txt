@@ -1,6 +1,7 @@
 streamlit
 pandas
-matplotlib
 plotly
-Pillow
 supabase
+psutil
+pytz
+pillow
