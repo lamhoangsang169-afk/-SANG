@@ -111,41 +111,45 @@ if not logs_df.empty:
     elif "hinh_anh" in display_df.columns:
         img_col = "hinh_anh"
 
-    # Đổi tên cột sang tiếng Việt chuẩn
+    # Đổi tên cột sang tiếng Việt chuẩn, gọn gàng cho mobile
     rename_map = {
         "STT": "STT",
         "ngay": "Ngày",
         "thoi_gian": "Giờ",
         "nhan_su": "Nhân Sự",
-        "hang_muc_cong_viec": "Hạng Mục Công Việc",
-        "don_vi": "Đơn Vị",
-        "so_luong": "Số Lượng",
-        "he_so": "Hệ Số",
-        "he_so_diem": "Hệ Số",
+        "hang_muc_cong_viec": "Hạng Mục",
+        "don_vi": "ĐV",
+        "so_luong": "SL",
+        "he_so": "HS",
+        "he_so_diem": "HS",
         "tong_diem": "Tổng Điểm",
         "ghi_chu": "Ghi Chú"
     }
     if img_col:
-        rename_map[img_col] = "Hình Ảnh Minh Chứng"
+        rename_map[img_col] = "Ảnh"
 
     display_df = display_df.rename(columns=rename_map)
     
-    # Sắp xếp đúng thứ tự hiển thị các cột như bản cũ
+    # Sắp xếp thứ tự các cột tối ưu cho màn hình di động
     desired_columns = [
-        "STT", "Ngày", "Giờ", "Nhân Sự", 
-        "Hạng Mục Công Việc", "Đơn Vị", 
-        "Số Lượng", "Hệ Số", "Tổng Điểm", 
-        "Ghi Chú", "Hình Ảnh Minh Chứng"
+        "STT", "Ngày", "Nhân Sự", 
+        "Hạng Mục", "SL", "Tổng Điểm", 
+        "Ghi Chú", "Ảnh"
     ]
     
     existing_cols = [col for col in desired_columns if col in display_df.columns]
     display_df = display_df[existing_cols]
 
+    # Hiển thị bảng tối ưu giao diện mobile (thanh cuộn mượt mà, ẩn index phụ)
     st.dataframe(
         display_df, 
         use_container_width=True,
+        hide_index=True,
         column_config={
-            "Hình Ảnh Minh Chứng": st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
+            "Ảnh": st.column_config.ImageColumn("Ảnh", help="Ảnh minh chứng công việc", width="small"),
+            "STT": st.column_config.NumberColumn("STT", width="small"),
+            "SL": st.column_config.NumberColumn("SL", width="small"),
+            "Tổng Điểm": st.column_config.NumberColumn("Tổng Điểm", format="%.1f")
         }
     )
 else:
