@@ -98,18 +98,20 @@ st.subheader("📋 Nhật Ký Sản Lượng Gần Đây")
 if not logs_df.empty:
     display_df = logs_df.copy()
     
+    # Loại bỏ các cột hệ thống không cần thiết
     if "db_id" in display_df.columns:
         display_df = display_df.drop(columns=["db_id"])
     if "is_deleted" in display_df.columns:
         display_df = display_df.drop(columns=["is_deleted"])
         
-    # Xác định cột chứa link ảnh thực tế từ database (hinh_anh_url hoặc hinh_anh)
+    # Xác định đúng cột chứa hình ảnh
     img_col = None
     if "hinh_anh_url" in display_df.columns:
         img_col = "hinh_anh_url"
     elif "hinh_anh" in display_df.columns:
         img_col = "hinh_anh"
 
+    # Đổi tên cột sang tiếng Việt chuẩn
     rename_map = {
         "STT": "STT",
         "ngay": "Ngày",
@@ -119,22 +121,32 @@ if not logs_df.empty:
         "don_vi": "Đơn Vị",
         "so_luong": "Số Lượng",
         "he_so": "Hệ Số",
+        "he_so_diem": "Hệ Số",
         "tong_diem": "Tổng Điểm",
         "ghi_chu": "Ghi Chú"
     }
     if img_col:
-        rename_map[img_col] = "Hình Ảnh"
+        rename_map[img_col] = "Hình Ảnh Minh Chứng"
 
     display_df = display_df.rename(columns=rename_map)
     
-    column_config_dict = {}
-    if "Hình Ảnh" in display_df.columns:
-        column_config_dict["Hình Ảnh"] = st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
+    # Sắp xếp đúng thứ tự hiển thị các cột như bản cũ
+    desired_columns = [
+        "STT", "Ngày", "Giờ", "Nhân Sự", 
+        "Hạng Mục Công Việc", "Đơn Vị", 
+        "Số Lượng", "Hệ Số", "Tổng Điểm", 
+        "Ghi Chú", "Hình Ảnh Minh Chứng"
+    ]
+    
+    existing_cols = [col for col in desired_columns if col in display_df.columns]
+    display_df = display_df[existing_cols]
 
     st.dataframe(
         display_df, 
         use_container_width=True,
-        column_config=column_config_dict
+        column_config={
+            "Hình Ảnh Minh Chứng": st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
+        }
     )
 else:
     st.info("Chưa có dữ liệu sản lượng nào được ghi nhận.")
