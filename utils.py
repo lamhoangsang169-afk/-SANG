@@ -13,7 +13,6 @@ def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
         image = Image.open(uploaded_file)
         image.thumbnail(max_size)
         
-        # Chuyển đổi định dạng nếu cần
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
             
@@ -39,3 +38,13 @@ def calculate_exact_minutes(start_date_str, start_time_str, end_date_str, end_ti
     except Exception as e:
         print(f"Lỗi tính thời gian: {e}")
         return 0
+
+def hex_to_rgba(hex_code, alpha=1.0):
+    """Chuyển đổi mã màu Hex sang định dạng RGBA"""
+    try:
+        hex_code = hex_code.lstrip('#')
+        lv = len(hex_code)
+        rgb = tuple(int(hex_code[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+        return f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {alpha})"
+    except Exception:
+        return f"rgba(0, 0, 0, {alpha})"
