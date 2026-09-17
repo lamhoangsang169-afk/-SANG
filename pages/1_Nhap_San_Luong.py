@@ -50,7 +50,6 @@ with st.form("production_form", clear_on_submit=True):
         
         nhan_su = st.selectbox("Nhân sự thực hiện", staff_list)
         
-        # Cảnh báo nếu nhân sự chưa chấm công vào ca
         if nhan_su not in checked_in_set:
             st.warning(f"⚠️ Lưu ý: Nhân sự **{nhan_su}** chưa bấm 'Vào Ca' ở trang Chấm Công!")
 
@@ -60,7 +59,6 @@ with st.form("production_form", clear_on_submit=True):
         
         so_luong = st.number_input("Số lượng", min_value=0.0, step=1.0, value=1.0)
         
-        # Tự động lấy hệ số theo hạng mục
         he_so = 1.0
         don_vi = "Cái"
         if not rules_df.empty and "hang_muc_cong_viec" in rules_df.columns:
@@ -78,11 +76,9 @@ with st.form("production_form", clear_on_submit=True):
     submit_btn = st.form_submit_button("🚀 Ghi Nhận Sản Lượng", use_container_width=True)
 
     if submit_btn:
-        # Xử lý nén ảnh nếu có
         img_base64 = compress_image_to_base64(uploaded_image) if uploaded_image else ""
         tong_diem = round(so_luong * he_so, 2)
         
-        # Thêm vào database
         add_production_log_db(
             ngay=str(ngay),
             gio=str(gio),
@@ -100,16 +96,20 @@ with st.form("production_form", clear_on_submit=True):
 st.markdown("---")
 st.subheader("📋 Nhật Ký Sản Lượng Gần Đây")
 if not logs_df.empty:
-    # Chuẩn hóa hiển thị giống bản cũ (ẩn các cột kỹ thuật, đổi tên tiếng Việt rõ ràng)
     display_df = logs_df.copy()
     
     if "db_id" in display_df.columns:
         display_df = display_df.drop(columns=["db_id"])
     if "is_deleted" in display_df.columns:
         display_df = display_df.drop(columns=["is_deleted"])
-    if "hinh_anh_url" in display_df.columns:
-        display_df = display_df.drop(columns=["hinh_anh_url"])
         
+    # Xác định cột chứa link ảnh thực tế từ database (hinh_anh_url hoặc hinh_anh)
+    img_col = None
+    if "hinh_anh_url" in display_df.columns:
+        img_col = "hinh_anh_url"
+    elif "hinh_anh" in display_df.columns:
+        img_col = "hinh_anh"
+
     rename_map = {
         "STT": "STT",
         "ngay": "Ngày",
@@ -120,17 +120,21 @@ if not logs_df.empty:
         "so_luong": "Số Lượng",
         "he_so": "Hệ Số",
         "tong_diem": "Tổng Điểm",
-        "ghi_chu": "Ghi Chú",
-        "hinh_anh": "Hình Ảnh"
+        "ghi_chu": "Ghi Chú"
     }
+    if img_col:
+        rename_map[img_col] = "Hình Ảnh"
+
     display_df = display_df.rename(columns=rename_map)
     
+    column_config_dict = {}
+    if "Hình Ảnh" in display_df.columns:
+        column_config_dict["Hình Ảnh"] = st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
+
     st.dataframe(
         display_df, 
         use_container_width=True,
-        column_config={
-            "Hình Ảnh": st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
-        }
+        column_config=column_config_dict
     )
 else:
     st.info("Chưa có dữ liệu sản lượng nào được ghi nhận.")
