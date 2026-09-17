@@ -1,50 +1,41 @@
-import datetime
-import io
-from PIL import Image
+import pytz
 import base64
+from PIL import Image
+import io
+import datetime
 
-class VietnamTz(datetime.tzinfo):
-    def utcoffset(self, dt):
-        return datetime.timedelta(hours=7)
-    def tzname(self, dt):
-        return "ICT"
-    def dst(self, dt):
-        return datetime.timedelta(0)
+# Cấu hình múi giờ Việt Nam chuẩn xác
+VN_TIMEZONE = pytz.timezone("Asia/Ho_Chi_Minh")
 
-VN_TIMEZONE = VietnamTz()
-
-def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=60):
+def compress_image_to_base64(uploaded_file, max_size=(800, 800), quality=70):
+    """Nén ảnh tải lên để tối ưu dung lượng hiển thị"""
     try:
-        if uploaded_file is None:
-            return None
-        img = Image.open(uploaded_file)
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        img.thumbnail(max_size)
+        image = Image.open(uploaded_file)
+        image.thumbnail(max_size)
+        
+        # Chuyển đổi định dạng nếu cần
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+            
         buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=quality)
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
-    except Exception:
+        image.save(buffered, format="JPEG", quality=quality)
+        return base64.b64encode(buffered.getvalue()).decode()
+    except Exception as e:
+        print(f"Lỗi nén ảnh: {e}")
         return None
 
-def calculate_exact_minutes(date_in_str, time_in_str, date_out_str, time_out_str):
+def calculate_exact_minutes(start_date_str, start_time_str, end_date_str, end_time_str):
+    """Tính chính xác tổng số phút làm việc giữa giờ vào và giờ ra"""
     try:
-        dt1 = datetime.datetime.strptime(f"{date_in_str} {time_in_str}", "%Y-%m-%d %H:%M:%S")
-        dt2 = datetime.datetime.strptime(f"{date_out_str} {time_out_str}", "%Y-%m-%d %H:%M:%S")
-        delta = dt2 - dt1
-        minutes = int(delta.total_seconds() / 60)
-        return max(0, minutes)
-    except Exception:
+        dt_start_str = f"{start_date_str} {start_time_str}"
+        dt_end_str = f"{end_date_str} {end_time_str}"
+        
+        dt_start = datetime.datetime.strptime(dt_start_str, "%Y-%m-%d %H:%M:%S")
+        dt_end = datetime.datetime.strptime(dt_end_str, "%Y-%m-%d %H:%M:%S")
+        
+        diff = dt_end - dt_start
+        total_minutes = int(diff.total_seconds() / 60)
+        return max(0, total_minutes)
+    except Exception as e:
+        print(f"Lỗi tính thời gian: {e}")
         return 0
-
-def hex_to_rgba(hex_str, opacity):
-    hex_str = hex_str.lstrip('#')
-    if len(hex_str) == 3:
-        hex_str = ''.join([c*2 for c in hex_str])
-    try:
-        r = int(hex_str[0:2], 16)
-        g = int(hex_str[2:4], 16)
-        b = int(hex_str[4:6], 16)
-        return f"rgba({r}, {g}, {b}, {opacity})"
-    except:
-        return f"rgba(240, 242, 246, {opacity})"
