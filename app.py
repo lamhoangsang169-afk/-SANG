@@ -1,8 +1,8 @@
 import streamlit as st
 import datetime
 import hashlib
-from utils import hex_to_rgba, VN_TIMEZONE
-from database import supabase, get_staff_list_db
+import pytz
+from database import supabase
 
 st.set_page_config(
     page_title="Hệ Thống Quản Lý Sản Lượng & Chấm Công",
@@ -10,6 +10,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Cấu hình múi giờ Việt Nam
+VN_TIMEZONE = pytz.timezone("Asia/Ho_Chi_Minh")
 
 # Khởi tạo session state
 if "logged_in" not in st.session_state:
