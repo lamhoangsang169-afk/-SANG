@@ -100,6 +100,37 @@ with st.form("production_form", clear_on_submit=True):
 st.markdown("---")
 st.subheader("📋 Nhật Ký Sản Lượng Gần Đây")
 if not logs_df.empty:
-    st.dataframe(logs_df, use_container_width=True)
+    # Chuẩn hóa hiển thị giống bản cũ (ẩn các cột kỹ thuật, đổi tên tiếng Việt rõ ràng)
+    display_df = logs_df.copy()
+    
+    if "db_id" in display_df.columns:
+        display_df = display_df.drop(columns=["db_id"])
+    if "is_deleted" in display_df.columns:
+        display_df = display_df.drop(columns=["is_deleted"])
+    if "hinh_anh_url" in display_df.columns:
+        display_df = display_df.drop(columns=["hinh_anh_url"])
+        
+    rename_map = {
+        "STT": "STT",
+        "ngay": "Ngày",
+        "thoi_gian": "Giờ",
+        "nhan_su": "Nhân Sự",
+        "hang_muc_cong_viec": "Hạng Mục Công Việc",
+        "don_vi": "Đơn Vị",
+        "so_luong": "Số Lượng",
+        "he_so": "Hệ Số",
+        "tong_diem": "Tổng Điểm",
+        "ghi_chu": "Ghi Chú",
+        "hinh_anh": "Hình Ảnh"
+    }
+    display_df = display_df.rename(columns=rename_map)
+    
+    st.dataframe(
+        display_df, 
+        use_container_width=True,
+        column_config={
+            "Hình Ảnh": st.column_config.ImageColumn("Hình Ảnh Minh Chứng", help="Ảnh đính kèm công việc")
+        }
+    )
 else:
     st.info("Chưa có dữ liệu sản lượng nào được ghi nhận.")
