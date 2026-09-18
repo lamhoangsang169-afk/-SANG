@@ -25,7 +25,8 @@ from database import (
     get_total_production_count_db, 
     get_attendance_db,
     load_app_settings_db, 
-    load_folders_db
+    load_folders_db,
+    import_kpi_excel_to_db
 )
 
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
@@ -650,6 +651,9 @@ with st.sidebar:
         if st.button("🛡️ Quản Lý Tài Khoản & Phân Quyền", use_container_width=True):
             st.session_state.current_menu = "🛡️ Quản Lý Tài Khoản & Phân Quyền"
             st.rerun()
+        if st.button("📥 Import Excel KPI", use_container_width=True):
+            st.session_state.current_menu = "📥 Import Excel KPI"
+            st.rerun()
         if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
             st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
             st.rerun()
@@ -681,6 +685,7 @@ def get_feature_type(menu_name):
     if menu_name == "📁 Quản Lý Thư Mục & Menu": return "manage_folders"
     if menu_name == "🎨 Cài Đặt Giao Diện": return "settings_ui"
     if menu_name == "🛡️ Quản Lý Tài Khoản & Phân Quyền": return "manage_roles"
+    if menu_name == "📥 Import Excel KPI": return "import_excel"
     if menu_name == "🧹 Làm Sạch Dữ Liệu": return "clean_data"
     for folder in st.session_state.folders:
         for item in folder["items"]:
@@ -783,7 +788,6 @@ def render_main_content(current_menu_name):
 
         st.markdown("---")
         
-        # Thêm nút làm mới ngay cạnh tiêu đề
         col_title_1, col_title_2 = st.columns([3, 1])
         with col_title_1:
             st.subheader("Danh Sách Sản Lượng & Hình Ảnh")
@@ -862,23 +866,32 @@ def render_main_content(current_menu_name):
             if not paginated_df.empty:
                 can_delete_data = (current_user_role == "Admin" or user_perms["perm_input"])
 
-                if can_delete_data:
-                    col_del_all_1, col_del_all_2 = st.columns([2.5, 1.5])
-                    with col_del_all_2:
-                        del_c1, del_c2 = st.columns([1, 1])
-                        with del_c1: confirm_delete_all = st.checkbox("Xác nhận xóa tất cả trang này", key="chk_confirm_delete_all")
-                        with del_c2:
-                            if st.button("🗑️ Xóa tất cả trang này", use_container_width=True, type="primary"):
-                                if confirm_delete_all:
-                                    all_paginated_ids = paginated_df["db_id"].tolist()
-                                    if all_paginated_ids:
-                                        update_production_log_deleted_status(all_paginated_ids, True)
-                                        st.success("Đã chuyển toàn bộ bản ghi đang hiển thị ở trang này vào thùng rác!")
-                                        st.rerun()
-                                else:
-                                    st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm!")
-
                 selected_ids_to_delete = []
+
+                if can_delete_data:
+                    st.markdown("<div style='background: rgba(255, 255, 255, 0.75); padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 15px;'>", unsafe_allow_html=True)
+                    col_btn_1, col_btn_2 = st.columns(2)
+                    with col_btn_1:
+                        if st.button("🗑️ Xóa các dòng đã chọn", use_container_width=True, type="primary"):
+                            if selected_ids_to_delete:
+                                update_production_log_deleted_status(selected_ids_to_delete, True)
+                                st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
+                                st.rerun()
+                            else:
+                                st.warning("⚠️ Vui lòng tích chọn ít nhất một dòng cần xóa!")
+                    with col_btn_2:
+                        confirm_delete_all = st.checkbox("Xác nhận xóa tất cả trang này", key="chk_confirm_delete_all")
+                        if st.button("🗑️ Xóa tất cả trang này", use_container_width=True):
+                            if confirm_delete_all:
+                                all_paginated_ids = paginated_df["db_id"].tolist()
+                                if all_paginated_ids:
+                                    update_production_log_deleted_status(all_paginated_ids, True)
+                                    st.success("Đã chuyển toàn bộ bản ghi đang hiển thị ở trang này vào thùng rác!")
+                                    st.rerun()
+                            else:
+                                st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
+                    st.markdown("</div>", unsafe_allow_html=True)
+
                 for idx, row in paginated_df.iterrows():
                     row_c1, row_c2 = st.columns([4, 1])
                     with row_c1:
@@ -892,7 +905,7 @@ def render_main_content(current_menu_name):
                         if can_delete_data:
                             if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
                                 selected_ids_to_delete.append(row['db_id'])
-                            
+                                
                     with row_c2:
                         img_url_val = row.get("Hình Ảnh", "")
                         if img_url_val and isinstance(img_url_val, str):
@@ -907,12 +920,6 @@ def render_main_content(current_menu_name):
                             st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
 
                     st.markdown("---")
-                
-                if can_delete_data and selected_ids_to_delete:
-                    if st.button("🗑️ Chuyển Các Dòng Đã Chọn Vào Thùng Rác", use_container_width=True, type="secondary"):
-                        update_production_log_deleted_status(selected_ids_to_delete, True)
-                        st.success("Đã chuyển các dòng đã chọn vào thùng rác!")
-                        st.rerun()
             else:
                 st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
         else:
@@ -1224,6 +1231,38 @@ def render_main_content(current_menu_name):
                                 st.error(f"Lỗi khi xóa toàn bộ định mức: {e}")
                     else:
                         st.warning("⚠️ Vui lòng tích chọn hộp xác nhận phía trên trước khi bấm Xóa Toàn Bộ!")
+
+    # ==================== 📥 IMPORT EXCEL KPI ====================
+    elif feature == "import_excel":
+        col_imp_h1, col_imp_h2 = st.columns([3, 1])
+        with col_imp_h1:
+            st.header("📥 Import Bảng Chấm Điểm KPI Từ Excel")
+        with col_imp_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_import"):
+                st.cache_data.clear()
+                st.rerun()
+
+        if current_user_role != "Admin":
+            st.warning("🔒 Chỉ Quản trị viên mới có quyền import dữ liệu hệ thống!")
+        else:
+            st.markdown("Tải lên file Excel (`.xlsx`) chứa dữ liệu KPI để hệ thống tự động đồng bộ lên Supabase.")
+            
+            uploaded_excel = st.file_uploader("Chọn file Excel KPI", type=["xlsx"])
+            if uploaded_excel is not None:
+                try:
+                    df_preview = pd.read_excel(uploaded_excel)
+                    st.markdown("##### 🔍 Xem trước dữ liệu trong file:")
+                    st.dataframe(df_preview.head(5), use_container_width=True)
+                    
+                    if st.button("🚀 Xác Nhận Đẩy Lên Cơ Sở Dữ Liệu", use_container_width=True, type="primary"):
+                        with st.spinner("Đang xử lý và đồng bộ dữ liệu..."):
+                            success, msg = import_kpi_excel_to_db(df_preview)
+                            if success:
+                                st.success(msg)
+                            else:
+                                st.error(msg)
+                except Exception as e:
+                    st.error(f"Lỗi đọc file Excel: {e}")
 
     # ==================== THÙNG RÁC SẢN LƯỢNG ====================
     elif feature == "trash":
