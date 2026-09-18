@@ -57,19 +57,41 @@ def get_rules_df_db():
         pass
     return pd.DataFrame(columns=["id", "stt", "Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"])
 
+@st.cache_data(ttl=60, show_spinner=False)
 def get_production_logs_db(is_deleted=False, limit_rows=150):
     if supabase is None:
         return pd.DataFrame()
     try:
-        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=True).limit(limit_rows).execute()
+        res = supabase.table("production_logs")\
+            .select("*")\
+            .eq("is_deleted", is_deleted)\
+            .order("id", desc=True)\
+            .limit(limit_rows)\
+            .execute()
+            
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
-                "id": "db_id", "ngay": "Ngày", "thoi_gian": "Thời Gian",
-                "nhan_su": "Nhân Sự", "hang_muc_cong_viec": "Hạng Mục Công Việc",
-                "hinh_anh_url": "Hình Ảnh", "don_vi": "Đơn Vị", "so_luong": "Số Lượng",
-                "he_so_diem": "Hệ Số", "tong_diem": "Tổng Điểm", "ghi_chu": "Ghi Chú"
+                "id": "db_id", 
+                "ngay": "Ngày", 
+                "thoi_gian": "Thời Gian",
+                "nhan_su": "Nhân Sự", 
+                "hang_muc_cong_viec": "Hạng Mục Công Việc",
+                "hinh_anh_url": "Hình Ảnh", 
+                "don_vi": "Đơn Vị", 
+                "so_luong": "Số Lượng",
+                "he_so_diem": "Hệ Số", 
+                "tong_diem": "Tổng Điểm", 
+                "ghi_chu": "Ghi Chú"
             })
+            
+            # Đảm bảo xử lý cột Hình Ảnh sạch sẽ, tránh bị lỗi gán giá trị 0
+            if "Hình Ảnh" in df.columns:
+                df["Hình Ảnh"] = df["Hình Ảnh"].fillna("").astype(str)
+                df["Hình Ảnh"] = df["Hình Ảnh"].apply(lambda x: "" if x.strip() in ["0", "nan", "None"] else x)
+            else:
+                df["Hình Ảnh"] = ""
+
             df.insert(0, "STT", range(1, len(df) + 1))
             return df
     except Exception:
@@ -80,15 +102,35 @@ def get_production_logs_by_date_range(start_date, end_date):
     if supabase is None:
         return pd.DataFrame()
     try:
-        res = supabase.table("production_logs").select("*").eq("is_deleted", False).gte("ngay", str(start_date)).lte("ngay", str(end_date)).execute()
+        res = supabase.table("production_logs")\
+            .select("*")\
+            .eq("is_deleted", False)\
+            .gte("ngay", str(start_date))\
+            .lte("ngay", str(end_date))\
+            .execute()
+            
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
-                "id": "db_id", "ngay": "Ngày", "thoi_gian": "Thời Gian",
-                "nhan_su": "Nhân Sự", "hang_muc_cong_viec": "Hạng Mục Công Việc",
-                "hinh_anh_url": "Hình Ảnh", "don_vi": "Đơn Vị", "so_luong": "Số Lượng",
-                "he_so_diem": "Hệ Số", "tong_diem": "Tổng Điểm", "ghi_chu": "Ghi Chú"
+                "id": "db_id", 
+                "ngay": "Ngày", 
+                "thoi_gian": "Thời Gian",
+                "nhan_su": "Nhân Sự", 
+                "hang_muc_cong_viec": "Hạng Mục Công Việc",
+                "hinh_anh_url": "Hình Ảnh", 
+                "don_vi": "Đơn Vị", 
+                "so_luong": "Số Lượng",
+                "he_so_diem": "Hệ Số", 
+                "tong_diem": "Tổng Điểm", 
+                "ghi_chu": "Ghi Chú"
             })
+            
+            if "Hình Ảnh" in df.columns:
+                df["Hình Ảnh"] = df["Hình Ảnh"].fillna("").astype(str)
+                df["Hình Ảnh"] = df["Hình Ảnh"].apply(lambda x: "" if x.strip() in ["0", "nan", "None"] else x)
+            else:
+                df["Hình Ảnh"] = ""
+                
             return df
     except Exception:
         pass
