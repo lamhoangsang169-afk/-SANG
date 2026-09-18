@@ -365,7 +365,8 @@ def upload_multiple_images_to_storage(uploaded_files):
     for uploaded_file in uploaded_files[:4]:
         try:
             file_bytes = uploaded_file.getvalue()
-            file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{uploaded_file.name}"
+            clean_name = uploaded_file.name.replace(" ", "_")
+            file_name = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{clean_name}"
             supabase.storage.from_("production-images").upload(file_name, file_bytes, {"content-type": uploaded_file.type})
             public_url = f"{SUPABASE_URL_VAL}/storage/v1/object/public/production-images/{file_name}"
             url_list.append(public_url)
@@ -886,16 +887,20 @@ def render_main_content(current_menu_name):
                                 if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
+                            # 📌 ĐOẠN XỬ LÝ AN TOÀN HÌNH ẢNH MỚI ĐƯỢC CẬP NHẬT
                             with row_c2:
-                                img_url_val = row.get("Hình Ảnh", "")
-                                if img_url_val and isinstance(img_url_val, str):
-                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                                img_url_val = str(row.get("Hình Ảnh", "")).strip()
+                                if img_url_val and img_url_val not in ["0", "nan", "None"]:
+                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
                                     if urls:
                                         sub_cols = st.columns(min(len(urls), 4), gap="small")
                                         for i, u in enumerate(urls):
                                             with sub_cols[i]:
-                                                with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
+                                                with st.popover("🔍", help="Xem ảnh lớn"):
+                                                    st.image(u, use_container_width=True)
                                                 st.image(u, width=40)
+                                    else:
+                                        st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
 
@@ -930,15 +935,18 @@ def render_main_content(current_menu_name):
                             </div>
                             """, unsafe_allow_html=True)
                         with row_c2:
-                            img_url_val = row.get("Hình Ảnh", "")
-                            if img_url_val and isinstance(img_url_val, str):
-                                urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                            img_url_val = str(row.get("Hình Ảnh", "")).strip()
+                            if img_url_val and img_url_val not in ["0", "nan", "None"]:
+                                urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
                                 if urls:
                                     sub_cols = st.columns(min(len(urls), 4), gap="small")
                                     for i, u in enumerate(urls):
                                         with sub_cols[i]:
-                                            with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
+                                            with st.popover("🔍", help="Xem ảnh lớn"):
+                                                st.image(u, use_container_width=True)
                                             st.image(u, width=40)
+                                else:
+                                    st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                             else:
                                 st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                         st.markdown("---")
