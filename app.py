@@ -25,8 +25,7 @@ from database import (
     get_total_production_count_db, 
     get_attendance_db,
     load_app_settings_db, 
-    load_folders_db,
-    import_kpi_excel_to_db
+    load_folders_db
 )
 
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
@@ -651,9 +650,6 @@ with st.sidebar:
         if st.button("🛡️ Quản Lý Tài Khoản & Phân Quyền", use_container_width=True):
             st.session_state.current_menu = "🛡️ Quản Lý Tài Khoản & Phân Quyền"
             st.rerun()
-        if st.button("📥 Import Excel KPI", use_container_width=True):
-            st.session_state.current_menu = "📥 Import Excel KPI"
-            st.rerun()
         if st.button("🧹 Làm Sạch & Tối Ưu Dữ Liệu", use_container_width=True):
             st.session_state.current_menu = "🧹 Làm Sạch Dữ Liệu"
             st.rerun()
@@ -685,7 +681,6 @@ def get_feature_type(menu_name):
     if menu_name == "📁 Quản Lý Thư Mục & Menu": return "manage_folders"
     if menu_name == "🎨 Cài Đặt Giao Diện": return "settings_ui"
     if menu_name == "🛡️ Quản Lý Tài Khoản & Phân Quyền": return "manage_roles"
-    if menu_name == "📥 Import Excel KPI": return "import_excel"
     if menu_name == "🧹 Làm Sạch Dữ Liệu": return "clean_data"
     for folder in st.session_state.folders:
         for item in folder["items"]:
@@ -866,22 +861,55 @@ def render_main_content(current_menu_name):
             if not paginated_df.empty:
                 can_delete_data = (current_user_role == "Admin" or user_perms["perm_input"])
 
-                selected_ids_to_delete = []
-
                 if can_delete_data:
-                    st.markdown("<div style='background: rgba(255, 255, 255, 0.75); padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 15px;'>", unsafe_allow_html=True)
-                    col_btn_1, col_btn_2 = st.columns(2)
-                    with col_btn_1:
-                        if st.button("🗑️ Xóa các dòng đã chọn", use_container_width=True, type="primary"):
+                    with st.form("delete_production_form"):
+                        st.markdown("<div style='background: rgba(255, 255, 255, 0.7); padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 15px;'>", unsafe_allow_html=True)
+                        col_btn_1, col_btn_2 = st.columns(2)
+                        with col_btn_1:
+                            submitted_delete_selected = st.form_submit_button("🗑️ Xóa các dòng đã chọn", use_container_width=True, type="primary")
+                        with col_btn_2:
+                            confirm_delete_all = st.checkbox("Xác nhận xóa tất cả trang này", key="chk_confirm_delete_all")
+                            submitted_delete_all = st.form_submit_button("🗑️ Xóa tất cả trang này", use_container_width=True)
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+                        selected_ids_to_delete = []
+                        for idx, row in paginated_df.iterrows():
+                            row_c1, row_c2 = st.columns([4, 1])
+                            with row_c1:
+                                st.markdown(f"""
+                                <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                                    📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                                    💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
+                                    selected_ids_to_delete.append(row['db_id'])
+                                    
+                            with row_c2:
+                                img_url_val = row.get("Hình Ảnh", "")
+                                if img_url_val and isinstance(img_url_val, str):
+                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                                    if urls:
+                                        sub_cols = st.columns(min(len(urls), 4), gap="small")
+                                        for i, u in enumerate(urls):
+                                            with sub_cols[i]:
+                                                with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
+                                                st.image(u, width=40)
+                                else:
+                                    st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+
+                            st.markdown("---")
+
+                        if submitted_delete_selected:
                             if selected_ids_to_delete:
                                 update_production_log_deleted_status(selected_ids_to_delete, True)
                                 st.success("Đã chuyển các dòng đã chọn vào thùng rác thành công!")
                                 st.rerun()
                             else:
                                 st.warning("⚠️ Vui lòng tích chọn ít nhất một dòng cần xóa!")
-                    with col_btn_2:
-                        confirm_delete_all = st.checkbox("Xác nhận xóa tất cả trang này", key="chk_confirm_delete_all")
-                        if st.button("🗑️ Xóa tất cả trang này", use_container_width=True):
+
+                        if submitted_delete_all:
                             if confirm_delete_all:
                                 all_paginated_ids = paginated_df["db_id"].tolist()
                                 if all_paginated_ids:
@@ -890,36 +918,30 @@ def render_main_content(current_menu_name):
                                     st.rerun()
                             else:
                                 st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                for idx, row in paginated_df.iterrows():
-                    row_c1, row_c2 = st.columns([4, 1])
-                    with row_c1:
-                        st.markdown(f"""
-                        <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                            <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
-                            📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
-                            💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if can_delete_data:
-                            if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
-                                selected_ids_to_delete.append(row['db_id'])
-                                
-                    with row_c2:
-                        img_url_val = row.get("Hình Ảnh", "")
-                        if img_url_val and isinstance(img_url_val, str):
-                            urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
-                            if urls:
-                                sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                for i, u in enumerate(urls):
-                                    with sub_cols[i]:
-                                        with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
-                                        st.image(u, width=40)
-                        else:
-                            st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
-
-                    st.markdown("---")
+                else:
+                    for idx, row in paginated_df.iterrows():
+                        row_c1, row_c2 = st.columns([4, 1])
+                        with row_c1:
+                            st.markdown(f"""
+                            <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
+                                <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                                📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
+                                💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with row_c2:
+                            img_url_val = row.get("Hình Ảnh", "")
+                            if img_url_val and isinstance(img_url_val, str):
+                                urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                                if urls:
+                                    sub_cols = st.columns(min(len(urls), 4), gap="small")
+                                    for i, u in enumerate(urls):
+                                        with sub_cols[i]:
+                                            with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
+                                            st.image(u, width=40)
+                            else:
+                                st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                        st.markdown("---")
             else:
                 st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
         else:
@@ -1231,38 +1253,6 @@ def render_main_content(current_menu_name):
                                 st.error(f"Lỗi khi xóa toàn bộ định mức: {e}")
                     else:
                         st.warning("⚠️ Vui lòng tích chọn hộp xác nhận phía trên trước khi bấm Xóa Toàn Bộ!")
-
-    # ==================== 📥 IMPORT EXCEL KPI ====================
-    elif feature == "import_excel":
-        col_imp_h1, col_imp_h2 = st.columns([3, 1])
-        with col_imp_h1:
-            st.header("📥 Import Bảng Chấm Điểm KPI Từ Excel")
-        with col_imp_h2:
-            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_import"):
-                st.cache_data.clear()
-                st.rerun()
-
-        if current_user_role != "Admin":
-            st.warning("🔒 Chỉ Quản trị viên mới có quyền import dữ liệu hệ thống!")
-        else:
-            st.markdown("Tải lên file Excel (`.xlsx`) chứa dữ liệu KPI để hệ thống tự động đồng bộ lên Supabase.")
-            
-            uploaded_excel = st.file_uploader("Chọn file Excel KPI", type=["xlsx"])
-            if uploaded_excel is not None:
-                try:
-                    df_preview = pd.read_excel(uploaded_excel)
-                    st.markdown("##### 🔍 Xem trước dữ liệu trong file:")
-                    st.dataframe(df_preview.head(5), use_container_width=True)
-                    
-                    if st.button("🚀 Xác Nhận Đẩy Lên Cơ Sở Dữ Liệu", use_container_width=True, type="primary"):
-                        with st.spinner("Đang xử lý và đồng bộ dữ liệu..."):
-                            success, msg = import_kpi_excel_to_db(df_preview)
-                            if success:
-                                st.success(msg)
-                            else:
-                                st.error(msg)
-                except Exception as e:
-                    st.error(f"Lỗi đọc file Excel: {e}")
 
     # ==================== THÙNG RÁC SẢN LƯỢNG ====================
     elif feature == "trash":
