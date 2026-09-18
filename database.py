@@ -51,12 +51,12 @@ def get_rules_df_db():
             if "don_vi" in df.columns: rename_map["don_vi"] = "Đơn Vị"
             if "he_so_diem" in df.columns: rename_map["he_so_diem"] = "Hệ Số Điểm"
             if "ghi_chu" in df.columns: rename_map["ghi_chu"] = "Ghi Chú"
-            return df.rename(columns=rename_map)
+            df = df.rename(columns=rename_map)
+            return df
     except Exception:
         pass
     return pd.DataFrame(columns=["id", "stt", "Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"])
 
-@st.cache_data(ttl=60, show_spinner=False)
 def get_production_logs_db(is_deleted=False, limit_rows=150):
     if supabase is None:
         return pd.DataFrame()
@@ -70,11 +70,6 @@ def get_production_logs_db(is_deleted=False, limit_rows=150):
                 "hinh_anh_url": "Hình Ảnh", "don_vi": "Đơn Vị", "so_luong": "Số Lượng",
                 "he_so_diem": "Hệ Số", "tong_diem": "Tổng Điểm", "ghi_chu": "Ghi Chú"
             })
-            if "Hình Ảnh" in df.columns:
-                df["Hình Ảnh"] = df["Hình Ảnh"].fillna("").astype(str)
-                df["Hình Ảnh"] = df["Hình Ảnh"].apply(lambda x: "" if x.strip() in ["0", "nan", "None"] else x)
-            else:
-                df["Hình Ảnh"] = ""
             df.insert(0, "STT", range(1, len(df) + 1))
             return df
     except Exception:
@@ -92,17 +87,21 @@ def get_production_logs_by_date_range(start_date, end_date):
                 "id": "db_id", "ngay": "Ngày", "thoi_gian": "Thời Gian",
                 "nhan_su": "Nhân Sự", "hang_muc_cong_viec": "Hạng Mục Công Việc",
                 "hinh_anh_url": "Hình Ảnh", "don_vi": "Đơn Vị", "so_luong": "Số Lượng",
-                "he_so_diem": "Hệ Số Điểm", "tong_diem": "Tổng Điểm", "ghi_chu": "Ghi Chú"
+                "he_so_diem": "Hệ Số", "tong_diem": "Tổng Điểm", "ghi_chu": "Ghi Chú"
             })
-            if "Hình Ảnh" in df.columns:
-                df["Hình Ảnh"] = df["Hình Ảnh"].fillna("").astype(str)
-                df["Hình Ảnh"] = df["Hình Ảnh"].apply(lambda x: "" if x.strip() in ["0", "nan", "None"] else x)
-            else:
-                df["Hình Ảnh"] = ""
             return df
     except Exception:
         pass
     return pd.DataFrame()
+
+def get_total_production_count_db():
+    if supabase is None:
+        return 0
+    try:
+        res = supabase.table("production_logs").select("id", count="exact").eq("is_deleted", False).execute()
+        return res.count if res and res.count is not None else 0
+    except Exception:
+        return 0
 
 @st.cache_data(ttl=600, show_spinner=False)
 def get_attendance_db():
