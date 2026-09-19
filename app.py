@@ -357,12 +357,11 @@ def save_folders_db(folders_list):
     except Exception as e:
         st.error(f"Lỗi lưu thư mục: {e}")
 
-# Hàm upload ảnh đã sửa lỗi chuẩn hóa URL
+# Hàm upload ảnh chuẩn hóa đường dẫn URL
 def upload_multiple_images_to_storage(uploaded_files):
     if supabase is None or not uploaded_files:
         return ""
     url_list = []
-    # Loại bỏ dấu / ở cuối URL nếu có
     SUPABASE_URL_VAL = st.secrets["supabase"]["SUPABASE_URL"].rstrip("/")
     for uploaded_file in uploaded_files[:4]:
         try:
@@ -891,15 +890,14 @@ def render_main_content(current_menu_name):
                                     
                             with row_c2:
                                 img_url_val = row.get("Hình Ảnh") or row.get("hinh_anh_url") or ""
-                                if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
-                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
-                                    if urls:
-                                        sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                        for i, u in enumerate(urls):
+                                if isinstance(img_url_val, str) and "http" in img_url_val:
+                                    valid_urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
+                                    if valid_urls:
+                                        sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                        for i, url_link in enumerate(valid_urls):
                                             with sub_cols[i]:
                                                 with st.popover("🔍", help="Xem ảnh lớn"):
-                                                    st.image(u, use_container_width=True)
-                                                st.image(u, width=40)
+                                                    st.image(url_link, use_container_width=True)
                                     else:
                                         st.markdown("<small style='color: gray;'>Link ảnh lỗi</small>", unsafe_allow_html=True)
                                 else:
@@ -937,15 +935,14 @@ def render_main_content(current_menu_name):
                             """, unsafe_allow_html=True)
                         with row_c2:
                             img_url_val = row.get("Hình Ảnh") or row.get("hinh_anh_url") or ""
-                            if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
-                                urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
-                                if urls:
-                                    sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                    for i, u in enumerate(urls):
+                            if isinstance(img_url_val, str) and "http" in img_url_val:
+                                valid_urls = [u.strip() for u in img_url_val.split(",") if u.strip().startswith("http")]
+                                if valid_urls:
+                                    sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                    for i, url_link in enumerate(valid_urls):
                                         with sub_cols[i]:
                                             with st.popover("🔍", help="Xem ảnh lớn"):
-                                                st.image(u, use_container_width=True)
-                                            st.image(u, width=40)
+                                                st.image(url_link, use_container_width=True)
                                 else:
                                     st.markdown("<small style='color: gray;'>Link ảnh lỗi</small>", unsafe_allow_html=True)
                             else:
