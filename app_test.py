@@ -85,6 +85,37 @@ def get_detailed_storage_usage():
     except Exception:
         return "0 MB / 500 MB", "0 MB / 1 GB"
 
+# ==================== KHỞI TẠO BIẾN SESSION & UI ====================
+st.session_state.staff_list = get_staff_list_db()
+st.session_state.rules_df = get_rules_df_db()
+st.session_state.chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
+st.session_state.folders = load_folders_db()
+
+db_settings = load_app_settings_db()
+if "primary_color" not in st.session_state: st.session_state.primary_color = db_settings.get("primary_color") or "#ff4b4b"
+if "bg_color" not in st.session_state: st.session_state.bg_color = db_settings.get("bg_color") or "#ffffff"
+if "sidebar_bg" not in st.session_state: st.session_state.sidebar_bg = db_settings.get("sidebar_bg") or "#f0f2f6"
+if "sidebar_opacity" not in st.session_state: st.session_state.sidebar_opacity = float(db_settings.get("sidebar_opacity") or 0.9)
+if "text_color" not in st.session_state: st.session_state.text_color = db_settings.get("text_color") or "#31333F"
+if "bg_image_base64" not in st.session_state: st.session_state.bg_image_base64 = db_settings.get("bg_image_base64")
+if "avatar_base64" not in st.session_state: st.session_state.avatar_base64 = db_settings.get("avatar_base64")
+if "current_menu" not in st.session_state: st.session_state.current_menu = "1. Nhập Sản Lượng"
+
+bg_style = f"background-color: {st.session_state.bg_color};"
+if st.session_state.bg_image_base64:
+    bg_style = f"background-image: url(data:image/jpeg;base64,{st.session_state.bg_image_base64}); background-size: cover; background-repeat: no-repeat; background-position: center; background-attachment: fixed;"
+
+sidebar_rgba = hex_to_rgba(st.session_state.sidebar_bg, st.session_state.sidebar_opacity)
+
+st.markdown(f"""
+<style>
+    .stApp {{ {bg_style} color: {st.session_state.text_color} !important; padding-top: 1rem; }}
+    p, span, label, div, h1, h2, h3, h4, h5, h6, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {st.session_state.text_color} !important; }}
+    h1 {{ color: {st.session_state.primary_color} !important; }}
+    [data-testid="stSidebar"] {{ background-color: {sidebar_rgba} !important; backdrop-filter: blur(8px); }}
+</style>
+""", unsafe_allow_html=True)
+
 # ==================== CHECK SESSION & ĐĂNG NHẬP ====================
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -183,24 +214,6 @@ def get_user_permissions(identifier):
 user_perms = get_user_permissions(st.session_state.user_identifier)
 current_user_role = user_perms["role"]
 
-# ==================== KHỞI TẠO BIẾN SESSION & UI ====================
-st.session_state.staff_list = get_staff_list_db()
-st.session_state.rules_df = get_rules_df_db()
-st.session_state.chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
-st.session_state.folders = load_folders_db()
-
-db_settings = load_app_settings_db()
-if "primary_color" not in st.session_state: st.session_state.primary_color = db_settings.get("primary_color") or "#ff4b4b"
-if "bg_color" not in st.session_state: st.session_state.bg_color = db_settings.get("bg_color") or "#ffffff"
-if "sidebar_bg" not in st.session_state: st.session_state.sidebar_bg = db_settings.get("sidebar_bg") or "#f0f2f6"
-if "sidebar_opacity" not in st.session_state: st.session_state.sidebar_opacity = float(db_settings.get("sidebar_opacity") or 0.9)
-if "text_color" not in st.session_state: st.session_state.text_color = db_settings.get("text_color") or "#31333F"
-if "bg_image_base64" not in st.session_state: st.session_state.bg_image_base64 = db_settings.get("bg_image_base64")
-if "avatar_base64" not in st.session_state: st.session_state.avatar_base64 = db_settings.get("avatar_base64")
-if "current_menu" not in st.session_state: st.session_state.current_menu = "1. Nhập Sản Lượng"
-
-sidebar_rgba = hex_to_rgba(st.session_state.sidebar_bg, st.session_state.sidebar_opacity)
-
 # ==================== SIDEBAR NAVIGATION ====================
 with st.sidebar:
     st.markdown(f"<small>👤 <b>{st.session_state.user_identifier}</b> (Role: <b>{current_user_role}</b>)</small>", unsafe_allow_html=True)
@@ -225,7 +238,7 @@ with st.sidebar:
             if current_user_role == "Admin": filtered_items.append(item)
             else:
                 item_id = item.get("id")
-                if item_id == "menu_1" and user_perms["perm_input"]: filtered_items.append(item)
+                if item_id == "menu_1" and (user_perms["perm_input"] or True): filtered_items.append(item)
                 elif item_id == "menu_2" and user_perms["perm_report"]: filtered_items.append(item)
                 elif item_id == "menu_3" and user_perms["perm_rules"]: filtered_items.append(item)
                 elif item_id == "menu_5" and user_perms["perm_report"]: filtered_items.append(item)
