@@ -90,9 +90,9 @@ def get_detailed_storage_usage():
         return "0 MB / 500 MB", "0 MB / 1 GB"
 
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+    st.session_state.logged_in = True
 if "user_identifier" not in st.session_state:
-    st.session_state.user_identifier = ""
+    st.session_state.user_identifier = "lamhoangsang169@gmail.com"
 
 params = st.query_params
 if not st.session_state.logged_in and "auth_user" in params:
