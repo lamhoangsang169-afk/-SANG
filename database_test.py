@@ -17,7 +17,7 @@ is_supabase_connected = supabase is not None
 def init_db_data():
     pass
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_staff_df_db():
     if supabase is None:
         return pd.DataFrame(columns=["id", "name"])
@@ -25,11 +25,15 @@ def get_staff_df_db():
         res = supabase.table("staff").select("*").execute()
         if res.data:
             df = pd.DataFrame(res.data)
-            if "name" not in df.columns and "ten" in df.columns:
-                df = df.rename(columns={"ten": "name"})
+            # Khôi phục & Tự động nhận diện linh hoạt tất cả các tên cột họ tên có thể có
+            if "name" not in df.columns:
+                for possible_col in ["ten", "ho_ten", "nhan_su", "full_name"]:
+                    if possible_col in df.columns:
+                        df = df.rename(columns={possible_col: "name"})
+                        break
             return df
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Lỗi lấy danh sách nhân sự: {e}")
     return pd.DataFrame(columns=["id", "name"])
 
 def get_staff_list_db():
