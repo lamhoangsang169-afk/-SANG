@@ -12,7 +12,8 @@ from utils import (
     calculate_exact_minutes, 
     hex_to_rgba
 )
-from database import (
+# Đã trỏ chính xác sang database_test
+from database_test import (
     supabase, 
     is_supabase_connected, 
     init_db_data,
@@ -27,7 +28,7 @@ from database import (
     load_folders_db
 )
 
-st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
+st.set_page_config(page_title="POSS - Quản Lý Sản Xuất (Test)", page_icon="📊", layout="wide")
 
 init_db_data()
 
@@ -780,10 +781,6 @@ def render_main_content(current_menu_name):
                 st.cache_data.clear()
                 st.rerun()
         
-        # Khởi tạo các giá trị lọc trong session_state
-        if "selected_date" not in st.session_state: st.session_state.selected_date = today_str
-        if "selected_staff" not in st.session_state: st.session_state.selected_staff = "Tất cả"
-
         f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.9, 1.2, 0.9, 0.9, 0.8])
         
         with f_col1:
@@ -803,7 +800,7 @@ def render_main_content(current_menu_name):
             all_staff_opts = ["Tất cả"] + st.session_state.staff_list
             filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff_opts, key="select_filter_staff")
 
-        # Truy vấn dữ liệu trực tiếp từ DB với tham số lọc
+        # Đẩy lọc trực tiếp xuống DB level
         input_df = get_production_logs_db(is_deleted=False, filter_date=filter_date, filter_staff=filter_staff, limit_rows=200)
         
         count_by_date = len(input_df) if not input_df.empty else 0
