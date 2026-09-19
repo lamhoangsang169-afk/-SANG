@@ -29,13 +29,15 @@ from database import (
     permanent_delete_db
 )
 
-# ==================== IMPORT CÁC MODULE ĐÃ TÁCH ====================
-from nhap_san_luong import render_nhap_san_luong
-from cham_cong import render_cham_cong
-from bao_cao import render_bao_cao
-from thu_muc_bao_cao import render_thu_muc_bao_cao
-from dinh_muc_cong_viec import render_dinh_muc_cong_viec
-from thung_rac import render_thung_rac
+# ==================== IMPORT TỪ THƯ MỤC VIEW ====================
+from view import (
+    render_nhap_san_luong,
+    render_cham_cong,
+    render_bao_cao,
+    render_thu_muc_bao_cao,
+    render_dinh_muc_cong_viec,
+    render_thung_rac
+)
 
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
 
@@ -269,36 +271,36 @@ def get_feature_type(menu_name):
                 if item["id"] == "menu_5": return "report_folder"
     return "input_production"
 
-# ==================== BỘ ĐIỀU HƯỚNG MODULE HỆ THỐNG ====================
+# ==================== BỘ ĐIỀU HƯỚNG MODULE VIEW ====================
 @st.fragment
 def render_main_content(current_menu_name):
     feature = get_feature_type(current_menu_name)
 
-    # 1. Gọi Module Nhập Sản Lượng
+    # 1. Gọi Module Nhập Sản Lượng từ view/
     if feature == "input_production":
         render_nhap_san_luong(current_menu_name, current_user_role, user_perms)
 
-    # 2. Gọi Module Chấm Công
+    # 2. Gọi Module Chấm Công từ view/
     elif feature == "attendance":
         render_cham_cong(current_menu_name, current_user_role)
 
-    # 3. Gọi Module Báo Cáo
+    # 3. Gọi Module Báo Cáo từ view/
     elif feature == "report":
         render_bao_cao(current_menu_name)
 
-    # 4. Gọi Module Thư Mục Báo Cáo
+    # 4. Gọi Module Thư Mục Báo Cáo từ view/
     elif feature == "report_folder":
         render_thu_muc_bao_cao(current_menu_name)
 
-    # 5. Gọi Module Định Mức Công Việc
+    # 5. Gọi Module Định Mức Công Việc từ view/
     elif feature == "rules":
         render_dinh_muc_cong_viec(current_menu_name, current_user_role, user_perms)
 
-    # 6. Gọi Module Thùng Rác
+    # 6. Gọi Module Thùng Rác từ view/
     elif feature == "trash":
         render_thung_rac(current_menu_name, current_user_role)
 
-    # Các tính năng quản trị Admin còn lại
+    # Các tính năng quản trị Admin
     elif feature == "manage_folders" and current_user_role == "Admin":
         st.header("Quản Lý Thư Mục & Menu")
         with st.form("manage_menu_form"):
