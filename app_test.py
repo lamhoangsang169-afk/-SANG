@@ -12,7 +12,6 @@ from utils import (
     calculate_exact_minutes, 
     hex_to_rgba
 )
-# Đã trỏ chính xác sang database_test
 from database_test import (
     supabase, 
     is_supabase_connected, 
