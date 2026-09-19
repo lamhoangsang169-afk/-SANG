@@ -25,7 +25,6 @@ def get_staff_df_db():
         res = supabase.table("staff").select("*").execute()
         if res.data:
             df = pd.DataFrame(res.data)
-            # Khôi phục & Tự động nhận diện linh hoạt tất cả các tên cột họ tên có thể có
             if "name" not in df.columns:
                 for possible_col in ["ten", "ho_ten", "nhan_su", "full_name"]:
                     if possible_col in df.columns:
@@ -65,16 +64,15 @@ def get_production_logs_db(is_deleted=False, filter_date=None, filter_staff=None
     if supabase is None:
         return pd.DataFrame()
     try:
-        # Bắt đầu truy vấn từ bảng production_logs
         query = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted)
         
-        # Đẩy trực tiếp bộ lọc xuống Supabase Database
-        if filter_date and filter_date != "Tất cả":
+        # Bỏ qua lọc nếu giá trị là None, rỗng hoặc "Tất cả"
+        if filter_date and str(filter_date).strip() not in ["", "Tất cả"]:
             query = query.eq("ngay", str(filter_date))
-        if filter_staff and filter_staff != "Tất cả":
-            query = query.eq("nhan_su", filter_staff)
             
-        # Lấy danh sách kết quả đã lọc
+        if filter_staff and str(filter_staff).strip() not in ["", "Tất cả"]:
+            query = query.eq("nhan_su", str(filter_staff))
+            
         res = query.order("id", desc=True).limit(limit_rows).execute()
         if res.data:
             df = pd.DataFrame(res.data)
