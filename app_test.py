@@ -29,15 +29,13 @@ from database import (
     permanent_delete_db
 )
 
-# ==================== IMPORT TỪ THƯ MỤC VIEW ====================
-from view import (
-    render_nhap_san_luong,
-    render_cham_cong,
-    render_bao_cao,
-    render_thu_muc_bao_cao,
-    render_dinh_muc_cong_viec,
-    render_thung_rac
-)
+# ==================== IMPORT TRỰC TIẾP TỪ CÁC FILE TRONG THƯ MỤC VIEW ====================
+from view.nhap_san_luong import render_nhap_san_luong
+from view.cham_cong import render_cham_cong
+from view.bao_cao import render_bao_cao
+from view.thu_muc_bao_cao import render_thu_muc_bao_cao
+from view.dinh_muc_cong_viec import render_dinh_muc_cong_viec
+from view.thung_rac import render_thung_rac
 
 st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊", layout="wide")
 
