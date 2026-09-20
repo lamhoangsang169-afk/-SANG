@@ -667,7 +667,7 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    # Đã sửa limit_rows=None để tải không giới hạn toàn bộ dữ liệu
+    # Tải toàn bộ dữ liệu không giới hạn
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=None)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
@@ -792,15 +792,15 @@ def render_main_content(current_menu_name):
                 st.cache_data.clear()
                 st.rerun()
         
-        # Gọi toàn bộ dữ liệu không bị giới hạn
         input_df = get_production_logs_db(is_deleted=False, limit_rows=None)
         if not input_df.empty:
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 0.9, 0.9, 0.8])
             
+            # ==================== BỘ LỌC NGÀY MẶC ĐỊNH LÀ NGÀY THỰC TẾ ====================
             with f_col1:
                 sub_d1, sub_d2 = st.columns(2)
                 with sub_d1:
-                    filter_start_date = st.date_input("Từ ngày", value=now_vn.date() - datetime.timedelta(days=30), key="f_start_date")
+                    filter_start_date = st.date_input("Từ ngày", value=now_vn.date(), key="f_start_date")
                 with sub_d2:
                     filter_end_date = st.date_input("Đến ngày", value=now_vn.date(), key="f_end_date")
                 
