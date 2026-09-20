@@ -57,11 +57,25 @@ def get_rules_df_db():
         pass
     return pd.DataFrame(columns=["id", "stt", "Hạng Mục Công Việc", "Đơn Vị", "Hệ Số Điểm", "Ghi Chú"])
 
-def get_production_logs_db(is_deleted=False, limit_rows=150):
+@st.cache_data(ttl=60, show_spinner=False)
+def get_production_logs_db(is_deleted=False, limit_rows=None):
+    """
+    Tải danh sách sản lượng từ Supabase.
+    Nếu limit_rows=None (hoặc không truyền) sẽ tải TOÀN BỘ dữ liệu không bị giới hạn 150 dòng.
+    """
     if supabase is None:
         return pd.DataFrame()
     try:
-        res = supabase.table("production_logs").select("*").eq("is_deleted", is_deleted).order("id", desc=True).limit(limit_rows).execute()
+        query = supabase.table("production_logs")\
+                        .select("*")\
+                        .eq("is_deleted", is_deleted)\
+                        .order("ngay", desc=True)\
+                        .order("thoi_gian", desc=True)
+        
+        if limit_rows is not None and limit_rows > 0:
+            query = query.limit(limit_rows)
+            
+        res = query.execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
