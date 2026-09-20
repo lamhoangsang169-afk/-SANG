@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -668,7 +667,8 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=150)
+    # Đã điều chỉnh limit_rows=2000 để phản ánh chính xác số dòng được tải
+    current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=2000)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
 
@@ -792,7 +792,8 @@ def render_main_content(current_menu_name):
                 st.cache_data.clear()
                 st.rerun()
         
-        input_df = get_production_logs_db(is_deleted=False, limit_rows=150)
+        # SỬA LỖI: Tăng limit_rows lên 2000 dòng để tải đầy đủ dữ liệu tất cả các ngày từ database
+        input_df = get_production_logs_db(is_deleted=False, limit_rows=2000)
         if not input_df.empty:
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.9, 1.2, 0.9, 0.9, 0.8])
             
@@ -1129,8 +1130,10 @@ def render_main_content(current_menu_name):
                 comparison_df.insert(0, "Xếp Hạng", rank_badges)
                 
                 total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
+                total_pts_all = comparison_df["Tổng_Điểm"].sum()
+                
                 comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
-                comparison_df["Tỷ_Lệ_Đóng_Góp"] = comparison_df["Tổng_Điểm"].apply(lambda x: (x / total_pts_all) if (total_pts_all := comparison_df["Tổng_Điểm"].sum()) > 0 else 0)
+                comparison_df["Tỷ_Lệ_Đóng_Góp"] = comparison_df["Tổng_Điểm"].apply(lambda x: (x / total_pts_all) if total_pts_all > 0 else 0)
                 comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
                 comparison_df["Số_Ngày_Làm_Việc"] = comparison_df["Tổng Phút Làm Việc"] / 480.0
                 
