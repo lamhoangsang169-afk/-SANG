@@ -1171,20 +1171,31 @@ def render_main_content(current_menu_name):
                     if file_url: save_export_report_db(file_name_val, file_url)
                 st.download_button("💾 Tải File Về Máy", data=csv_bytes, file_name=file_name_val, mime="text/csv", use_container_width=True)
 
+            # Gán cố định màu sắc cho từng Nhân Sự để khớp hoàn toàn giữa Biểu đồ và Chi tiết
+            summary_chart = summary.copy()
+            summary_chart['Color'] = [st.session_state.chart_colors[i % len(st.session_state.chart_colors)] for i in range(len(summary_chart))]
+
             chart_col1, chart_col2 = st.columns([0.45, 1.35])
             with chart_col1:
-                fig_plotly = px.pie(summary, names="Nhân Sự", values="Tổng_Điểm", hole=0, color_discrete_sequence=st.session_state.chart_colors)
-                fig_plotly.update_traces(textposition='inside', textinfo='percent', textfont=dict(size=20, color='white', family='Arial Black'), pull=[0.03] * len(summary))
+                fig_plotly = px.pie(
+                    summary_chart, 
+                    names="Nhân Sự", 
+                    values="Tổng_Điểm", 
+                    hole=0, 
+                    color="Nhân Sự",
+                    color_discrete_map=dict(zip(summary_chart["Nhân Sự"], summary_chart["Color"]))
+                )
+                fig_plotly.update_traces(textposition='inside', textinfo='percent', textfont=dict(size=20, color='white', family='Arial Black'), pull=[0.03] * len(summary_chart))
                 fig_plotly.update_layout(margin=dict(t=30, b=30, l=30, r=30), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False, height=320)
                 st.plotly_chart(fig_plotly, use_container_width=True)
                 
             with chart_col2:
                 st.markdown("### 📌 Chi Tiết Điểm Số & Tỷ Lệ")
-                for idx, row in summary.iterrows():
+                for idx, row in summary_chart.iterrows():
                     staff_name = row["Nhân Sự"]
                     short_name = staff_name.split()[-1] if len(staff_name.split()) > 1 else staff_name
                     pts, pct = row["Tổng_Điểm"], row["Tỷ_Lệ_Đóng_Góp"] * 100
-                    color_code = st.session_state.chart_colors[idx % len(st.session_state.chart_colors)]
+                    color_code = row["Color"]
                     st.markdown(f'<div style="background-color: #f8fafc; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; border-left: 4px solid {color_code}; border: 1px solid #e2e8f0; font-size: 0.85rem;"><span style="display:inline-block; width:7px; height:7px; background-color:{color_code}; border-radius:2px; margin-right:4px;"></span><b>{short_name}</b>: {pts:,.1f} điểm (<b style="color: {color_code};">{pct:.1f}%</b>)</div>', unsafe_allow_html=True)
 
     # ==================== 5. THƯ MỤC BÁO CÁO ====================
