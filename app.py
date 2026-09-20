@@ -667,7 +667,6 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    # Đã điều chỉnh limit_rows=2000 để phản ánh chính xác số dòng được tải
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=2000)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
@@ -792,21 +791,23 @@ def render_main_content(current_menu_name):
                 st.cache_data.clear()
                 st.rerun()
         
-        # SỬA LỖI: Tăng limit_rows lên 2000 dòng để tải đầy đủ dữ liệu tất cả các ngày từ database
         input_df = get_production_logs_db(is_deleted=False, limit_rows=2000)
         if not input_df.empty:
-            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([0.9, 1.2, 0.9, 0.9, 0.8])
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 0.9, 0.9, 0.8])
             
+            # --- CẬP NHẬT BỘ LỌC NGÀY TÙY CHỌN (TỪ NGÀY ... ĐẾN NGÀY ...) ---
             with f_col1:
-                all_dates = ["Tất cả"] + sorted(input_df["Ngày"].unique().tolist())
-                default_index = all_dates.index(today_str) if today_str in all_dates else 0
-                filter_date = st.selectbox("Lọc theo Ngày", all_dates, index=default_index)
+                sub_d1, sub_d2 = st.columns(2)
+                with sub_d1:
+                    filter_start_date = st.date_input("Từ ngày", value=now_vn.date() - datetime.timedelta(days=7), key="f_start_date")
+                with sub_d2:
+                    filter_end_date = st.date_input("Đến ngày", value=now_vn.date(), key="f_end_date")
                 
-                if filter_date == "Tất cả":
-                    count_by_date = len(input_df)
-                else:
-                    count_by_date = len(input_df[input_df["Ngày"] == filter_date])
-                st.markdown(f"<small style='color: #1d4ed8; font-weight: bold;'>📅 Ngày này có: {count_by_date} bản ghi</small>", unsafe_allow_html=True)
+                start_d_str = str(filter_start_date)
+                end_d_str = str(filter_end_date)
+                
+                count_by_date = len(input_df[(input_df["Ngày"] >= start_d_str) & (input_df["Ngày"] <= end_d_str)])
+                st.markdown(f"<small style='color: #1d4ed8; font-weight: bold;'>📅 Khoảng ngày có: {count_by_date} bản ghi</small>", unsafe_allow_html=True)
                 
             with f_col2:
                 enable_hour_filter = st.checkbox("Lọc theo Giờ", value=False)
@@ -822,8 +823,9 @@ def render_main_content(current_menu_name):
                 filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
                 
             temp_filtered_df = input_df.copy()
-            if filter_date != "Tất cả": 
-                temp_filtered_df = temp_filtered_df[temp_filtered_df["Ngày"] == filter_date]
+            # Áp dụng bộ lọc khoảng ngày
+            temp_filtered_df = temp_filtered_df[(temp_filtered_df["Ngày"] >= start_d_str) & (temp_filtered_df["Ngày"] <= end_d_str)]
+            
             if filter_staff != "Tất cả": 
                 temp_filtered_df = temp_filtered_df[temp_filtered_df["Nhân Sự"] == filter_staff]
 
@@ -1131,7 +1133,6 @@ def render_main_content(current_menu_name):
                 
                 total_minutes_all = comparison_df["Tổng Phút Làm Việc"].sum()
                 total_pts_all = comparison_df["Tổng_Điểm"].sum()
-                
                 comparison_df["Tỷ_Lệ_Thời_Gian"] = comparison_df["Tổng Phút Làm Việc"].apply(lambda x: (x / total_minutes_all) if total_minutes_all > 0 else 0)
                 comparison_df["Tỷ_Lệ_Đóng_Góp"] = comparison_df["Tổng_Điểm"].apply(lambda x: (x / total_pts_all) if total_pts_all > 0 else 0)
                 comparison_df["Chênh_Lệch_%"] = comparison_df["Tỷ_Lệ_Đóng_Góp"] - comparison_df["Tỷ_Lệ_Thời_Gian"]
