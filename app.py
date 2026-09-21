@@ -532,6 +532,21 @@ st.markdown(f"""
     .avatar-popover-wrapper [data-testid="stPopover"] button p {{ display: none !important; }}
     .avatar-popover-wrapper [data-testid="stPopover"] button::after {{ content: "⋮"; font-size: 16px; font-weight: bold; color: #333333; line-height: 1; }}
     .sidebar-scrollable-content {{ flex-grow: 1; padding-left: 1rem; padding-right: 1rem; padding-bottom: 50px; }}
+    
+    /* CSS cho cụm hình ảnh + popover hiển thị theo hàng ngang */
+    .img-horizontal-container {{
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }}
+    .img-item-box {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -895,18 +910,13 @@ def render_main_content(current_menu_name):
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                     valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                     if valid_urls:
-                                        with st.popover(" ", help="Xem ảnh lớn"):
-                                            for u in valid_urls:
-                                                st.image(u, use_container_width=True)
-                                        # HIỂN THỊ NHIỀU HÌNH HÀNG NGANG BẰNG HTML FLEXBOX
-                                        imgs_html = "".join([
-                                            f'<img src="{u}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">'
-                                            for u in valid_urls
-                                        ])
-                                        st.markdown(
-                                            f'<div style="display: flex; flex-direction: row; gap: 6px; flex-wrap: wrap; margin-top: 4px;">{imgs_html}</div>', 
-                                            unsafe_allow_html=True
-                                        )
+                                        # Tạo các cột tương ứng theo số lượng ảnh để các cụm (nút kính lúp + thumbnail 60px) nằm ngang nhau
+                                        img_cols = st.columns(len(valid_urls))
+                                        for idx_u, (u_url, col_item) in enumerate(zip(valid_urls, img_cols)):
+                                            with col_item:
+                                                with st.popover(" ", help="Xem ảnh phóng to & Fullscreen"):
+                                                    st.image(u_url, use_container_width=True)
+                                                st.image(u_url, width=60)
                                     else:
                                         st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
@@ -948,18 +958,12 @@ def render_main_content(current_menu_name):
                                 urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                 valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                 if valid_urls:
-                                    with st.popover(" ", help="Xem ảnh lớn"):
-                                        for u in valid_urls:
-                                            st.image(u, use_container_width=True)
-                                    # HIỂN THỊ NHIỀU HÌNH HÀNG NGANG BẰNG HTML FLEXBOX
-                                    imgs_html = "".join([
-                                        f'<img src="{u}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">'
-                                        for u in valid_urls
-                                    ])
-                                    st.markdown(
-                                        f'<div style="display: flex; flex-direction: row; gap: 6px; flex-wrap: wrap; margin-top: 4px;">{imgs_html}</div>', 
-                                        unsafe_allow_html=True
-                                    )
+                                    img_cols = st.columns(len(valid_urls))
+                                    for idx_u, (u_url, col_item) in enumerate(zip(valid_urls, img_cols)):
+                                        with col_item:
+                                            with st.popover(" ", help="Xem ảnh phóng to & Fullscreen"):
+                                                st.image(u_url, use_container_width=True)
+                                            st.image(u_url, width=60)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
@@ -1502,7 +1506,7 @@ def render_main_content(current_menu_name):
                 else:
                     st.info("Chưa có tài khoản nhân sự nào trong hệ thống.")
             except Exception as e:
-                st.error(f"Lỗi quản lý tài khoản:")
+                st.error(f"Lỗi quản lý tài khoản: {e}")
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
