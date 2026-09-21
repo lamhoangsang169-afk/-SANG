@@ -272,7 +272,7 @@ def save_staff_list_db(edited_df):
         st.error(f"Lỗi khi xóa nhân sự và dữ liệu liên quan: {e}")
 
 def save_rules_df_db(df):
-    if supabase is None or not user_perms["perm_rules"] and current_user_role != "Admin":
+    if supabase is None or (not user_perms["perm_rules"] and current_user_role != "Admin"):
         st.warning("⚠️ Bạn không có quyền thay đổi định mức!")
         return
     try:
@@ -280,6 +280,7 @@ def save_rules_df_db(df):
         old_rules_map = {row["id"]: {"hang_muc": row["hang_muc"], "he_so_diem": row["he_so_diem"]} for row in res_old.data} if res_old.data else {}
         old_ids = list(old_rules_map.keys())
         
+        inserts_rules = []
         current_ids_in_editor = []
         
         for idx, row in df.iterrows():
@@ -301,39 +302,29 @@ def save_rules_df_db(df):
             
             if pd.notna(row_id) and int(row_id) in old_ids:
                 rid = int(row_id)
-                old_info = old_rules_map.get(rid, {"hang_muc": "", "he_so_diem": 1.0})
-                old_hang_muc = old_info["hang_muc"]
-                
-                supabase.table("rules").update(payload).eq("id", rid).execute()
                 current_ids_in_editor.append(rid)
                 
-                if old_hang_muc and old_hang_muc != new_hang_muc:
-                    supabase.table("production_logs").update({
-                        "hang_muc_cong_viec": new_hang_muc
-                    }).eq("hang_muc_cong_viec", old_hang_muc).eq("is_deleted", False).execute()
-                
-                target_hang_muc_name = new_hang_muc if new_hang_muc else old_hang_muc
-                res_logs = supabase.table("production_logs").select("id, so_luong").eq("hang_muc_cong_viec", target_hang_muc_name).eq("is_deleted", False).execute()
-                if res_logs.data:
-                    for lg in res_logs.data:
-                        lg_id = lg["id"]
-                        qty = lg["so_luong"]
-                        new_total_points = qty * new_he_so
-                        supabase.table("production_logs").update({
-                            "he_so_diem": new_he_so,
-                            "tong_diem": new_total_points
-                        }).eq("id", lg_id).execute()
-            else:
-                res_ins = supabase.table("rules").insert(payload).execute()
-                if res_ins.data:
-                    current_ids_in_editor.append(res_ins.data[0]["id"])
+                old_info = old_rules_map.get(rid, {})
+                if old_info.get("hang_muc") != new_hang_muc or old_info.get("he_so_diem") != new_he_so:
+                    supabase.table("rules").update(payload).eq("id", rid).execute()
                     
+                    old_hang_muc = old_info.get("hang_muc")
+                    if old_hang_muc and old_hang_muc != new_hang_muc:
+                        supabase.table("production_logs").update({"hang_muc_cong_viec": new_hang_muc}).eq("hang_muc_cong_viec", old_hang_muc).execute()
+            else:
+                inserts_rules.append(payload)
+                
+        if inserts_rules:
+            res_ins = supabase.table("rules").insert(inserts_rules).execute()
+            if res_ins.data:
+                current_ids_in_editor.extend([r["id"] for r in res_ins.data])
+                
         ids_to_delete = [oid for oid in old_ids if oid not in current_ids_in_editor]
-        for del_id in ids_to_delete:
-            supabase.table("rules").delete().eq("id", del_id).execute()
+        if ids_to_delete:
+            supabase.table("rules").delete().in_("id", ids_to_delete).execute()
             
         st.cache_data.clear()
-        st.success("Đã đồng bộ định mức thành công!")
+        st.success("⚡ Đã đồng bộ định mức thành công!")
     except Exception as e:
         st.error(f"Lỗi khi đồng bộ định mức: {e}")
 
@@ -1192,7 +1183,7 @@ def render_main_content(current_menu_name):
 
             exp_col1, exp_col2 = st.columns([1, 3])
             with exp_col1:
-                csv_bytes = export_csv_df.to_csv(index=False).encode('utf-utf-8-sig')
+                csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
                 file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
                 if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
                     file_url = upload_report_to_storage(file_name_val, csv_bytes)
