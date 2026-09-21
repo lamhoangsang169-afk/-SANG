@@ -869,7 +869,7 @@ def render_main_content(current_menu_name):
 
             start_idx = (current_page - 1) * rows_per_page
             end_idx = start_idx + rows_per_page
-            paginated_df = filtered_df.iloc[start_idx:end_idx]
+            paginated_df = filtered_df.iloc[start_idx:end_idx].reset_index(drop=True)
 
             if filter_task != "Tất cả":
                 total_qty_task = filtered_df["Số Lượng"].sum() if not filtered_df.empty else 0
@@ -892,16 +892,19 @@ def render_main_content(current_menu_name):
 
                         selected_ids_to_delete = []
                         for idx, row in paginated_df.iterrows():
+                            # Tính STT đếm ngược: Bản ghi mới nhất hiển thị STT lớn nhất
+                            display_stt = total_rows - (start_idx + idx)
+                            
                             row_c1, row_c2 = st.columns([3.8, 1.2])
                             with row_c1:
                                 st.markdown(f"""
                                 <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                                    <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                                    <b>STT: {display_stt}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
                                     📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                                     💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                                 </div>
                                 """, unsafe_allow_html=True)
-                                if st.checkbox(f"Chọn xóa bản ghi STT {row['STT']}", key=f"chk_{row['db_id']}"):
+                                if st.checkbox(f"Chọn xóa bản ghi STT {display_stt}", key=f"chk_{row['db_id']}"):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
                             with row_c2:
@@ -910,7 +913,6 @@ def render_main_content(current_menu_name):
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                     valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                     if valid_urls:
-                                        # Tạo các cột tương ứng theo số lượng ảnh để các cụm (nút kính lúp + thumbnail 60px) nằm ngang nhau
                                         img_cols = st.columns(len(valid_urls))
                                         for idx_u, (u_url, col_item) in enumerate(zip(valid_urls, img_cols)):
                                             with col_item:
@@ -943,11 +945,14 @@ def render_main_content(current_menu_name):
                                 st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
                 else:
                     for idx, row in paginated_df.iterrows():
+                        # Tính STT đếm ngược: Bản ghi mới nhất hiển thị STT lớn nhất
+                        display_stt = total_rows - (start_idx + idx)
+                        
                         row_c1, row_c2 = st.columns([3.8, 1.2])
                         with row_c1:
                             st.markdown(f"""
                             <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
-                                <b>STT: {row['STT']}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
+                                <b>STT: {display_stt}</b> &nbsp;|&nbsp; 📅 {row['Ngày']} ⏰ {row['Thời Gian']} &nbsp;|&nbsp; 👤 <b>{row['Nhân Sự']}</b><br>
                                 📌 {row['Hạng Mục Công Việc']} &nbsp;|&nbsp; 📦 <b>{row['Số Lượng']} {row['Đơn Vị']}</b> (⭐ <b>{row['Tổng Điểm']}</b> điểm)<br>
                                 💬 <i>{row['Ghi Chú'] if row['Ghi Chú'] else 'Không có ghi chú'}</i>
                             </div>
@@ -1187,7 +1192,7 @@ def render_main_content(current_menu_name):
 
             exp_col1, exp_col2 = st.columns([1, 3])
             with exp_col1:
-                csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
+                csv_bytes = export_csv_df.to_csv(index=False).encode('utf-utf-8-sig')
                 file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
                 if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
                     file_url = upload_report_to_storage(file_name_val, csv_bytes)
