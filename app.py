@@ -898,9 +898,15 @@ def render_main_content(current_menu_name):
                                         with st.popover(" ", help="Xem ảnh lớn"):
                                             for u in valid_urls:
                                                 st.image(u, use_container_width=True)
-                                        # SỬA KÍCH THƯỚC ẢNH NHỎ THU THỎ (width=60)
-                                        for u in valid_urls:
-                                            st.image(u, width=60)
+                                        # HIỂN THỊ NHIỀU HÌNH HÀNG NGANG BẰNG HTML FLEXBOX
+                                        imgs_html = "".join([
+                                            f'<img src="{u}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">'
+                                            for u in valid_urls
+                                        ])
+                                        st.markdown(
+                                            f'<div style="display: flex; flex-direction: row; gap: 6px; flex-wrap: wrap; margin-top: 4px;">{imgs_html}</div>', 
+                                            unsafe_allow_html=True
+                                        )
                                     else:
                                         st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
@@ -945,9 +951,15 @@ def render_main_content(current_menu_name):
                                     with st.popover(" ", help="Xem ảnh lớn"):
                                         for u in valid_urls:
                                             st.image(u, use_container_width=True)
-                                    # SỬA KÍCH THƯỚC ẢNH NHỎ THU THỎ (width=60)
-                                    for u in valid_urls:
-                                        st.image(u, width=60)
+                                    # HIỂN THỊ NHIỀU HÌNH HÀNG NGANG BẰNG HTML FLEXBOX
+                                    imgs_html = "".join([
+                                        f'<img src="{u}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">'
+                                        for u in valid_urls
+                                    ])
+                                    st.markdown(
+                                        f'<div style="display: flex; flex-direction: row; gap: 6px; flex-wrap: wrap; margin-top: 4px;">{imgs_html}</div>', 
+                                        unsafe_allow_html=True
+                                    )
                                 else:
                                     st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
