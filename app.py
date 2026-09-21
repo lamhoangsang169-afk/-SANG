@@ -793,37 +793,36 @@ def render_main_content(current_menu_name):
                 st.rerun()
         
         input_df = get_production_logs_db(is_deleted=False, limit_rows=None)
-        
-        # HIỂN THỊ KHUNG BỘ LỌC DÙ CÓ HOẶC CHƯA CÓ DỮ LIỆU
-        f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 0.9, 0.9, 0.8])
-        
-        with f_col1:
-            sub_d1, sub_d2 = st.columns(2)
-            with sub_d1:
-                filter_start_date = st.date_input("Từ ngày", value=now_vn.date(), key="f_start_date")
-            with sub_d2:
-                filter_end_date = st.date_input("Đến ngày", value=now_vn.date(), key="f_end_date")
-            
-            start_d_str = str(filter_start_date)
-            end_d_str = str(filter_end_date)
-            
-            count_by_date = len(input_df[(input_df["Ngày"] >= start_d_str) & (input_df["Ngày"] <= end_d_str)]) if not input_df.empty else 0
-            st.markdown(f"<small style='color: #1d4ed8; font-weight: bold;'>📅 Khoảng ngày có: {count_by_date} bản ghi</small>", unsafe_allow_html=True)
-            
-        with f_col2:
-            enable_hour_filter = st.checkbox("Lọc theo Giờ", value=False)
-            if enable_hour_filter:
-                t_sub1, t_sub2 = st.columns(2)
-                with t_sub1: start_t = st.time_input("Từ", datetime.time(7, 30), label_visibility="collapsed")
-                with t_sub2: end_t = st.time_input("Đến", datetime.time(17, 0), label_visibility="collapsed")
-            else:
-                start_t, end_t = None, None
-            
-        with f_col3:
-            all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist()) if not input_df.empty else ["Tất cả"]
-            filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
-
         if not input_df.empty:
+            f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 0.9, 0.9, 0.8])
+            
+            # ==================== BỘ LỌC NGÀY MẶC ĐỊNH LÀ NGÀY THỰC TẾ ====================
+            with f_col1:
+                sub_d1, sub_d2 = st.columns(2)
+                with sub_d1:
+                    filter_start_date = st.date_input("Từ ngày", value=now_vn.date(), key="f_start_date")
+                with sub_d2:
+                    filter_end_date = st.date_input("Đến ngày", value=now_vn.date(), key="f_end_date")
+                
+                start_d_str = str(filter_start_date)
+                end_d_str = str(filter_end_date)
+                
+                count_by_date = len(input_df[(input_df["Ngày"] >= start_d_str) & (input_df["Ngày"] <= end_d_str)])
+                st.markdown(f"<small style='color: #1d4ed8; font-weight: bold;'>📅 Khoảng ngày có: {count_by_date} bản ghi</small>", unsafe_allow_html=True)
+                
+            with f_col2:
+                enable_hour_filter = st.checkbox("Lọc theo Giờ", value=False)
+                if enable_hour_filter:
+                    t_sub1, t_sub2 = st.columns(2)
+                    with t_sub1: start_t = st.time_input("Từ", datetime.time(7, 30), label_visibility="collapsed")
+                    with t_sub2: end_t = st.time_input("Đến", datetime.time(17, 0), label_visibility="collapsed")
+                else:
+                    start_t, end_t = None, None
+                
+            with f_col3:
+                all_staff = ["Tất cả"] + sorted(input_df["Nhân Sự"].unique().tolist())
+                filter_staff = st.selectbox("Lọc theo Nhân Sự", all_staff)
+                
             temp_filtered_df = input_df.copy()
             temp_filtered_df = temp_filtered_df[(temp_filtered_df["Ngày"] >= start_d_str) & (temp_filtered_df["Ngày"] <= end_d_str)]
             
@@ -893,20 +892,21 @@ def render_main_content(current_menu_name):
                                     
                             with row_c2:
                                 img_url_val = row.get("Hình Ảnh", "")
-                                if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
-                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip() and len(u.strip()) > 5]
-                                    if urls:
-                                        sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                        for i, u in enumerate(urls[:4]):
+                                if img_url_val and isinstance(img_url_val, str):
+                                    urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                                    valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
+                                    if valid_urls:
+                                        sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                        for i, u in enumerate(valid_urls):
                                             with sub_cols[i]:
                                                 try:
                                                     with st.popover("🔍", help="Xem ảnh lớn"): 
                                                         st.image(u, use_container_width=True)
-                                                    st.image(u, width=50)
+                                                    st.image(u, width=40)
                                                 except Exception:
-                                                    st.caption("⚠️ Ảnh lỗi")
+                                                    st.caption("⚠️ Lỗi ảnh")
                                     else:
-                                        st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                                        st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
 
@@ -942,30 +942,27 @@ def render_main_content(current_menu_name):
                             """, unsafe_allow_html=True)
                         with row_c2:
                             img_url_val = row.get("Hình Ảnh", "")
-                            if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
-                                urls = [u.strip() for u in img_url_val.split(",") if u.strip() and len(u.strip()) > 5]
-                                if urls:
-                                    sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                    for i, u in enumerate(urls[:4]):
+                            if img_url_val and isinstance(img_url_val, str):
+                                urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
+                                valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
+                                if valid_urls:
+                                    sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                    for i, u in enumerate(valid_urls):
                                         with sub_cols[i]:
                                             try:
                                                 with st.popover("🔍", help="Xem ảnh lớn"): 
                                                     st.image(u, use_container_width=True)
-                                                st.image(u, width=50)
+                                                st.image(u, width=40)
                                             except Exception:
-                                                st.caption("⚠️ Ảnh lỗi")
+                                                st.caption("⚠️ Lỗi ảnh")
                                 else:
-                                    st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                                    st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
                                 st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                         st.markdown("---")
             else:
                 st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
         else:
-            with f_col4:
-                st.selectbox("Lọc theo Hạng Mục", ["Tất cả"])
-            with f_col5:
-                st.number_input("Trang hiển thị (1 tr | 0 bản ghi)", min_value=1, max_value=1, value=1, disabled=True, key="pag_empty")
             st.info("Chưa có dữ liệu sản lượng trong CSDL.")
 
     # ==================== CHẤM CÔNG CA LÀM VIỆC ====================
