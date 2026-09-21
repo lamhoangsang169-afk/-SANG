@@ -878,7 +878,7 @@ def render_main_content(current_menu_name):
 
                         selected_ids_to_delete = []
                         for idx, row in paginated_df.iterrows():
-                            row_c1, row_c2 = st.columns([4, 1])
+                            row_c1, row_c2 = st.columns([3.5, 1.5])
                             with row_c1:
                                 st.markdown(f"""
                                 <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
@@ -891,8 +891,9 @@ def render_main_content(current_menu_name):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
                             with row_c2:
-                                img_url_val = row.get("Hình Ảnh", "")
-                                if img_url_val and isinstance(img_url_val, str):
+                                # SỬA TRIỆT ĐỂ: Lấy đúng cột hinh_anh_url từ Database
+                                img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
+                                if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                     valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                     if valid_urls:
@@ -902,7 +903,7 @@ def render_main_content(current_menu_name):
                                                 try:
                                                     with st.popover("🔍", help="Xem ảnh lớn"): 
                                                         st.image(u, use_container_width=True)
-                                                    st.image(u, width=40)
+                                                    st.image(u, use_container_width=True)
                                                 except Exception:
                                                     st.caption("⚠️ Lỗi ảnh")
                                     else:
@@ -931,7 +932,7 @@ def render_main_content(current_menu_name):
                                 st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
                 else:
                     for idx, row in paginated_df.iterrows():
-                        row_c1, row_c2 = st.columns([4, 1])
+                        row_c1, row_c2 = st.columns([3.5, 1.5])
                         with row_c1:
                             st.markdown(f"""
                             <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
@@ -941,8 +942,9 @@ def render_main_content(current_menu_name):
                             </div>
                             """, unsafe_allow_html=True)
                         with row_c2:
-                            img_url_val = row.get("Hình Ảnh", "")
-                            if img_url_val and isinstance(img_url_val, str):
+                            # SỬA TRIỆT ĐỂ: Lấy đúng cột hinh_anh_url từ Database
+                            img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
+                            if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                 urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                 valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                 if valid_urls:
@@ -952,7 +954,7 @@ def render_main_content(current_menu_name):
                                             try:
                                                 with st.popover("🔍", help="Xem ảnh lớn"): 
                                                     st.image(u, use_container_width=True)
-                                                st.image(u, width=40)
+                                                st.image(u, use_container_width=True)
                                             except Exception:
                                                 st.caption("⚠️ Lỗi ảnh")
                                 else:
