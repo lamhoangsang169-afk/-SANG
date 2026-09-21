@@ -890,19 +890,17 @@ def render_main_content(current_menu_name):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
                             with row_c2:
-                                # HIỂN THỊ CHUẨN NHƯ HÌNH MẪU: Popover dạng kính lúp ở trên, ảnh thumbnail ở dưới
                                 img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
                                 if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                     valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                     if valid_urls:
-                                        # Popover kính lúp nhỏ gọn ở trên
                                         with st.popover(" ", help="Xem ảnh lớn"):
                                             for u in valid_urls:
                                                 st.image(u, use_container_width=True)
-                                        # Thumbnail ảnh dọc vừa vặn ở dưới
+                                        # SỬA KÍCH THƯỚC ẢNH NHỎ THU THỎ (width=60)
                                         for u in valid_urls:
-                                            st.image(u, use_container_width=True)
+                                            st.image(u, width=60)
                                     else:
                                         st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
@@ -947,8 +945,9 @@ def render_main_content(current_menu_name):
                                     with st.popover(" ", help="Xem ảnh lớn"):
                                         for u in valid_urls:
                                             st.image(u, use_container_width=True)
+                                    # SỬA KÍCH THƯỚC ẢNH NHỎ THU THỎ (width=60)
                                     for u in valid_urls:
-                                        st.image(u, use_container_width=True)
+                                        st.image(u, width=60)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
@@ -1491,7 +1490,7 @@ def render_main_content(current_menu_name):
                 else:
                     st.info("Chưa có tài khoản nhân sự nào trong hệ thống.")
             except Exception as e:
-                st.error(f"Lỗi quản lý tài khoản: {e}")
+                st.error(f"Lỗi quản lý tài khoản:")
 
     # ==================== LÀM SẠCH DỮ LIỆU ====================
     elif feature == "clean_data":
