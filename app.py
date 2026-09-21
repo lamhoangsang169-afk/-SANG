@@ -796,7 +796,6 @@ def render_main_content(current_menu_name):
         if not input_df.empty:
             f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.2, 0.9, 0.9, 0.8])
             
-            # ==================== BỘ LỌC NGÀY MẶC ĐỊNH LÀ NGÀY THỰC TẾ ====================
             with f_col1:
                 sub_d1, sub_d2 = st.columns(2)
                 with sub_d1:
@@ -848,10 +847,10 @@ def render_main_content(current_menu_name):
                 
             rows_per_page = 10
             total_rows = len(filtered_df)
-            total_pages = (total_rows - 1) // rows_per_page + 1
+            total_pages = max((total_rows - 1) // rows_per_page + 1, 1)
 
             with f_col5:
-                current_page = st.number_input(f"Trang hiển thị ({total_pages} tr | {total_rows} bản ghi)", min_value=1, max_value=max(total_pages, 1), value=1, step=1, key="pagination_page_num")
+                current_page = st.number_input(f"Trang hiển thị ({total_pages} tr | {total_rows} bản ghi)", min_value=1, max_value=total_pages, value=1, step=1, key="pagination_page_num")
 
             start_idx = (current_page - 1) * rows_per_page
             end_idx = start_idx + rows_per_page
@@ -878,7 +877,7 @@ def render_main_content(current_menu_name):
 
                         selected_ids_to_delete = []
                         for idx, row in paginated_df.iterrows():
-                            row_c1, row_c2 = st.columns([3.5, 1.5])
+                            row_c1, row_c2 = st.columns([3.8, 1.2])
                             with row_c1:
                                 st.markdown(f"""
                                 <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
@@ -891,7 +890,6 @@ def render_main_content(current_menu_name):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
                             with row_c2:
-                                # SỬA TRIỆT ĐỂ: Lấy đúng cột hinh_anh_url từ Database
                                 img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
                                 if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
@@ -901,15 +899,14 @@ def render_main_content(current_menu_name):
                                         for i, u in enumerate(valid_urls):
                                             with sub_cols[i]:
                                                 try:
-                                                    with st.popover("🔍", help="Xem ảnh lớn"): 
+                                                    with st.popover("🔍 Ảnh", use_container_width=True): 
                                                         st.image(u, use_container_width=True)
-                                                    st.image(u, use_container_width=True)
                                                 except Exception:
                                                     st.caption("⚠️ Lỗi ảnh")
                                     else:
-                                        st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
+                                        st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
-                                    st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                                    st.markdown("<small style='color: gray;'>Không có ảnh</small>", unsafe_allow_html=True)
 
                             st.markdown("---")
 
@@ -932,7 +929,7 @@ def render_main_content(current_menu_name):
                                 st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
                 else:
                     for idx, row in paginated_df.iterrows():
-                        row_c1, row_c2 = st.columns([3.5, 1.5])
+                        row_c1, row_c2 = st.columns([3.8, 1.2])
                         with row_c1:
                             st.markdown(f"""
                             <div style="background: rgba(255,255,255,0.85); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 4px; font-size: 0.85rem;">
@@ -942,7 +939,6 @@ def render_main_content(current_menu_name):
                             </div>
                             """, unsafe_allow_html=True)
                         with row_c2:
-                            # SỬA TRIỆT ĐỂ: Lấy đúng cột hinh_anh_url từ Database
                             img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
                             if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                 urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
@@ -952,15 +948,14 @@ def render_main_content(current_menu_name):
                                     for i, u in enumerate(valid_urls):
                                         with sub_cols[i]:
                                             try:
-                                                with st.popover("🔍", help="Xem ảnh lớn"): 
+                                                with st.popover("🔍 Ảnh", use_container_width=True): 
                                                     st.image(u, use_container_width=True)
-                                                st.image(u, use_container_width=True)
                                             except Exception:
                                                 st.caption("⚠️ Lỗi ảnh")
                                 else:
-                                    st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
+                                    st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
-                                st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
+                                st.markdown("<small style='color: gray;'>Không có ảnh</small>", unsafe_allow_html=True)
                         st.markdown("---")
             else:
                 st.info("Không tìm thấy bản ghi nào khớp bộ lọc.")
