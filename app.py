@@ -890,19 +890,19 @@ def render_main_content(current_menu_name):
                                     selected_ids_to_delete.append(row['db_id'])
                                     
                             with row_c2:
+                                # HIỂN THỊ CHUẨN NHƯ HÌNH MẪU: Popover dạng kính lúp ở trên, ảnh thumbnail ở dưới
                                 img_url_val = row.get("hinh_anh_url") or row.get("Hình Ảnh") or ""
                                 if img_url_val and isinstance(img_url_val, str) and img_url_val.strip():
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                     valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                     if valid_urls:
-                                        sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
-                                        for i, u in enumerate(valid_urls):
-                                            with sub_cols[i]:
-                                                try:
-                                                    with st.popover("🔍 Ảnh", use_container_width=True): 
-                                                        st.image(u, use_container_width=True)
-                                                except Exception:
-                                                    st.caption("⚠️ Lỗi ảnh")
+                                        # Popover kính lúp nhỏ gọn ở trên
+                                        with st.popover(" ", help="Xem ảnh lớn"):
+                                            for u in valid_urls:
+                                                st.image(u, use_container_width=True)
+                                        # Thumbnail ảnh dọc vừa vặn ở dưới
+                                        for u in valid_urls:
+                                            st.image(u, use_container_width=True)
                                     else:
                                         st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
@@ -944,14 +944,11 @@ def render_main_content(current_menu_name):
                                 urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
                                 valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
                                 if valid_urls:
-                                    sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
-                                    for i, u in enumerate(valid_urls):
-                                        with sub_cols[i]:
-                                            try:
-                                                with st.popover("🔍 Ảnh", use_container_width=True): 
-                                                    st.image(u, use_container_width=True)
-                                            except Exception:
-                                                st.caption("⚠️ Lỗi ảnh")
+                                    with st.popover(" ", help="Xem ảnh lớn"):
+                                        for u in valid_urls:
+                                            st.image(u, use_container_width=True)
+                                    for u in valid_urls:
+                                        st.image(u, use_container_width=True)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không có ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
