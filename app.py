@@ -894,12 +894,19 @@ def render_main_content(current_menu_name):
                                 img_url_val = row.get("Hình Ảnh", "")
                                 if img_url_val and isinstance(img_url_val, str):
                                     urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
-                                    if urls:
-                                        sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                        for i, u in enumerate(urls):
+                                    valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
+                                    if valid_urls:
+                                        sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                        for i, u in enumerate(valid_urls):
                                             with sub_cols[i]:
-                                                with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
-                                                st.image(u, width=40)
+                                                try:
+                                                    with st.popover("🔍", help="Xem ảnh lớn"): 
+                                                        st.image(u, use_container_width=True)
+                                                    st.image(u, width=40)
+                                                except Exception:
+                                                    st.caption("⚠️ Lỗi ảnh")
+                                    else:
+                                        st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
                                 else:
                                     st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
 
@@ -937,12 +944,19 @@ def render_main_content(current_menu_name):
                             img_url_val = row.get("Hình Ảnh", "")
                             if img_url_val and isinstance(img_url_val, str):
                                 urls = [u.strip() for u in img_url_val.split(",") if u.strip()]
-                                if urls:
-                                    sub_cols = st.columns(min(len(urls), 4), gap="small")
-                                    for i, u in enumerate(urls):
+                                valid_urls = [u for u in urls if u.startswith("http://") or u.startswith("https://")]
+                                if valid_urls:
+                                    sub_cols = st.columns(min(len(valid_urls), 4), gap="small")
+                                    for i, u in enumerate(valid_urls):
                                         with sub_cols[i]:
-                                            with st.popover("🔍", help="Xem ảnh lớn"): st.image(u, use_container_width=True)
-                                            st.image(u, width=40)
+                                            try:
+                                                with st.popover("🔍", help="Xem ảnh lớn"): 
+                                                    st.image(u, use_container_width=True)
+                                                st.image(u, width=40)
+                                            except Exception:
+                                                st.caption("⚠️ Lỗi ảnh")
+                                else:
+                                    st.markdown("<small style='color: gray;'>Không ảnh hợp lệ</small>", unsafe_allow_html=True)
                             else:
                                 st.markdown("<small style='color: gray;'>Không ảnh</small>", unsafe_allow_html=True)
                         st.markdown("---")
