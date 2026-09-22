@@ -1183,6 +1183,7 @@ def render_main_content(current_menu_name):
 
             exp_col1, exp_col2 = st.columns([1, 3])
             with exp_col1:
+                # SỬA LỖI: Chỉnh lại tên encoding chuẩn 'utf-8-sig'
                 csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
                 file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
                 if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
