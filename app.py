@@ -89,7 +89,45 @@ def get_detailed_storage_usage():
     except Exception:
         return "0 MB / 500 MB", "0 MB / 1 GB"
 
-# ==================== KHỞI TẠO CSDL CHO QUẢN LÝ LỖI ====================
+# ==================== CSDL CHO QUẢN LÝ LỖI & PHÂN LOẠI LỖI TÙY CHỈNH ====================
+@st.cache_data(ttl=300, show_spinner=False)
+def get_error_types_db():
+    default_types = ["Sản phẩm hỏng", "Trầy xước/Móp méo", "Sai kích thước", "Sai số lượng", "Khác"]
+    if supabase is None:
+        return default_types
+    try:
+        res = supabase.table("error_types").select("name").execute()
+        if res.data:
+            types_list = [r["name"] for r in res.data if r.get("name")]
+            if types_list:
+                return types_list
+        else:
+            # Khởi tạo mặc định lên DB nếu chưa có
+            for dt in default_types:
+                supabase.table("error_types").insert({"name": dt}).execute()
+            return default_types
+    except Exception:
+        pass
+    return default_types
+
+def add_error_type_db(type_name):
+    if supabase is None or not type_name.strip():
+        return
+    try:
+        supabase.table("error_types").insert({"name": type_name.strip()}).execute()
+        st.cache_data.clear()
+    except Exception as e:
+        st.error(f"Lỗi khi thêm loại lỗi: {e}")
+
+def delete_error_type_db(type_name):
+    if supabase is None:
+        return
+    try:
+        supabase.table("error_types").delete().eq("name", type_name).execute()
+        st.cache_data.clear()
+    except Exception as e:
+        st.error(f"Lỗi khi xóa loại lỗi: {e}")
+
 def add_error_log_db(ngay, nhan_su, loai_loi, so_luong_loi, ghi_chu):
     if supabase is None:
         return
@@ -533,7 +571,6 @@ st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
 st.session_state.chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
 
-# Cập nhật danh mục thư mục mặc định có thêm 6. Quản Lý Lỗi
 loaded_folders = load_folders_db()
 if loaded_folders:
     items = loaded_folders[0].get("items", [])
@@ -1305,7 +1342,7 @@ def render_main_content(current_menu_name):
         else:
             st.info("Thư mục báo cáo đang trống.")
 
-    # ==================== 6. QUẢN LÝ LỖI ====================
+    # ==================== 6. QUẢN LÝ LỖI (CÓ TÙY CHỈNH LOẠI LỖI) ====================
     elif feature == "error_management":
         col_err_h1, col_err_h2 = st.columns([3, 1])
         with col_err_h1:
@@ -1316,6 +1353,10 @@ def render_main_content(current_menu_name):
                 st.rerun()
 
         now_vn = datetime.datetime.now(VN_TIMEZONE)
+        
+        # Tải danh sách các loại lỗi động từ CSDL
+        current_error_types = get_error_types_db()
+
         st.subheader("⚠️ Khai Báo Lỗi Phát Sinh")
         
         with st.form("error_input_form"):
@@ -1326,8 +1367,7 @@ def render_main_content(current_menu_name):
                 err_staff_options = ["--- Chọn nhân sự liên quan ---"] + st.session_state.staff_list
                 err_staff = st.selectbox("Nhân sự chịu trách nhiệm/phát hiện", err_staff_options)
             with e_col3:
-                err_type_options = ["Sản phẩm hỏng", "Trầy xước/Móp méo", "Sai kích thước", "Sai số lượng", "Khác"]
-                err_type = st.selectbox("Phân loại lỗi", err_type_options)
+                err_type = st.selectbox("Phân loại lỗi", current_error_types)
 
             e_col4, e_col5 = st.columns([1, 2])
             with e_col4:
@@ -1343,6 +1383,36 @@ def render_main_content(current_menu_name):
                 else:
                     add_error_log_db(err_date, err_staff, err_type, err_qty, err_note)
                     st.success(f"✅ Đã lưu thông tin lỗi cho **{err_staff}**!")
+                    st.rerun()
+
+        st.markdown("---")
+        
+        # Tùy chỉnh thêm/bớt danh mục loại lỗi
+        with st.expander("⚙️ Tùy Chỉnh Danh Mục Loại Lỗi (Thêm/Bớt)", expanded=False):
+            st.markdown("##### ➕ Thêm loại lỗi mới")
+            col_add1, col_add2 = st.columns([3, 1])
+            with col_add1:
+                new_type_input = st.text_input("Tên loại lỗi mới", placeholder="Nhập tên loại lỗi...", label_visibility="collapsed")
+            with col_add2:
+                if st.button("Thêm Loại Lỗi", use_container_width=True):
+                    if new_type_input.strip():
+                        if new_type_input.strip() in current_error_types:
+                            st.warning("⚠️ Loại lỗi này đã tồn tại!")
+                        else:
+                            add_error_type_db(new_type_input)
+                            st.success(f"✅ Đã thêm loại lỗi '{new_type_input.strip()}'!")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Vui lòng nhập tên loại lỗi!")
+
+            st.markdown("##### ➖ Xóa loại lỗi không dùng")
+            col_del1, col_del2 = st.columns([3, 1])
+            with col_del1:
+                type_to_del = st.selectbox("Chọn loại lỗi cần xóa", current_error_types, label_visibility="collapsed")
+            with col_del2:
+                if st.button("Xóa Loại Lỗi", use_container_width=True):
+                    delete_error_type_db(type_to_del)
+                    st.success(f"✅ Đã xóa loại lỗi '{type_to_del}'!")
                     st.rerun()
 
         st.markdown("---")
