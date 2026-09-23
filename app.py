@@ -6,7 +6,6 @@ import base64
 import hashlib
 import os
 
-# Import từ các module đã tách
 from utils import (
     VN_TIMEZONE, 
     compress_image_to_base64, 
@@ -32,11 +31,9 @@ st.set_page_config(page_title="POSS - Quản Lý Sản Xuất", page_icon="📊"
 
 init_db_data()
 
-# Hàm mã hóa mật khẩu bảo mật
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Hàm đo RAM tiến trình app thuần Python
 def get_app_memory_usage():
     try:
         import sys
@@ -56,7 +53,6 @@ def get_app_memory_usage():
         except Exception:
             return "Ổn định"
 
-# Hàm tính dung lượng Database và File Storage thực tế từ Supabase
 def get_detailed_storage_usage():
     if supabase is None:
         return "0 MB / 500 MB", "0 MB / 1 GB"
@@ -92,6 +88,53 @@ def get_detailed_storage_usage():
         return db_display, storage_display
     except Exception:
         return "0 MB / 500 MB", "0 MB / 1 GB"
+
+# ==================== KHỞI TẠO CSDL CHO QUẢN LÝ LỖI ====================
+def add_error_log_db(ngay, nhan_su, loai_loi, so_luong_loi, ghi_chu):
+    if supabase is None:
+        return
+    try:
+        payload = {
+            "ngay": str(ngay),
+            "thoi_gian": datetime.datetime.now(VN_TIMEZONE).strftime("%H:%M:%S"),
+            "nhan_su": nhan_su,
+            "loai_loi": loai_loi,
+            "so_luong_loi": int(so_luong_loi),
+            "ghi_chu": ghi_chu
+        }
+        supabase.table("error_logs").insert(payload).execute()
+        st.cache_data.clear()
+    except Exception as e:
+        st.error(f"Lỗi khi lưu báo cáo lỗi: {e}")
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_error_logs_db():
+    if supabase is None:
+        return pd.DataFrame()
+    try:
+        res = supabase.table("error_logs").select("*").order("id", desc=True).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df = df.rename(columns={
+                "id": "db_id", "ngay": "Ngày", "thoi_gian": "Thời Gian", 
+                "nhan_su": "Nhân Sự", "loai_loi": "Loại Lỗi", 
+                "so_luong_loi": "Số Lượng Lỗi", "ghi_chu": "Ghi Chú"
+            })
+            df.insert(0, "STT", range(1, len(df) + 1))
+            return df
+    except Exception:
+        pass
+    return pd.DataFrame()
+
+def delete_error_log_db(db_ids):
+    if supabase is None:
+        return
+    try:
+        for db_id in db_ids:
+            supabase.table("error_logs").delete().eq("id", db_id).execute()
+        st.cache_data.clear()
+    except Exception:
+        pass
 
 # ==================== KIỂM TRA ĐĂNG NHẬP SESSION & QUERY PARAMS ====================
 if "logged_in" not in st.session_state:
@@ -489,7 +532,27 @@ def permanent_delete_export_report_db(db_ids):
 st.session_state.staff_list = get_staff_list_db()
 st.session_state.rules_df = get_rules_df_db()
 st.session_state.chart_colors = ["#ff4b4b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6", "#f97316", "#6366f1"]
-st.session_state.folders = load_folders_db()
+
+# Cập nhật danh mục thư mục mặc định có thêm 6. Quản Lý Lỗi
+loaded_folders = load_folders_db()
+if loaded_folders:
+    items = loaded_folders[0].get("items", [])
+    if not any(item.get("id") == "menu_6" for item in items):
+        items.append({"id": "menu_6", "name": "6. Quản Lý Lỗi"})
+        loaded_folders[0]["items"] = items
+    st.session_state.folders = loaded_folders
+else:
+    st.session_state.folders = [{
+        "folder_name": "📌 Quản Lý Nghiệp Vụ",
+        "items": [
+            {"id": "menu_1", "name": "1. Nhập Sản Lượng"},
+            {"id": "menu_2", "name": "2. Báo Cáo & Biểu Đồ"},
+            {"id": "menu_3", "name": "3. Tham chiếu Định mức"},
+            {"id": "menu_4", "name": "4. Thùng Rác Sản Lượng"},
+            {"id": "menu_5", "name": "5. Thư Mục Báo Cáo"},
+            {"id": "menu_6", "name": "6. Quản Lý Lỗi"}
+        ]
+    }]
 
 db_settings = load_app_settings_db()
 
@@ -524,7 +587,6 @@ st.markdown(f"""
     .avatar-popover-wrapper [data-testid="stPopover"] button::after {{ content: "⋮"; font-size: 16px; font-weight: bold; color: #333333; line-height: 1; }}
     .sidebar-scrollable-content {{ flex-grow: 1; padding-left: 1rem; padding-right: 1rem; padding-bottom: 50px; }}
     
-    /* CSS cho cụm hình ảnh + popover hiển thị theo hàng ngang */
     .img-horizontal-container {{
         display: flex;
         flex-direction: row;
@@ -636,6 +698,7 @@ with st.sidebar:
                 elif item_id == "menu_3" and user_perms["perm_rules"]: filtered_items.append(item)
                 elif item_id == "menu_4" and current_user_role == "Admin": filtered_items.append(item)
                 elif item_id == "menu_5" and user_perms["perm_report"]: filtered_items.append(item)
+                elif item_id == "menu_6": filtered_items.append(item)
 
         if filtered_items:
             with st.expander(folder["folder_name"], expanded=True):
@@ -673,7 +736,6 @@ with st.sidebar:
     st.markdown(f'<div style="background: rgba(245, 158, 11, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #f59e0b; text-align: center; font-size: 0.78rem; font-weight: bold; color: #b45309; margin-bottom: 5px;">🗄️ Database: <b>{db_usage_str}</b></div>', unsafe_allow_html=True)
     st.markdown(f'<div style="background: rgba(16, 185, 129, 0.12); padding: 5px 8px; border-radius: 6px; border: 1px solid #10b981; text-align: center; font-size: 0.78rem; font-weight: bold; color: #047857; margin-bottom: 6px;">💾 File Storage: <b>{storage_usage_str}</b></div>', unsafe_allow_html=True)
 
-    # Tải toàn bộ dữ liệu không giới hạn
     current_loaded_df = get_production_logs_db(is_deleted=False, limit_rows=None)
     current_shown_count = len(current_loaded_df) if not current_loaded_df.empty else 0
     total_db_count = get_total_production_count_db()
@@ -697,6 +759,7 @@ def get_feature_type(menu_name):
                 if item["id"] == "menu_3": return "rules"
                 if item["id"] == "menu_4": return "trash"
                 if item["id"] == "menu_5": return "report_folder"
+                if item["id"] == "menu_6": return "error_management"
                 return "input_production"
     return "input_production"
 
@@ -883,7 +946,6 @@ def render_main_content(current_menu_name):
 
                         selected_ids_to_delete = []
                         for idx, row in paginated_df.iterrows():
-                            # Tính STT đếm ngược: Bản ghi mới nhất hiển thị STT lớn nhất
                             display_stt = total_rows - (start_idx + idx)
                             
                             row_c1, row_c2 = st.columns([3.8, 1.2])
@@ -936,7 +998,6 @@ def render_main_content(current_menu_name):
                                 st.warning("⚠️ Vui lòng tích chọn xác nhận trước khi bấm xóa tất cả!")
                 else:
                     for idx, row in paginated_df.iterrows():
-                        # Tính STT đếm ngược: Bản ghi mới nhất hiển thị STT lớn nhất
                         display_stt = total_rows - (start_idx + idx)
                         
                         row_c1, row_c2 = st.columns([3.8, 1.2])
@@ -1183,7 +1244,6 @@ def render_main_content(current_menu_name):
 
             exp_col1, exp_col2 = st.columns([1, 3])
             with exp_col1:
-                # SỬA LỖI: Chỉnh lại tên encoding chuẩn 'utf-8-sig'
                 csv_bytes = export_csv_df.to_csv(index=False).encode('utf-8-sig')
                 file_name_val = f"bao_cao_san_luong_{report_start_date}_den_{report_end_date}.csv"
                 if st.button("📥 Xuất File & Lưu Cloud", use_container_width=True):
@@ -1191,7 +1251,6 @@ def render_main_content(current_menu_name):
                     if file_url: save_export_report_db(file_name_val, file_url)
                 st.download_button("💾 Tải File Về Máy", data=csv_bytes, file_name=file_name_val, mime="text/csv", use_container_width=True)
 
-            # Gán cố định màu sắc cho từng Nhân Sự để khớp hoàn toàn giữa Biểu đồ và Chi tiết
             summary_chart = summary.copy()
             summary_chart['Color'] = [st.session_state.chart_colors[i % len(st.session_state.chart_colors)] for i in range(len(summary_chart))]
 
@@ -1245,6 +1304,71 @@ def render_main_content(current_menu_name):
                         st.warning("Vui lòng tích chọn báo cáo cần chuyển!")
         else:
             st.info("Thư mục báo cáo đang trống.")
+
+    # ==================== 6. QUẢN LÝ LỖI ====================
+    elif feature == "error_management":
+        col_err_h1, col_err_h2 = st.columns([3, 1])
+        with col_err_h1:
+            st.header("6. Quản Lý Lỗi Sản Xuất")
+        with col_err_h2:
+            if st.button("🔄 Làm mới dữ liệu", use_container_width=True, key="btn_refresh_error"):
+                st.cache_data.clear()
+                st.rerun()
+
+        now_vn = datetime.datetime.now(VN_TIMEZONE)
+        st.subheader("⚠️ Khai Báo Lỗi Phát Sinh")
+        
+        with st.form("error_input_form"):
+            e_col1, e_col2, e_col3 = st.columns(3)
+            with e_col1:
+                err_date = st.date_input("Ngày phát sinh", now_vn.date())
+            with e_col2:
+                err_staff_options = ["--- Chọn nhân sự liên quan ---"] + st.session_state.staff_list
+                err_staff = st.selectbox("Nhân sự chịu trách nhiệm/phát hiện", err_staff_options)
+            with e_col3:
+                err_type_options = ["Sản phẩm hỏng", "Trầy xước/Móp méo", "Sai kích thước", "Sai số lượng", "Khác"]
+                err_type = st.selectbox("Phân loại lỗi", err_type_options)
+
+            e_col4, e_col5 = st.columns([1, 2])
+            with e_col4:
+                err_qty = st.number_input("Số lượng sản phẩm lỗi", min_value=1, value=1, step=1)
+            with e_col5:
+                err_note = st.text_input("Ghi chú nguyên nhân / Biện pháp xử lý", "")
+
+            submit_err = st.form_submit_button("🚨 Ghi Nhận Lỗi Sản Xuất", use_container_width=True)
+
+            if submit_err:
+                if err_staff == "--- Chọn nhân sự liên quan ---":
+                    st.error("⚠️ Vui lòng chọn nhân sự liên quan!")
+                else:
+                    add_error_log_db(err_date, err_staff, err_type, err_qty, err_note)
+                    st.success(f"✅ Đã lưu thông tin lỗi cho **{err_staff}**!")
+                    st.rerun()
+
+        st.markdown("---")
+        st.subheader("📋 Danh Sách Lỗi Đã Khai Báo")
+        
+        err_df = get_error_logs_db()
+        if not err_df.empty:
+            st.dataframe(err_df.drop(columns=["db_id"]), use_container_width=True, hide_index=True)
+            
+            if current_user_role == "Admin":
+                with st.form("delete_error_form"):
+                    st.markdown("##### 🗑️ Xóa Bản Ghi Lỗi")
+                    err_ids_to_del = []
+                    for idx, r in err_df.iterrows():
+                        if st.checkbox(f"Xóa bản ghi STT {r['STT']} - {r['Nhân Sự']} ({r['Ngày']} | {r['Loại Lỗi']}: {r['Số Lượng Lỗi']})", key=f"del_err_{r['db_id']}"):
+                            err_ids_to_del.append(r['db_id'])
+                            
+                    if st.form_submit_button("🗑️ Xóa Các Dòng Đã Chọn", use_container_width=True):
+                        if err_ids_to_del:
+                            delete_error_log_db(err_ids_to_del)
+                            st.success("Đã xóa bản ghi lỗi thành công!")
+                            st.rerun()
+                        else:
+                            st.warning("Vui lòng tích chọn ít nhất một bản ghi cần xóa!")
+        else:
+            st.info("Chưa có bản ghi lỗi nào trong hệ thống.")
 
     # ==================== THAM CHIẾU CÔNG VIỆC ====================
     elif feature == "rules":
@@ -1413,7 +1537,7 @@ def render_main_content(current_menu_name):
                     st.success("Đã cập nhật danh sách nhân sự!")
                     st.rerun()
 
-    # ==================== 🛡️ QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN KẾT HỢP ====================
+    # ==================== 🛡️ QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN ====================
     elif feature == "manage_roles":
         col_mr_h1, col_mr_h2 = st.columns([3, 1])
         with col_mr_h1:
